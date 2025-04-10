@@ -348,13 +348,11 @@ public class InstanceControllerV3 {
             security = @SecurityRequirement(name = "nacos"))
     @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
             schema = @Schema(implementation = Result.class, example = "nacos.admin.naming.instance.api.list.example")))
-    @Parameters(value = {@Parameter(name = "pageNo", required = true, example = "1"),
-            @Parameter(name = "pageSize", required = true, example = "100"),
-            @Parameter(name = "namespaceId", example = "public"),
+    @Parameters(value = {@Parameter(name = "namespaceId", example = "public"),
             @Parameter(name = "groupName", example = "DEFAULT_GROUP"),
             @Parameter(name = "serviceName", required = true, example = "test"),
-            @Parameter(name = "clusterName", example = "DEFAULT"), @Parameter(name = "instanceForm", hidden = true),
-            @Parameter(name = "pageForm", hidden = true)})
+            @Parameter(name = "clusterName", example = "DEFAULT"),
+            @Parameter(name = "instanceListForm", hidden = true)})
     public Result<List<? extends Instance>> list(InstanceListForm instanceListForm) throws NacosException {
         instanceListForm.validate();
         List<? extends Instance> instances = catalogService.listInstances(instanceListForm.getNamespaceId(),
