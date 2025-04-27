@@ -136,7 +136,7 @@ public class NamespaceControllerV3 {
     @Parameters(value = {@Parameter(name = "namespaceId"),
             @Parameter(name = "namespaceName", required = true, example = "test"),
             @Parameter(name = "namespaceDesc", example = "test"), @Parameter(name = "namespaceForm", hidden = true)})
-    public Result<Boolean> createNamespace(NamespaceForm namespaceForm) throws NacosException {
+    public Result<Boolean> createNamespace(NamespaceForm namespaceForm) throws Exception {
         namespaceForm.validate();
         
         String namespaceId = namespaceForm.getNamespaceId();

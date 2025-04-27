@@ -88,7 +88,7 @@
     </issueManagement>
     
     <properties>
-        <revision>3.0.0-BETA</revision>
+        <revision>3.0.0</revision>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
         <!-- Compiler settings properties -->
@@ -114,7 +114,7 @@
         <maven-pmd-plugin.version>3.16.0</maven-pmd-plugin.version>
         <apache-rat-plugin.version>0.12</apache-rat-plugin.version>
         <maven-resources-plugin.version>3.0.2</maven-resources-plugin.version>
-        <jacoco-maven-plugin.version>0.8.7</jacoco-maven-plugin.version>
+        <jacoco-maven-plugin.version>0.8.13</jacoco-maven-plugin.version>
         <maven-surefire-plugin.version>3.2.5</maven-surefire-plugin.version>
         <soptbugs-maven-plugin.version>4.8.6.2</soptbugs-maven-plugin.version>
         <sonar-maven-plugin.version>3.0.2</sonar-maven-plugin.version>
@@ -129,7 +129,7 @@
         
         <!-- dependency version -->
         <nacos.logback.adapter.version>1.1.3</nacos.logback.adapter.version>
-        <spring-boot-dependencies.version>3.4.1</spring-boot-dependencies.version>
+        <spring-boot-dependencies.version>3.4.4</spring-boot-dependencies.version>
         <commons-io.version>2.14.0</commons-io.version>
         <commons-collections.version>3.2.2</commons-collections.version>
         <slf4j-api.version>2.0.13</slf4j-api.version>
@@ -429,6 +429,7 @@
                 <version>${maven-surefire-plugin.version}</version>
                 <configuration>
                     <argLine>
+                        ${argLine}
                         --add-opens java.base/java.lang=ALL-UNNAMED
                         --add-opens java.base/java.lang.reflect=ALL-UNNAMED
                         --add-opens java.base/java.util=ALL-UNNAMED
@@ -643,6 +644,7 @@
         <module>lock</module>
         <module>maintainer-client</module>
         <module>client-basic</module>
+        <module>ai</module>
         <module>swagger</module>
     </modules>
     
@@ -727,6 +729,11 @@
             <dependency>
                 <groupId>${project.groupId}</groupId>
                 <artifactId>nacos-naming</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.alibaba.nacos</groupId>
+                <artifactId>nacos-ai</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>
@@ -1040,16 +1047,6 @@
                 <artifactId>grpc-testing</artifactId>
                 <version>${grpc-java.version}</version>
                 <scope>test</scope>
-            </dependency>
-            <dependency>
-                <groupId>io.grpc</groupId>
-                <artifactId>grpc-util</artifactId>
-                <version>${grpc-java.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>io.grpc</groupId>
-                <artifactId>grpc-util</artifactId>
-                <version>${grpc-java.version}</version>
             </dependency>
             <dependency>
                 <groupId>io.grpc</groupId>

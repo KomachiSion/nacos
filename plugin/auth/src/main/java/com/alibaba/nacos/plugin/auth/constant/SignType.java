@@ -29,6 +29,8 @@ public class SignType {
     
     public static final String LOCK = "lock";
     
+    public static final String AI = "ai";
+    
     public static final String CONSOLE = "console";
     
     public static final String SPECIFIED = "specified";
