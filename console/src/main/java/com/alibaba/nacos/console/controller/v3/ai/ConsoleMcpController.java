@@ -31,6 +31,7 @@ import com.alibaba.nacos.api.exception.NacosException;
 import com.alibaba.nacos.api.exception.api.NacosApiException;
 import com.alibaba.nacos.api.model.Page;
 import com.alibaba.nacos.api.model.v2.Result;
+import com.alibaba.nacos.api.remote.RemoteConstants;
 import com.alibaba.nacos.auth.annotation.Secured;
 import com.alibaba.nacos.console.proxy.ai.McpProxy;
 import com.alibaba.nacos.core.model.form.PageForm;
@@ -38,6 +39,17 @@ import com.alibaba.nacos.core.paramcheck.ExtractorManager;
 import com.alibaba.nacos.plugin.auth.constant.ActionTypes;
 import com.alibaba.nacos.plugin.auth.constant.ApiType;
 import com.alibaba.nacos.plugin.auth.constant.SignType;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.Parameters;
+import io.swagger.v3.oas.annotations.extensions.Extension;
+import io.swagger.v3.oas.annotations.extensions.ExtensionProperty;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -54,7 +66,12 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping(Constants.MCP_CONSOLE_PATH)
 @ExtractorManager.Extractor(httpExtractor = McpHttpParamExtractor.class)
+@Tag(name = "nacos.console.ai.mcp.api.controller.name", description = "nacos.console.ai.mcp.api.controller.description", extensions = {
+        @Extension(name = RemoteConstants.LABEL_MODULE,
+                properties = @ExtensionProperty(name = RemoteConstants.LABEL_MODULE, value = "ai"))})
 public class ConsoleMcpController {
+    
+    private static final String MCP_SERVER_SPEC_EXAMPLE = "{\"protocol\":\"stdio\",\"name\":\"test\",\"description\":\"test\",\"version\":\"1.0.0\",\"enabled\":true,\"localServerConfig\":{\"test\":{\"description\":\"test\",\"command\":\"uvx\",\"args\":[\"test\"]}}}";
     
     private final McpProxy mcpProxy;
     
@@ -71,6 +88,15 @@ public class ConsoleMcpController {
      */
     @GetMapping(value = "/list")
     @Secured(action = ActionTypes.READ, signType = SignType.AI, apiType = ApiType.CONSOLE_API)
+    @Operation(summary = "nacos.console.ai.mcp.api.list.summary", description = "nacos.console.ai.mcp.api.list.description",
+            security = @SecurityRequirement(name = "nacos"))
+    @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+            schema = @Schema(implementation = Result.class, example = "nacos.console.ai.mcp.api.list.example")))
+    @Parameters(value = {@Parameter(name = "pageNo", required = true, example = "1"),
+            @Parameter(name = "pageSize", required = true, example = "100"),
+            @Parameter(name = "namespaceId", example = "nacos-default-mcp"), @Parameter(name = "mcpName"),
+            @Parameter(name = "search", example = "blur", description = "blur or accurate"),
+            @Parameter(name = "mcpListForm", hidden = true), @Parameter(name = "pageForm", hidden = true)})
     public Result<Page<McpServerBasicInfo>> listMcpServers(McpListForm mcpListForm, PageForm pageForm)
             throws NacosException {
         mcpListForm.validate();
@@ -89,6 +115,12 @@ public class ConsoleMcpController {
      */
     @GetMapping
     @Secured(action = ActionTypes.READ, signType = SignType.AI, apiType = ApiType.CONSOLE_API)
+    @Operation(summary = "nacos.console.ai.mcp.api.get.summary", description = "nacos.console.ai.mcp.api.get.description",
+            security = @SecurityRequirement(name = "nacos"))
+    @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+            schema = @Schema(implementation = Result.class, example = "nacos.console.ai.mcp.api.get.example")))
+    @Parameters(value = {@Parameter(name = "namespaceId", example = "nacos-default-mcp"),
+            @Parameter(name = "mcpName", example = "test"), @Parameter(name = "mcpForm", hidden = true)})
     public Result<McpServerDetailInfo> getMcpServer(McpForm mcpForm) throws NacosException {
         mcpForm.validate();
         return Result.success(mcpProxy.getMcpServer(mcpForm.getNamespaceId(), mcpForm.getMcpName()));
@@ -102,6 +134,17 @@ public class ConsoleMcpController {
      */
     @PostMapping
     @Secured(action = ActionTypes.WRITE, signType = SignType.AI, apiType = ApiType.CONSOLE_API)
+    @Operation(summary = "nacos.console.ai.mcp.api.create.summary", description = "nacos.console.ai.mcp.api.create.description",
+            security = @SecurityRequirement(name = "nacos"))
+    @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+            schema = @Schema(implementation = Result.class, example = "nacos.console.ai.mcp.api.create.example")))
+    @Parameters(value = {@Parameter(name = "namespaceId", example = "nacos-default-mcp"),
+            @Parameter(name = "mcpName", required = true, example = "test"),
+            @Parameter(name = "serverSpecification", required = true,
+                    schema = @Schema(implementation = McpServerBasicInfo.class), example = MCP_SERVER_SPEC_EXAMPLE),
+            @Parameter(name = "toolSpecification", schema = @Schema(implementation = McpToolSpecification.class), example = "{}"),
+            @Parameter(name = "endpointSpecification", schema = @Schema(implementation = McpEndpointSpec.class), example = "{}"),
+            @Parameter(name = "mcpForm", hidden = true)})
     public Result<String> createMcpServer(McpDetailForm mcpForm) throws NacosException {
         mcpForm.validate();
         McpServerBasicInfo basicInfo = McpRequestUtil.parseMcpServerBasicInfo(mcpForm);
@@ -123,6 +166,17 @@ public class ConsoleMcpController {
      */
     @PutMapping
     @Secured(action = ActionTypes.WRITE, signType = SignType.AI, apiType = ApiType.CONSOLE_API)
+    @Operation(summary = "nacos.console.ai.mcp.api.update.summary", description = "nacos.console.ai.mcp.api.update.description",
+            security = @SecurityRequirement(name = "nacos"))
+    @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+            schema = @Schema(implementation = Result.class, example = "nacos.console.ai.mcp.api.update.example")))
+    @Parameters(value = {@Parameter(name = "namespaceId", example = "nacos-default-mcp"),
+            @Parameter(name = "mcpName", required = true, example = "test"),
+            @Parameter(name = "serverSpecification", required = true,
+                    schema = @Schema(implementation = McpServerBasicInfo.class), example = MCP_SERVER_SPEC_EXAMPLE),
+            @Parameter(name = "toolSpecification", schema = @Schema(implementation = McpToolSpecification.class), example = "{}"),
+            @Parameter(name = "endpointSpecification", schema = @Schema(implementation = McpEndpointSpec.class), example = "{}"),
+            @Parameter(name = "mcpForm", hidden = true)})
     public Result<String> updateMcpServer(McpDetailForm mcpForm) throws NacosException {
         mcpForm.validate();
         McpServerBasicInfo basicInfo = McpRequestUtil.parseMcpServerBasicInfo(mcpForm);
@@ -140,6 +194,12 @@ public class ConsoleMcpController {
      */
     @DeleteMapping
     @Secured(action = ActionTypes.WRITE, signType = SignType.AI, apiType = ApiType.CONSOLE_API)
+    @Operation(summary = "nacos.console.ai.mcp.api.delete.summary", description = "nacos.console.ai.mcp.api.delete.description",
+            security = @SecurityRequirement(name = "nacos"))
+    @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+            schema = @Schema(implementation = Result.class, example = "nacos.console.ai.mcp.api.delete.example")))
+    @Parameters(value = {@Parameter(name = "namespaceId", example = "nacos-default-mcp"),
+            @Parameter(name = "mcpName", example = "test"), @Parameter(name = "mcpForm", hidden = true)})
     public Result<String> deleteMcpServer(McpForm mcpForm) throws NacosException {
         mcpForm.validate();
         mcpProxy.deleteMcpServer(mcpForm.getNamespaceId(), mcpForm.getMcpName());
