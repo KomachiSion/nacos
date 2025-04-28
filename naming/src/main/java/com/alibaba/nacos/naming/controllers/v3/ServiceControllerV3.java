@@ -207,7 +207,7 @@ public class ServiceControllerV3 {
             @Parameter(name = "pageSize", required = true, example = "10"),
             @Parameter(name = "namespaceId", example = "public"),
             @Parameter(name = "groupNameParam"),
-            @Parameter(name = "serviceNameParam", required = true, example = "test"),
+            @Parameter(name = "serviceNameParam", example = "test"),
             @Parameter(name = "ignoreEmptyService", example = "true"),
             @Parameter(name = "withInstances", example = "false"), @Parameter(name = "serviceListForm", hidden = true),
             @Parameter(name = "pageForm", hidden = true)})

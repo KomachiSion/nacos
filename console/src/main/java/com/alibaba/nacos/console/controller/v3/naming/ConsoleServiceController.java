@@ -245,8 +245,8 @@ public class ConsoleServiceController {
     @Parameters(value = {@Parameter(name = "pageNo", required = true, example = "1"),
             @Parameter(name = "pageSize", required = true, example = "10"),
             @Parameter(name = "namespaceId", example = "public"),
-            @Parameter(name = "groupName", example = "DEFAULT_GROUP"),
-            @Parameter(name = "serviceName", required = true, example = "test"),
+            @Parameter(name = "groupNameParam"),
+            @Parameter(name = "serviceNameParam", example = "test"),
             @Parameter(name = "ignoreEmptyService", example = "true"),
             @Parameter(name = "withInstances", example = "false"), @Parameter(name = "serviceListForm", hidden = true),
             @Parameter(name = "pageForm", hidden = true)})
