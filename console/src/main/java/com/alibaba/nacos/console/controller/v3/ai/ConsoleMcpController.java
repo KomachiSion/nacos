@@ -96,7 +96,7 @@ public class ConsoleMcpController {
             schema = @Schema(implementation = Result.class, example = "nacos.console.ai.mcp.api.list.example")))
     @Parameters(value = {@Parameter(name = "pageNo", required = true, example = "1"),
             @Parameter(name = "pageSize", required = true, example = "100"),
-            @Parameter(name = "namespaceId", example = "nacos-default-mcp"), @Parameter(name = "mcpName"),
+            @Parameter(name = "namespaceId", example = "public"), @Parameter(name = "mcpName"),
             @Parameter(name = "search", example = "blur", description = "blur or accurate"),
             @Parameter(name = "mcpListForm", hidden = true), @Parameter(name = "pageForm", hidden = true)})
     public Result<Page<McpServerBasicInfo>> listMcpServers(McpListForm mcpListForm, PageForm pageForm)
@@ -121,8 +121,9 @@ public class ConsoleMcpController {
             security = @SecurityRequirement(name = "nacos"))
     @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
             schema = @Schema(implementation = Result.class, example = "nacos.console.ai.mcp.api.get.example")))
-    @Parameters(value = {@Parameter(name = "namespaceId", example = "nacos-default-mcp"),
-            @Parameter(name = "mcpName", example = "test"), @Parameter(name = "mcpForm", hidden = true)})
+    @Parameters(value = {@Parameter(name = "namespaceId", example = "public"),
+            @Parameter(name = "mcpId", example = "d7a64724-a556-4fe4-82fa-e806d43e00dc"), @Parameter(name = "mcpName", example = "test"),
+            @Parameter(name = "version", example = "1.0.0"), @Parameter(name = "mcpForm", hidden = true)})
     public Result<McpServerDetailInfo> getMcpServer(McpForm mcpForm) throws NacosException {
         mcpForm.validate();
         return Result.success(mcpProxy.getMcpServer(mcpForm.getNamespaceId(), mcpForm.getMcpName(), mcpForm.getMcpId(), mcpForm.getVersion()));
@@ -140,8 +141,7 @@ public class ConsoleMcpController {
             security = @SecurityRequirement(name = "nacos"))
     @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
             schema = @Schema(implementation = Result.class, example = "nacos.console.ai.mcp.api.create.example")))
-    @Parameters(value = {@Parameter(name = "namespaceId", example = "nacos-default-mcp"),
-            @Parameter(name = "mcpName", required = true, example = "test"),
+    @Parameters(value = {@Parameter(name = "namespaceId", example = "public"),
             @Parameter(name = "serverSpecification", required = true,
                     schema = @Schema(implementation = McpServerBasicInfo.class), example = MCP_SERVER_SPEC_EXAMPLE),
             @Parameter(name = "toolSpecification", schema = @Schema(implementation = McpToolSpecification.class), example = "{}"),
@@ -172,8 +172,8 @@ public class ConsoleMcpController {
             security = @SecurityRequirement(name = "nacos"))
     @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
             schema = @Schema(implementation = Result.class, example = "nacos.console.ai.mcp.api.update.example")))
-    @Parameters(value = {@Parameter(name = "namespaceId", example = "nacos-default-mcp"),
-            @Parameter(name = "mcpName", required = true, example = "test"),
+    @Parameters(value = {@Parameter(name = "namespaceId", example = "public"),
+            @Parameter(name = "latest", example = "true"),
             @Parameter(name = "serverSpecification", required = true,
                     schema = @Schema(implementation = McpServerBasicInfo.class), example = MCP_SERVER_SPEC_EXAMPLE),
             @Parameter(name = "toolSpecification", schema = @Schema(implementation = McpToolSpecification.class), example = "{}"),
@@ -200,8 +200,9 @@ public class ConsoleMcpController {
             security = @SecurityRequirement(name = "nacos"))
     @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
             schema = @Schema(implementation = Result.class, example = "nacos.console.ai.mcp.api.delete.example")))
-    @Parameters(value = {@Parameter(name = "namespaceId", example = "nacos-default-mcp"),
-            @Parameter(name = "mcpName", example = "test"), @Parameter(name = "mcpForm", hidden = true)})
+    @Parameters(value = {@Parameter(name = "namespaceId", example = "public"),
+            @Parameter(name = "mcpName", example = "test"), @Parameter(name = "mcpForm", hidden = true),
+            @Parameter(name = "mcpId", example = "d7a64724-a556-4fe4-82fa-e806d43e00dc"), @Parameter(name = "version", example = "1.0.0")})
     public Result<String> deleteMcpServer(McpForm mcpForm) throws NacosException {
         mcpForm.validate();
         mcpProxy.deleteMcpServer(mcpForm.getNamespaceId(), mcpForm.getMcpName(), mcpForm.getMcpId(), mcpForm.getVersion());
