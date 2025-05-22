@@ -1,5 +1,5 @@
 /*
- * Copyright 1999-2018 Alibaba Group Holding Ltd.
+ * Copyright 1999-2025 Alibaba Group Holding Ltd.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,6 +14,27 @@
  * limitations under the License.
  */
 
-import NewCredential from './NewCredential';
+package com.alibaba.nacos.ai.form.mcp.admin;
 
-export default NewCredential;
+import java.io.Serial;
+
+/**
+ * Mcp server update form.
+ *
+ * @author xinluo
+ */
+public class McpUpdateForm extends McpDetailForm {
+    
+    @Serial
+    private static final long serialVersionUID = 4144251088520249913L;
+    
+    private Boolean latest;
+    
+    public Boolean getLatest() {
+        return latest;
+    }
+    
+    public void setLatest(Boolean publish) {
+        this.latest = publish;
+    }
+}
