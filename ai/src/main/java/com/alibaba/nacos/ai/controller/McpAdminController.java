@@ -72,7 +72,9 @@ import org.springframework.web.bind.annotation.RestController;
                 properties = @ExtensionProperty(name = RemoteConstants.LABEL_MODULE, value = "ai"))})
 public class McpAdminController {
     
-    private static final String MCP_SERVER_SPEC_EXAMPLE = "{\"protocol\":\"stdio\",\"name\":\"test\",\"description\":\"test\",\"version\":\"1.0.0\",\"enabled\":true,\"localServerConfig\":{\"test\":{\"description\":\"test\",\"command\":\"uvx\",\"args\":[\"test\"]}}}";
+    private static final String MCP_SERVER_SPEC_EXAMPLE = "{\"protocol\":\"stdio\",\"frontProtocol\":\"stdio\",\"name\":\"test\",\"id\":\"\",\"description\":\"ceshi\",\"versionDetail\":{\"version\":\"1.0.0\"},\"enabled\":true,\"localServerConfig\":{\"test\":{}}}";
+    
+    private static final String MCP_SERVER_SPEC_WITH_ID_EXAMPLE = "{\"protocol\":\"stdio\",\"frontProtocol\":\"stdio\",\"name\":\"test\",\"id\":\"d7a64724-a556-4fe4-82fa-e806d43e00dc\",\"description\":\"ceshi\",\"versionDetail\":{\"version\":\"1.0.0\"},\"enabled\":true,\"localServerConfig\":{\"test\":{}}}";
     
     private final McpServerOperationService mcpServerOperationService;
     
@@ -177,7 +179,7 @@ public class McpAdminController {
     @Parameters(value = {@Parameter(name = "namespaceId", example = "public"),
             @Parameter(name = "latest", example = "true"),
             @Parameter(name = "serverSpecification", required = true,
-                    schema = @Schema(implementation = McpServerBasicInfo.class), example = MCP_SERVER_SPEC_EXAMPLE),
+                    schema = @Schema(implementation = McpServerBasicInfo.class), example = MCP_SERVER_SPEC_WITH_ID_EXAMPLE),
             @Parameter(name = "toolSpecification", schema = @Schema(implementation = McpToolSpecification.class), example = "{}"),
             @Parameter(name = "endpointSpecification", schema = @Schema(implementation = McpEndpointSpec.class), example = "{}"),
             @Parameter(name = "mcpForm", hidden = true)})
