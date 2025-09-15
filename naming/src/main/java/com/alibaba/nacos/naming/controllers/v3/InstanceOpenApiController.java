@@ -80,9 +80,10 @@ import java.util.List;
 @RestController
 @RequestMapping(UtilsAndCommons.INSTANCE_V3_CLIENT_API_PATH)
 @ExtractorManager.Extractor(httpExtractor = NamingDefaultHttpParamExtractor.class)
-@Tag(name = "nacos.client.naming.instance.api.controller.name", description = "nacos.client.naming.instance.api.controller.description", extensions = {
-        @Extension(name = RemoteConstants.LABEL_MODULE,
-                properties = @ExtensionProperty(name = RemoteConstants.LABEL_MODULE, value = RemoteConstants.LABEL_MODULE_NAMING))})
+@Tag(name = "nacos.client.naming.instance.api.controller.name",
+        description = "nacos.client.naming.instance.api.controller.description", extensions = {
+                @Extension(name = RemoteConstants.LABEL_MODULE,
+                    properties = @ExtensionProperty(name = RemoteConstants.LABEL_MODULE, value = RemoteConstants.LABEL_MODULE_NAMING))})
 public class InstanceOpenApiController {
     
     private final InstanceOperator instanceOperator;
