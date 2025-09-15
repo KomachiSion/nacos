@@ -111,7 +111,7 @@ public class InstanceControllerV3 {
     @CanDistro
     @PostMapping
     @TpsControl(pointName = "NamingInstanceRegister", name = "HttpNamingInstanceRegister")
-    @Secured(resource = UtilsAndCommons.INSTANCE_CONTROLLER_V3_ADMIN_PATH, action = ActionTypes.WRITE, apiType = ApiType.ADMIN_API)
+    @Secured(action = ActionTypes.WRITE, apiType = ApiType.ADMIN_API)
     @Operation(summary = "nacos.admin.naming.instance.api.register.summary", description = "nacos.admin.naming.instance.api.register.description",
             security = @SecurityRequirement(name = "nacos"))
     @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
@@ -147,7 +147,7 @@ public class InstanceControllerV3 {
     @CanDistro
     @DeleteMapping
     @TpsControl(pointName = "NamingInstanceDeregister", name = "HttpNamingInstanceDeregister")
-    @Secured(resource = UtilsAndCommons.INSTANCE_CONTROLLER_V3_ADMIN_PATH, action = ActionTypes.WRITE, apiType = ApiType.ADMIN_API)
+    @Secured(action = ActionTypes.WRITE, apiType = ApiType.ADMIN_API)
     @Operation(summary = "nacos.admin.naming.instance.api.deregister.summary", description = "nacos.admin.naming.instance.api.deregister.description",
             security = @SecurityRequirement(name = "nacos"))
     @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
@@ -180,7 +180,7 @@ public class InstanceControllerV3 {
     @CanDistro
     @PutMapping
     @TpsControl(pointName = "NamingInstanceUpdate", name = "HttpNamingInstanceUpdate")
-    @Secured(resource = UtilsAndCommons.INSTANCE_CONTROLLER_V3_ADMIN_PATH, action = ActionTypes.WRITE, apiType = ApiType.ADMIN_API)
+    @Secured(action = ActionTypes.WRITE, apiType = ApiType.ADMIN_API)
     @Operation(summary = "nacos.admin.naming.instance.api.update.summary", description = "nacos.admin.naming.instance.api.update.description",
             security = @SecurityRequirement(name = "nacos"))
     @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
@@ -216,7 +216,7 @@ public class InstanceControllerV3 {
     @PutMapping(value = "/metadata/batch")
     @TpsControl(pointName = "NamingInstanceMetadataUpdate", name = "HttpNamingInstanceMetadataBatchUpdate")
     @ExtractorManager.Extractor(httpExtractor = NamingInstanceMetadataBatchHttpParamExtractor.class)
-    @Secured(resource = UtilsAndCommons.INSTANCE_CONTROLLER_V3_ADMIN_PATH, action = ActionTypes.WRITE, apiType = ApiType.ADMIN_API)
+    @Secured(action = ActionTypes.WRITE, apiType = ApiType.ADMIN_API)
     @Operation(summary = "nacos.admin.naming.instance.api.update.batch.summary",
             description = "nacos.admin.naming.instance.api.update.batch.description", security = @SecurityRequirement(name = "nacos"))
     @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
@@ -250,7 +250,7 @@ public class InstanceControllerV3 {
     @DeleteMapping("/metadata/batch")
     @TpsControl(pointName = "NamingInstanceMetadataUpdate", name = "HttpNamingInstanceMetadataBatchUpdate")
     @ExtractorManager.Extractor(httpExtractor = NamingInstanceMetadataBatchHttpParamExtractor.class)
-    @Secured(resource = UtilsAndCommons.INSTANCE_CONTROLLER_V3_ADMIN_PATH, action = ActionTypes.WRITE, apiType = ApiType.ADMIN_API)
+    @Secured(action = ActionTypes.WRITE, apiType = ApiType.ADMIN_API)
     @Operation(summary = "nacos.admin.naming.instance.api.delete.batch.summary",
             description = "nacos.admin.naming.instance.api.delete.batch.description", security = @SecurityRequirement(name = "nacos"))
     @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
@@ -302,7 +302,7 @@ public class InstanceControllerV3 {
      */
     @CanDistro
     @PutMapping(value = "/partial")
-    @Secured(resource = UtilsAndCommons.INSTANCE_CONTROLLER_V3_ADMIN_PATH, action = ActionTypes.WRITE, apiType = ApiType.ADMIN_API)
+    @Secured(action = ActionTypes.WRITE, apiType = ApiType.ADMIN_API)
     @Operation(summary = "nacos.admin.naming.instance.api.partial.summary", description = "nacos.admin.naming.instance.api.partial.description",
             security = @SecurityRequirement(name = "nacos"))
     @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
@@ -343,7 +343,7 @@ public class InstanceControllerV3 {
     @GetMapping("/list")
     @TpsControl(pointName = "NamingServiceSubscribe", name = "HttpNamingServiceSubscribe")
     @ExtractorManager.Extractor(httpExtractor = NamingInstanceListHttpParamExtractor.class)
-    @Secured(resource = UtilsAndCommons.INSTANCE_CONTROLLER_V3_ADMIN_PATH, action = ActionTypes.READ, apiType = ApiType.ADMIN_API)
+    @Secured(action = ActionTypes.READ, apiType = ApiType.ADMIN_API)
     @Operation(summary = "nacos.admin.naming.instance.api.list.summary", description = "nacos.admin.naming.instance.api.list.description",
             security = @SecurityRequirement(name = "nacos"))
     @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
@@ -368,7 +368,7 @@ public class InstanceControllerV3 {
      */
     @GetMapping
     @TpsControl(pointName = "NamingInstanceQuery", name = "HttpNamingInstanceQuery")
-    @Secured(resource = UtilsAndCommons.INSTANCE_CONTROLLER_V3_ADMIN_PATH, action = ActionTypes.WRITE, apiType = ApiType.ADMIN_API)
+    @Secured(action = ActionTypes.WRITE, apiType = ApiType.ADMIN_API)
     @Operation(summary = "nacos.admin.naming.instance.api.get.summary", description = "nacos.admin.naming.instance.api.get.description",
             security = @SecurityRequirement(name = "nacos"))
     @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,

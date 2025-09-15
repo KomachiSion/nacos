@@ -28,7 +28,7 @@ public class McpUpdateForm extends McpDetailForm {
     @Serial
     private static final long serialVersionUID = 4144251088520249913L;
     
-    private Boolean latest;
+    private boolean latest = true;
     
     public Boolean getLatest() {
         return latest;

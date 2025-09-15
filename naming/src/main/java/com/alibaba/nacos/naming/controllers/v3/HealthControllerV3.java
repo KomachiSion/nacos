@@ -71,7 +71,7 @@ public class HealthControllerV3 {
      */
     @CanDistro
     @PutMapping(value = "/instance")
-    @Secured(resource = UtilsAndCommons.HEALTH_CONTROLLER_V3_ADMIN_PATH, action = ActionTypes.WRITE, apiType = ApiType.ADMIN_API)
+    @Secured(action = ActionTypes.WRITE, apiType = ApiType.ADMIN_API)
     @Operation(summary = "nacos.admin.naming.health.api.update.summary", description = "nacos.admin.naming.health.api.update.description",
             security = @SecurityRequirement(name = "nacos"))
     @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
@@ -96,7 +96,7 @@ public class HealthControllerV3 {
      * Get all health checkers.
      */
     @GetMapping("/checkers")
-    @Secured(resource = UtilsAndCommons.HEALTH_CONTROLLER_V3_ADMIN_PATH, action = ActionTypes.WRITE, apiType = ApiType.ADMIN_API)
+    @Secured(action = ActionTypes.WRITE, apiType = ApiType.ADMIN_API)
     @Operation(summary = "nacos.admin.naming.health.api.checkers.summary", description = "nacos.admin.naming.health.api.checkers.description",
             security = @SecurityRequirement(name = "nacos"))
     @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,

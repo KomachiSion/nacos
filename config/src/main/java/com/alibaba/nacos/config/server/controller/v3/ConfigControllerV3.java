@@ -154,6 +154,11 @@ public class ConfigControllerV3 {
     private final ConfigListenerStateDelegate configListenerStateDelegate;
     
     private final ConfigMigrateService configMigrateService;
+
+    /**
+     * Flag to indicate if the table `config_info_beta` exists, which means the old version of table schema is used.
+     */
+    private boolean oldTableVersion;
     
     public ConfigControllerV3(ConfigOperationService configOperationService,
             ConfigInfoPersistService configInfoPersistService, ConfigDetailService configDetailService,
@@ -168,6 +173,7 @@ public class ConfigControllerV3 {
         this.namespacePersistService = namespacePersistService;
         this.configListenerStateDelegate = configListenerStateDelegate;
         this.configMigrateService = configMigrateService;
+        this.oldTableVersion = namespacePersistService.isExistTable("config_info_beta");
     }
     
     /**
@@ -175,7 +181,7 @@ public class ConfigControllerV3 {
      */
     @GetMapping
     @TpsControl(pointName = "ConfigQuery")
-    @Secured(resource = Constants.CONFIG_ADMIN_V3_PATH, action = ActionTypes.READ, signType = SignType.CONFIG, apiType = ApiType.ADMIN_API)
+    @Secured(action = ActionTypes.READ, signType = SignType.CONFIG, apiType = ApiType.ADMIN_API)
     @Operation(summary = "nacos.admin.config.config.api.get.summary", description = "nacos.admin.config.config.api.get.description",
             security = @SecurityRequirement(name = "nacos"))
     @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
@@ -209,7 +215,7 @@ public class ConfigControllerV3 {
      */
     @PostMapping
     @TpsControl(pointName = "ConfigPublish")
-    @Secured(resource = Constants.CONFIG_ADMIN_V3_PATH, action = ActionTypes.WRITE, signType = SignType.CONFIG, apiType = ApiType.ADMIN_API)
+    @Secured(action = ActionTypes.WRITE, signType = SignType.CONFIG, apiType = ApiType.ADMIN_API)
     @Operation(summary = "nacos.admin.config.config.api.publish.summary", description = "nacos.admin.config.config.api.publish.description",
             security = @SecurityRequirement(name = "nacos"))
     @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
@@ -263,7 +269,7 @@ public class ConfigControllerV3 {
      * Delete configuration.
      */
     @DeleteMapping
-    @Secured(resource = Constants.CONFIG_ADMIN_V3_PATH, action = ActionTypes.WRITE, signType = SignType.CONFIG, apiType = ApiType.ADMIN_API)
+    @Secured(action = ActionTypes.WRITE, signType = SignType.CONFIG, apiType = ApiType.ADMIN_API)
     @Operation(summary = "nacos.admin.config.config.api.delete.summary", description = "nacos.admin.config.config.api.delete.description",
             security = @SecurityRequirement(name = "nacos"))
     @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
@@ -290,7 +296,7 @@ public class ConfigControllerV3 {
      * Batch delete configuration by ids.
      */
     @DeleteMapping("/batch")
-    @Secured(resource = Constants.CONFIG_ADMIN_V3_PATH, action = ActionTypes.WRITE, signType = SignType.CONFIG, apiType = ApiType.ADMIN_API)
+    @Secured(action = ActionTypes.WRITE, signType = SignType.CONFIG, apiType = ApiType.ADMIN_API)
     @Operation(summary = "nacos.admin.config.config.api.delete.batch.summary",
             description = "nacos.admin.config.config.api.delete.batch.description", security = @SecurityRequirement(name = "nacos"))
     @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
@@ -320,7 +326,7 @@ public class ConfigControllerV3 {
      * Subscribe to configured client information.
      */
     @GetMapping("/listener")
-    @Secured(resource = Constants.CONFIG_ADMIN_V3_PATH, action = ActionTypes.WRITE, signType = SignType.CONFIG, apiType = ApiType.ADMIN_API)
+    @Secured(action = ActionTypes.WRITE, signType = SignType.CONFIG, apiType = ApiType.ADMIN_API)
     @Operation(summary = "nacos.admin.config.config.api.listener.summary", description = "nacos.admin.config.config.api.listener.description",
             security = @SecurityRequirement(name = "nacos"))
     @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
@@ -350,7 +356,7 @@ public class ConfigControllerV3 {
      * </p>
      */
     @GetMapping("/list")
-    @Secured(resource = Constants.CONFIG_ADMIN_V3_PATH, action = ActionTypes.READ, signType = SignType.CONFIG, apiType = ApiType.ADMIN_API)
+    @Secured(action = ActionTypes.READ, signType = SignType.CONFIG, apiType = ApiType.ADMIN_API)
     @ExtractorManager.Extractor(httpExtractor = ConfigBlurSearchHttpParamExtractor.class)
     @Operation(summary = "nacos.admin.config.config.api.list.summary", description = "nacos.admin.config.config.api.list.description",
             security = @SecurityRequirement(name = "nacos"))
@@ -402,7 +408,7 @@ public class ConfigControllerV3 {
      * Execute to remove beta operation.
      */
     @DeleteMapping("/beta")
-    @Secured(resource = Constants.CONFIG_ADMIN_V3_PATH, action = ActionTypes.WRITE, signType = SignType.CONFIG, apiType = ApiType.ADMIN_API)
+    @Secured(action = ActionTypes.WRITE, signType = SignType.CONFIG, apiType = ApiType.ADMIN_API)
     @Operation(summary = "nacos.admin.config.config.api.delete.beta.summary",
             description = "nacos.admin.config.config.api.delete.beta.description", security = @SecurityRequirement(name = "nacos"))
     @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
@@ -430,7 +436,7 @@ public class ConfigControllerV3 {
         
         ConfigTraceService.logPersistenceEvent(dataId, groupName, namespaceId, requestIpApp, System.currentTimeMillis(),
                 remoteIp, ConfigTraceService.PERSISTENCE_EVENT_BETA, ConfigTraceService.PERSISTENCE_TYPE_REMOVE, null);
-        if (PropertyUtil.isGrayCompatibleModel()) {
+        if (PropertyUtil.isGrayCompatibleModel() && oldTableVersion) {
             configInfoBetaPersistService.removeConfigInfo4Beta(dataId, groupName, namespaceId);
         }
         ConfigChangePublisher.notifyConfigChange(
@@ -444,7 +450,7 @@ public class ConfigControllerV3 {
      * Execute to query beta operation.
      */
     @GetMapping("/beta")
-    @Secured(resource = Constants.CONFIG_ADMIN_V3_PATH, action = ActionTypes.READ, signType = SignType.CONFIG, apiType = ApiType.ADMIN_API)
+    @Secured(action = ActionTypes.READ, signType = SignType.CONFIG, apiType = ApiType.ADMIN_API)
     @Operation(summary = "nacos.admin.config.config.api.get.beta.summary",
             description = "nacos.admin.config.config.api.get.beta.description", security = @SecurityRequirement(name = "nacos"))
     @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
@@ -476,7 +482,7 @@ public class ConfigControllerV3 {
      * Execute import and publish config operation.
      */
     @PostMapping("/import")
-    @Secured(resource = Constants.CONFIG_ADMIN_V3_PATH, action = ActionTypes.WRITE, signType = SignType.CONFIG, apiType = ApiType.ADMIN_API)
+    @Secured(action = ActionTypes.WRITE, signType = SignType.CONFIG, apiType = ApiType.ADMIN_API)
     @Operation(summary = "nacos.admin.config.config.api.import.summary", description = "nacos.admin.config.config.api.import.description",
             security = @SecurityRequirement(name = "nacos"))
     @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
@@ -639,7 +645,7 @@ public class ConfigControllerV3 {
      * Export config add metadata.yml file record config metadata.
      */
     @GetMapping("/export")
-    @Secured(resource = Constants.CONFIG_ADMIN_V3_PATH, action = ActionTypes.READ, signType = SignType.CONFIG, apiType = ApiType.ADMIN_API)
+    @Secured(action = ActionTypes.READ, signType = SignType.CONFIG, apiType = ApiType.ADMIN_API)
     @Operation(summary = "nacos.admin.config.config.api.export.summary", description = "nacos.admin.config.config.api.export.description",
             security = @SecurityRequirement(name = "nacos"))
     @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_OCTET_STREAM_VALUE))
@@ -684,7 +690,7 @@ public class ConfigControllerV3 {
      * Execute clone config operation.
      */
     @PostMapping("/clone")
-    @Secured(resource = Constants.CONFIG_ADMIN_V3_PATH, action = ActionTypes.WRITE, signType = SignType.CONFIG, apiType = ApiType.ADMIN_API)
+    @Secured(action = ActionTypes.WRITE, signType = SignType.CONFIG, apiType = ApiType.CONSOLE_API)
     @Operation(summary = "nacos.admin.config.config.api.clone.summary", description = "nacos.admin.config.config.api.clone.description",
             security = @SecurityRequirement(name = "nacos"))
     @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,

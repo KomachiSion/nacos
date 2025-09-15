@@ -69,7 +69,7 @@ public class ClusterControllerV3 {
      * Update cluster.
      */
     @PutMapping
-    @Secured(resource = UtilsAndCommons.CLUSTER_CONTROLLER_V3_ADMIN_PATH, action = ActionTypes.WRITE, apiType = ApiType.ADMIN_API)
+    @Secured(action = ActionTypes.WRITE, apiType = ApiType.ADMIN_API)
     @Operation(summary = "nacos.admin.naming.service.api.update.cluster.summary",
             description = "nacos.admin.naming.service.api.update.cluster.description", security = @SecurityRequirement(name = "nacos"))
     @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,

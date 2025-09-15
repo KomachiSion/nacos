@@ -82,7 +82,7 @@ public class ClientControllerV3 {
      * Query all clients.
      */
     @GetMapping("/list")
-    @Secured(resource = UtilsAndCommons.CLIENT_CONTROLLER_V3_ADMIN_PATH, action = ActionTypes.READ, apiType = ApiType.ADMIN_API)
+    @Secured(action = ActionTypes.READ, apiType = ApiType.ADMIN_API)
     @Operation(summary = "nacos.admin.naming.client.api.list.summary", description = "nacos.admin.naming.client.api.list.description",
             security = @SecurityRequirement(name = "nacos"))
     @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
@@ -95,7 +95,7 @@ public class ClientControllerV3 {
      * Query client by clientId.
      */
     @GetMapping()
-    @Secured(resource = UtilsAndCommons.CLIENT_CONTROLLER_V3_ADMIN_PATH, action = ActionTypes.READ, apiType = ApiType.ADMIN_API)
+    @Secured(action = ActionTypes.READ, apiType = ApiType.ADMIN_API)
     @Operation(summary = "nacos.admin.naming.client.api.get.summary", description = "nacos.admin.naming.client.api.get.description",
             security = @SecurityRequirement(name = "nacos"))
     @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
@@ -111,7 +111,7 @@ public class ClientControllerV3 {
      * Query the services registered by the specified client.
      */
     @GetMapping("/publish/list")
-    @Secured(resource = UtilsAndCommons.CLIENT_CONTROLLER_V3_ADMIN_PATH, action = ActionTypes.READ, apiType = ApiType.ADMIN_API)
+    @Secured(action = ActionTypes.READ, apiType = ApiType.ADMIN_API)
     @Operation(summary = "nacos.admin.naming.client.api.publish.list.summary", description = "nacos.admin.naming.client.api.publish.list.description",
             security = @SecurityRequirement(name = "nacos"))
     @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
@@ -127,7 +127,7 @@ public class ClientControllerV3 {
      * Query the services to which the specified client subscribes.
      */
     @GetMapping("/subscribe/list")
-    @Secured(resource = UtilsAndCommons.CLIENT_CONTROLLER_V3_ADMIN_PATH, action = ActionTypes.READ, apiType = ApiType.ADMIN_API)
+    @Secured(action = ActionTypes.READ, apiType = ApiType.ADMIN_API)
     @Operation(summary = "nacos.admin.naming.client.api.subscribe.list.summary",
             description = "nacos.admin.naming.client.api.subscribe.list.description", security = @SecurityRequirement(name = "nacos"))
     @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
@@ -143,7 +143,7 @@ public class ClientControllerV3 {
      * Query the clients that have registered the specified service.
      */
     @GetMapping("/service/publisher/list")
-    @Secured(resource = UtilsAndCommons.CLIENT_CONTROLLER_V3_ADMIN_PATH, action = ActionTypes.READ, apiType = ApiType.ADMIN_API)
+    @Secured(action = ActionTypes.READ, apiType = ApiType.ADMIN_API)
     @Operation(summary = "nacos.admin.naming.client.api.service.publisher.list.summary",
             description = "nacos.admin.naming.client.api.service.publisher.list.description", security = @SecurityRequirement(name = "nacos"))
     @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
@@ -164,7 +164,7 @@ public class ClientControllerV3 {
      * Query the clients that are subscribed to the specified service.
      */
     @GetMapping("/service/subscriber/list")
-    @Secured(resource = UtilsAndCommons.CLIENT_CONTROLLER_V3_ADMIN_PATH, action = ActionTypes.READ, apiType = ApiType.ADMIN_API)
+    @Secured(action = ActionTypes.READ, apiType = ApiType.ADMIN_API)
     @Operation(summary = "nacos.admin.naming.client.api.service.subscriber.list.summary",
             description = "nacos.admin.naming.client.api.service.subscriber.list.description", security = @SecurityRequirement(name = "nacos"))
     @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,

@@ -73,7 +73,7 @@ public class ListenerControllerV3 {
      * Get subscribe information from client side.
      */
     @GetMapping
-    @Secured(resource = Constants.LISTENER_CONTROLLER_V3_ADMIN_PATH, signType = SignType.CONFIG, apiType = ApiType.ADMIN_API)
+    @Secured(signType = SignType.CONFIG, apiType = ApiType.ADMIN_API)
     @Operation(summary = "nacos.admin.config.config.api.listener.ip.summary",
             description = "nacos.admin.config.config.api.listener.ip.description", security = @SecurityRequirement(name = "nacos"))
     @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,

@@ -107,7 +107,7 @@ public class ServiceControllerV3 {
      */
     @PostMapping()
     @TpsControl(pointName = "NamingServiceRegister", name = "HttpNamingServiceRegister")
-    @Secured(resource = UtilsAndCommons.SERVICE_CONTROLLER_V3_ADMIN_PATH, action = ActionTypes.WRITE, apiType = ApiType.ADMIN_API)
+    @Secured(action = ActionTypes.WRITE, apiType = ApiType.ADMIN_API)
     @Operation(summary = "nacos.admin.naming.service.api.create.summary", description = "nacos.admin.naming.service.api.create.description",
             security = @SecurityRequirement(name = "nacos"))
     @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
@@ -140,7 +140,7 @@ public class ServiceControllerV3 {
      */
     @DeleteMapping()
     @TpsControl(pointName = "NamingServiceDeregister", name = "HttpNamingServiceDeregister")
-    @Secured(resource = UtilsAndCommons.SERVICE_CONTROLLER_V3_ADMIN_PATH, action = ActionTypes.WRITE, apiType = ApiType.ADMIN_API)
+    @Secured(action = ActionTypes.WRITE, apiType = ApiType.ADMIN_API)
     @Operation(summary = "nacos.admin.naming.service.api.delete.summary", description = "nacos.admin.naming.service.api.delete.description",
             security = @SecurityRequirement(name = "nacos"))
     @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
@@ -166,7 +166,7 @@ public class ServiceControllerV3 {
      */
     @GetMapping()
     @TpsControl(pointName = "NamingServiceQuery", name = "HttpNamingServiceQuery")
-    @Secured(resource = UtilsAndCommons.SERVICE_CONTROLLER_V3_ADMIN_PATH, action = ActionTypes.READ, apiType = ApiType.ADMIN_API)
+    @Secured(action = ActionTypes.READ, apiType = ApiType.ADMIN_API)
     @Operation(summary = "nacos.admin.naming.service.api.get.summary", description = "nacos.admin.naming.service.api.get.description",
             security = @SecurityRequirement(name = "nacos"))
     @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
@@ -198,7 +198,7 @@ public class ServiceControllerV3 {
      */
     @GetMapping("/list")
     @TpsControl(pointName = "NamingServiceListQuery", name = "HttpNamingServiceListQuery")
-    @Secured(resource = UtilsAndCommons.SERVICE_CONTROLLER_V3_ADMIN_PATH, action = ActionTypes.READ, apiType = ApiType.ADMIN_API)
+    @Secured(action = ActionTypes.READ, apiType = ApiType.ADMIN_API)
     @Operation(summary = "nacos.admin.naming.service.api.list.summary",
             description = "nacos.admin.naming.service.api.list.description", security = @SecurityRequirement(name = "nacos"))
     @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
@@ -235,7 +235,7 @@ public class ServiceControllerV3 {
      */
     @PutMapping()
     @TpsControl(pointName = "NamingServiceUpdate", name = "HttpNamingServiceUpdate")
-    @Secured(resource = UtilsAndCommons.SERVICE_CONTROLLER_V3_ADMIN_PATH, action = ActionTypes.WRITE, apiType = ApiType.ADMIN_API)
+    @Secured(action = ActionTypes.WRITE, apiType = ApiType.ADMIN_API)
     @Operation(summary = "nacos.admin.naming.service.api.update.summary", description = "nacos.admin.naming.service.api.update.description",
             security = @SecurityRequirement(name = "nacos"))
     @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
@@ -288,7 +288,7 @@ public class ServiceControllerV3 {
      * get subscriber list.
      */
     @GetMapping("/subscribers")
-    @Secured(resource = UtilsAndCommons.SERVICE_CONTROLLER_V3_ADMIN_PATH, action = ActionTypes.READ, apiType = ApiType.ADMIN_API)
+    @Secured(action = ActionTypes.READ, apiType = ApiType.ADMIN_API)
     @Operation(summary = "nacos.admin.naming.service.api.subscribers.summary",
             description = "nacos.admin.naming.service.api.subscribers.description", security = @SecurityRequirement(name = "nacos"))
     @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
@@ -318,7 +318,7 @@ public class ServiceControllerV3 {
      * Get all {@link Selector} types.
      */
     @GetMapping("/selector/types")
-    @Secured(resource = UtilsAndCommons.SERVICE_CONTROLLER_V3_ADMIN_PATH, action = ActionTypes.READ, apiType = ApiType.ADMIN_API)
+    @Secured(action = ActionTypes.READ, apiType = ApiType.ADMIN_API)
     @Operation(summary = "nacos.admin.naming.service.api.selector.summary", description = "nacos.admin.naming.service.api.selector.description",
             security = @SecurityRequirement(name = "nacos"))
     @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,

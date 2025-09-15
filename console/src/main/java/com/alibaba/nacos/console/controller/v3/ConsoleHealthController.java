@@ -32,6 +32,8 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.http.MediaType;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -79,8 +81,13 @@ public class ConsoleHealthController {
     @Operation(summary = "nacos.console.health.api.readiness.summary", description = "nacos.console.health.api.readiness.description")
     @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
             schema = @Schema(implementation = Result.class, example = "nacos.console.health.api.readiness.example")))
-    public Result<String> readiness() throws NacosException {
-        return healthProxy.checkReadiness();
+    public ResponseEntity<Result<String>> readiness() throws NacosException {
+        Result<String> ret = healthProxy.checkReadiness();
+        if (ret.getCode() == 0) {
+            return ResponseEntity.ok().body(ret);
+        } else {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(ret);
+        }
     }
     
 }

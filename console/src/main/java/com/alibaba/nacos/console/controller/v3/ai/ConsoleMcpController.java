@@ -31,8 +31,10 @@ import com.alibaba.nacos.api.annotation.NacosApi;
 import com.alibaba.nacos.api.exception.NacosException;
 import com.alibaba.nacos.api.exception.api.NacosApiException;
 import com.alibaba.nacos.api.model.Page;
+import com.alibaba.nacos.api.model.v2.ErrorCode;
 import com.alibaba.nacos.api.model.v2.Result;
 import com.alibaba.nacos.api.remote.RemoteConstants;
+import com.alibaba.nacos.api.utils.StringUtils;
 import com.alibaba.nacos.auth.annotation.Secured;
 import com.alibaba.nacos.console.proxy.ai.McpProxy;
 import com.alibaba.nacos.core.model.form.PageForm;
@@ -40,6 +42,11 @@ import com.alibaba.nacos.core.paramcheck.ExtractorManager;
 import com.alibaba.nacos.plugin.auth.constant.ActionTypes;
 import com.alibaba.nacos.plugin.auth.constant.ApiType;
 import com.alibaba.nacos.plugin.auth.constant.SignType;
+import io.modelcontextprotocol.client.McpClient;
+import io.modelcontextprotocol.client.McpSyncClient;
+import io.modelcontextprotocol.client.transport.HttpClientSseClientTransport;
+import io.modelcontextprotocol.spec.McpClientTransport;
+import io.modelcontextprotocol.spec.McpSchema;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.Parameters;
@@ -56,7 +63,13 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+
+import java.time.Duration;
+import java.util.List;
+
+import static com.alibaba.nacos.api.ai.constant.AiConstants.Mcp.MCP_PROTOCOL_SSE;
 
 /**
  * Nacos Console AI MCP Server Constants.
@@ -68,8 +81,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping(Constants.MCP_CONSOLE_PATH)
 @ExtractorManager.Extractor(httpExtractor = McpHttpParamExtractor.class)
 @Tag(name = "nacos.console.ai.mcp.api.controller.name", description = "nacos.console.ai.mcp.api.controller.description", extensions = {
-        @Extension(name = RemoteConstants.LABEL_MODULE,
-                properties = @ExtensionProperty(name = RemoteConstants.LABEL_MODULE, value = "ai"))})
+        @Extension(name = RemoteConstants.LABEL_MODULE, properties = @ExtensionProperty(name = RemoteConstants.LABEL_MODULE, value = "ai"))})
 public class ConsoleMcpController {
     
     private static final String MCP_SERVER_SPEC_EXAMPLE = "{\"protocol\":\"stdio\",\"frontProtocol\":\"stdio\",\"name\":\"test\",\"id\":\"\",\"description\":\"ceshi\",\"versionDetail\":{\"version\":\"1.0.0\"},\"enabled\":true,\"localServerConfig\":{\"test\":{}}}";
@@ -92,10 +104,8 @@ public class ConsoleMcpController {
      */
     @GetMapping(value = "/list")
     @Secured(action = ActionTypes.READ, signType = SignType.AI, apiType = ApiType.CONSOLE_API)
-    @Operation(summary = "nacos.console.ai.mcp.api.list.summary", description = "nacos.console.ai.mcp.api.list.description",
-            security = @SecurityRequirement(name = "nacos"))
-    @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
-            schema = @Schema(implementation = Result.class, example = "nacos.console.ai.mcp.api.list.example")))
+    @Operation(summary = "nacos.console.ai.mcp.api.list.summary", description = "nacos.console.ai.mcp.api.list.description", security = @SecurityRequirement(name = "nacos"))
+    @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE, schema = @Schema(implementation = Result.class, example = "nacos.console.ai.mcp.api.list.example")))
     @Parameters(value = {@Parameter(name = "pageNo", required = true, example = "1"),
             @Parameter(name = "pageSize", required = true, example = "100"),
             @Parameter(name = "namespaceId", example = "public"), @Parameter(name = "mcpName"),
@@ -111,6 +121,42 @@ public class ConsoleMcpController {
     }
     
     /**
+     * Import tools from mcp result.
+     *
+     * @param transportType the transport type
+     * @param baseUrl       the base url
+     * @param endpoint      the endpoint
+     * @return the result
+     * @throws NacosException the nacos exception
+     */
+    @GetMapping("/importToolsFromMcp")
+    @Secured(action = ActionTypes.WRITE, signType = SignType.AI, apiType = ApiType.CONSOLE_API)
+    public Result<List<McpSchema.Tool>> importToolsFromMcp(@RequestParam String transportType,
+            @RequestParam String baseUrl, @RequestParam String endpoint,
+            @RequestParam(required = false) String authToken) throws NacosException {
+        McpClientTransport transport = null;
+        if (StringUtils.equals(transportType, MCP_PROTOCOL_SSE)) {
+            HttpClientSseClientTransport.Builder transportBuilder = HttpClientSseClientTransport.builder(baseUrl)
+                    .sseEndpoint(endpoint);
+            if (!StringUtils.isBlank(authToken)) {
+                transportBuilder.customizeRequest(req -> req.header("Authorization", "Bearer " + authToken));
+            }
+            transport = transportBuilder.build();
+        } else {
+            return Result.failure(ErrorCode.SERVER_ERROR.getCode(), "Unsupported transport type: " + transportType,
+                    null);
+        }
+        try (McpSyncClient client = McpClient.sync(transport).requestTimeout(Duration.ofSeconds(10)).build()) {
+            client.initialize();
+            McpSchema.ListToolsResult tools = client.listTools();
+            return Result.success(tools.tools());
+        } catch (Exception e) {
+            // 可以记录日志或抛出 NacosException
+            throw new NacosException(NacosException.SERVER_ERROR, "Failed to import tools from MCP server", e);
+        }
+    }
+    
+    /**
      * Get specified mcp server detail info.
      *
      * @param mcpForm get mcp server request form
@@ -119,16 +165,16 @@ public class ConsoleMcpController {
      */
     @GetMapping
     @Secured(action = ActionTypes.READ, signType = SignType.AI, apiType = ApiType.CONSOLE_API)
-    @Operation(summary = "nacos.console.ai.mcp.api.get.summary", description = "nacos.console.ai.mcp.api.get.description",
-            security = @SecurityRequirement(name = "nacos"))
-    @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
-            schema = @Schema(implementation = Result.class, example = "nacos.console.ai.mcp.api.get.example")))
+    @Operation(summary = "nacos.console.ai.mcp.api.get.summary", description = "nacos.console.ai.mcp.api.get.description", security = @SecurityRequirement(name = "nacos"))
+    @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE, schema = @Schema(implementation = Result.class, example = "nacos.console.ai.mcp.api.get.example")))
     @Parameters(value = {@Parameter(name = "namespaceId", example = "public"),
-            @Parameter(name = "mcpId", example = "d7a64724-a556-4fe4-82fa-e806d43e00dc"), @Parameter(name = "mcpName", example = "test"),
-            @Parameter(name = "version", example = "1.0.0"), @Parameter(name = "mcpForm", hidden = true)})
+            @Parameter(name = "mcpId", example = "d7a64724-a556-4fe4-82fa-e806d43e00dc"),
+            @Parameter(name = "mcpName", example = "test"), @Parameter(name = "version", example = "1.0.0"),
+            @Parameter(name = "mcpForm", hidden = true)})
     public Result<McpServerDetailInfo> getMcpServer(McpForm mcpForm) throws NacosException {
         mcpForm.validate();
-        return Result.success(mcpProxy.getMcpServer(mcpForm.getNamespaceId(), mcpForm.getMcpName(), mcpForm.getMcpId(), mcpForm.getVersion()));
+        return Result.success(mcpProxy.getMcpServer(mcpForm.getNamespaceId(), mcpForm.getMcpName(), mcpForm.getMcpId(),
+                mcpForm.getVersion()));
     }
     
     /**
@@ -139,13 +185,10 @@ public class ConsoleMcpController {
      */
     @PostMapping
     @Secured(action = ActionTypes.WRITE, signType = SignType.AI, apiType = ApiType.CONSOLE_API)
-    @Operation(summary = "nacos.console.ai.mcp.api.create.summary", description = "nacos.console.ai.mcp.api.create.description",
-            security = @SecurityRequirement(name = "nacos"))
-    @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
-            schema = @Schema(implementation = Result.class, example = "nacos.console.ai.mcp.api.create.example")))
+    @Operation(summary = "nacos.console.ai.mcp.api.create.summary", description = "nacos.console.ai.mcp.api.create.description", security = @SecurityRequirement(name = "nacos"))
+    @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE, schema = @Schema(implementation = Result.class, example = "nacos.console.ai.mcp.api.create.example")))
     @Parameters(value = {@Parameter(name = "namespaceId", example = "public"),
-            @Parameter(name = "serverSpecification", required = true,
-                    schema = @Schema(implementation = McpServerBasicInfo.class), example = MCP_SERVER_SPEC_EXAMPLE),
+            @Parameter(name = "serverSpecification", required = true, schema = @Schema(implementation = McpServerBasicInfo.class), example = MCP_SERVER_SPEC_EXAMPLE),
             @Parameter(name = "toolSpecification", schema = @Schema(implementation = McpToolSpecification.class), example = "{}"),
             @Parameter(name = "endpointSpecification", schema = @Schema(implementation = McpEndpointSpec.class), example = "{}"),
             @Parameter(name = "mcpForm", hidden = true)})
@@ -154,8 +197,8 @@ public class ConsoleMcpController {
         McpServerBasicInfo basicInfo = McpRequestUtil.parseMcpServerBasicInfo(mcpForm);
         McpToolSpecification mcpTools = McpRequestUtil.parseMcpTools(mcpForm);
         McpEndpointSpec endpointSpec = McpRequestUtil.parseMcpEndpointSpec(basicInfo, mcpForm);
-        mcpProxy.createMcpServer(mcpForm.getNamespaceId(), basicInfo, mcpTools, endpointSpec);
-        return Result.success("ok");
+        String mcpId = mcpProxy.createMcpServer(mcpForm.getNamespaceId(), basicInfo, mcpTools, endpointSpec);
+        return Result.success(mcpId);
     }
     
     /**
@@ -170,14 +213,11 @@ public class ConsoleMcpController {
      */
     @PutMapping
     @Secured(action = ActionTypes.WRITE, signType = SignType.AI, apiType = ApiType.CONSOLE_API)
-    @Operation(summary = "nacos.console.ai.mcp.api.update.summary", description = "nacos.console.ai.mcp.api.update.description",
-            security = @SecurityRequirement(name = "nacos"))
-    @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
-            schema = @Schema(implementation = Result.class, example = "nacos.console.ai.mcp.api.update.example")))
+    @Operation(summary = "nacos.console.ai.mcp.api.update.summary", description = "nacos.console.ai.mcp.api.update.description", security = @SecurityRequirement(name = "nacos"))
+    @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE, schema = @Schema(implementation = Result.class, example = "nacos.console.ai.mcp.api.update.example")))
     @Parameters(value = {@Parameter(name = "namespaceId", example = "public"),
             @Parameter(name = "latest", example = "true"),
-            @Parameter(name = "serverSpecification", required = true,
-                    schema = @Schema(implementation = McpServerBasicInfo.class), example = MCP_SERVER_SPEC_WITH_ID_EXAMPLE),
+            @Parameter(name = "serverSpecification", required = true, schema = @Schema(implementation = McpServerBasicInfo.class), example = MCP_SERVER_SPEC_WITH_ID_EXAMPLE),
             @Parameter(name = "toolSpecification", schema = @Schema(implementation = McpToolSpecification.class), example = "{}"),
             @Parameter(name = "endpointSpecification", schema = @Schema(implementation = McpEndpointSpec.class), example = "{}"),
             @Parameter(name = "mcpForm", hidden = true)})
@@ -198,16 +238,16 @@ public class ConsoleMcpController {
      */
     @DeleteMapping
     @Secured(action = ActionTypes.WRITE, signType = SignType.AI, apiType = ApiType.CONSOLE_API)
-    @Operation(summary = "nacos.console.ai.mcp.api.delete.summary", description = "nacos.console.ai.mcp.api.delete.description",
-            security = @SecurityRequirement(name = "nacos"))
-    @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
-            schema = @Schema(implementation = Result.class, example = "nacos.console.ai.mcp.api.delete.example")))
+    @Operation(summary = "nacos.console.ai.mcp.api.delete.summary", description = "nacos.console.ai.mcp.api.delete.description", security = @SecurityRequirement(name = "nacos"))
+    @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE, schema = @Schema(implementation = Result.class, example = "nacos.console.ai.mcp.api.delete.example")))
     @Parameters(value = {@Parameter(name = "namespaceId", example = "public"),
             @Parameter(name = "mcpName", example = "test"), @Parameter(name = "mcpForm", hidden = true),
-            @Parameter(name = "mcpId", example = "d7a64724-a556-4fe4-82fa-e806d43e00dc"), @Parameter(name = "version", example = "1.0.0")})
+            @Parameter(name = "mcpId", example = "d7a64724-a556-4fe4-82fa-e806d43e00dc"),
+            @Parameter(name = "version", example = "1.0.0")})
     public Result<String> deleteMcpServer(McpForm mcpForm) throws NacosException {
         mcpForm.validate();
-        mcpProxy.deleteMcpServer(mcpForm.getNamespaceId(), mcpForm.getMcpName(), mcpForm.getMcpId(), mcpForm.getVersion());
+        mcpProxy.deleteMcpServer(mcpForm.getNamespaceId(), mcpForm.getMcpName(), mcpForm.getMcpId(),
+                mcpForm.getVersion());
         return Result.success("ok");
     }
     

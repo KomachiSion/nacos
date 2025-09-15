@@ -458,7 +458,8 @@ public class ConsoleConfigController {
      * @throws NacosException If a Nacos-specific error occurs.
      */
     @PostMapping("/clone")
-    @Secured(action = ActionTypes.WRITE, signType = SignType.CONFIG, apiType = ApiType.CONSOLE_API)
+    @Secured(action = ActionTypes.WRITE, signType = SignType.CONFIG, apiType = ApiType.CONSOLE_API, tags = {
+            com.alibaba.nacos.plugin.auth.constant.Constants.Tag.SECURED_SPECIAL_TAGS})
     @Operation(summary = "nacos.console.config.config.api.clone.summary", description = "nacos.console.config.config.api.clone.description",
             security = @SecurityRequirement(name = "nacos"))
     @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,

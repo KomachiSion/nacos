@@ -86,7 +86,7 @@ public class HistoryControllerV3 {
      * Query the list history config.
      */
     @GetMapping("/list")
-    @Secured(resource = Constants.HISTORY_ADMIN_V3_PATH, action = ActionTypes.READ, signType = SignType.CONFIG, apiType = ApiType.ADMIN_API)
+    @Secured(action = ActionTypes.READ, signType = SignType.CONFIG, apiType = ApiType.ADMIN_API)
     @Operation(summary = "nacos.admin.config.history.api.list.summary", description = "nacos.admin.config.history.api.list.description",
             security = @SecurityRequirement(name = "nacos"))
     @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
@@ -121,7 +121,7 @@ public class HistoryControllerV3 {
      * Query the detailed configuration history information.
      */
     @GetMapping
-    @Secured(resource = Constants.HISTORY_ADMIN_V3_PATH, action = ActionTypes.READ, signType = SignType.CONFIG, apiType = ApiType.ADMIN_API)
+    @Secured(action = ActionTypes.READ, signType = SignType.CONFIG, apiType = ApiType.ADMIN_API)
     @Operation(summary = "nacos.admin.config.history.api.get.summary", description = "nacos.admin.config.history.api.get.description",
             security = @SecurityRequirement(name = "nacos"))
     @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
@@ -152,7 +152,7 @@ public class HistoryControllerV3 {
      * Query previous config history information.
      */
     @GetMapping(value = "/previous")
-    @Secured(resource = Constants.HISTORY_ADMIN_V3_PATH, action = ActionTypes.READ, signType = SignType.CONFIG, apiType = ApiType.ADMIN_API)
+    @Secured(action = ActionTypes.READ, signType = SignType.CONFIG, apiType = ApiType.ADMIN_API)
     @Operation(summary = "nacos.admin.config.history.api.previous.summary", description = "nacos.admin.config.history.api.previous.description",
             security = @SecurityRequirement(name = "nacos"))
     @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
@@ -184,7 +184,7 @@ public class HistoryControllerV3 {
      * Query configs list by namespace.
      */
     @GetMapping(value = "/configs")
-    @Secured(resource = Constants.HISTORY_ADMIN_V3_PATH, action = ActionTypes.READ, signType = SignType.CONFIG, apiType = ApiType.ADMIN_API)
+    @Secured(action = ActionTypes.READ, signType = SignType.CONFIG, apiType = ApiType.ADMIN_API)
     @Operation(summary = "nacos.admin.config.history.api.names.summary", description = "nacos.admin.config.history.api.names.description",
             security = @SecurityRequirement(name = "nacos"))
     @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
