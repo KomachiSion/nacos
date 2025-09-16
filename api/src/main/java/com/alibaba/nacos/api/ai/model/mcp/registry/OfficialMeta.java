@@ -18,46 +18,55 @@ package com.alibaba.nacos.api.ai.model.mcp.registry;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.fasterxml.jackson.annotation.JsonTypeName;
 
 /**
- * PositionalArgument per components.schemas.PositionalArgument.
+ * Official metadata inside _meta.
  *
  * @author xinluo
  */
-@JsonTypeName("positional")
 @JsonInclude(JsonInclude.Include.NON_NULL)
-public class PositionalArgument extends InputWithVariables implements Argument {
+public class OfficialMeta {
 
-    private String type = "positional";
+    private String id;
 
-    @JsonProperty("value_hint")
-    private String valueHint;
+    @JsonProperty("published_at")
+    private String publishedAt;
 
-    @JsonProperty("is_repeated")
-    private Boolean isRepeated;
+    @JsonProperty("updated_at")
+    private String updatedAt;
 
-    public String getType() {
-        return type;
+    @JsonProperty("is_latest")
+    private Boolean isLatest;
+
+    public String getId() {
+        return id;
     }
 
-    public void setType(String type) {
-        this.type = type;
+    public void setId(String id) {
+        this.id = id;
     }
 
-    public String getValueHint() {
-        return valueHint;
+    public String getPublishedAt() {
+        return publishedAt;
     }
 
-    public void setValueHint(String valueHint) {
-        this.valueHint = valueHint;
+    public void setPublishedAt(String publishedAt) {
+        this.publishedAt = publishedAt;
     }
 
-    public Boolean getIsRepeated() {
-        return isRepeated;
+    public String getUpdatedAt() {
+        return updatedAt;
     }
 
-    public void setIsRepeated(Boolean isRepeated) {
-        this.isRepeated = isRepeated;
+    public void setUpdatedAt(String updatedAt) {
+        this.updatedAt = updatedAt;
+    }
+
+    public Boolean getIsLatest() {
+        return isLatest;
+    }
+
+    public void setIsLatest(Boolean isLatest) {
+        this.isLatest = isLatest;
     }
 }

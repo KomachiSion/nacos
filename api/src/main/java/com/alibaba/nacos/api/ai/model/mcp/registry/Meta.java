@@ -18,46 +18,36 @@ package com.alibaba.nacos.api.ai.model.mcp.registry;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.fasterxml.jackson.annotation.JsonTypeName;
+
+import java.util.Map;
 
 /**
- * PositionalArgument per components.schemas.PositionalArgument.
+ * _meta wrapper allowing extension namespaces.
  *
  * @author xinluo
  */
-@JsonTypeName("positional")
 @JsonInclude(JsonInclude.Include.NON_NULL)
-public class PositionalArgument extends InputWithVariables implements Argument {
+public class Meta {
 
-    private String type = "positional";
+    @JsonProperty("io.modelcontextprotocol.registry/publisher-provided")
+    private Map<String, Object> publisherProvided;
 
-    @JsonProperty("value_hint")
-    private String valueHint;
+    @JsonProperty("io.modelcontextprotocol.registry/official")
+    private OfficialMeta official;
 
-    @JsonProperty("is_repeated")
-    private Boolean isRepeated;
-
-    public String getType() {
-        return type;
+    public Map<String, Object> getPublisherProvided() {
+        return publisherProvided;
     }
 
-    public void setType(String type) {
-        this.type = type;
+    public void setPublisherProvided(Map<String, Object> publisherProvided) {
+        this.publisherProvided = publisherProvided;
     }
 
-    public String getValueHint() {
-        return valueHint;
+    public OfficialMeta getOfficial() {
+        return official;
     }
 
-    public void setValueHint(String valueHint) {
-        this.valueHint = valueHint;
-    }
-
-    public Boolean getIsRepeated() {
-        return isRepeated;
-    }
-
-    public void setIsRepeated(Boolean isRepeated) {
-        this.isRepeated = isRepeated;
+    public void setOfficial(OfficialMeta official) {
+        this.official = official;
     }
 }

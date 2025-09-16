@@ -102,7 +102,7 @@ public class ConsoleMcpController {
      * List mcp server.
      *
      * @param mcpListForm list mcp servers request form
-     * @param pageForm page info
+     * @param pageForm    page info
      * @return mcp server list wrapper with {@link Result}
      * @throws NacosApiException if request parameter is invalid or handle error
      */
@@ -270,7 +270,7 @@ public class ConsoleMcpController {
         McpServerImportValidationResult result = mcpProxy.validateImport(mcpImportForm.getNamespaceId(), request);
         return Result.success(result);
     }
-    
+
     /**
      * Execute MCP server import operation.
      *
@@ -286,7 +286,7 @@ public class ConsoleMcpController {
         McpServerImportResponse response = mcpProxy.executeImport(mcpImportForm.getNamespaceId(), request);
         return Result.success(response);
     }
-    
+
     /**
      * Convert McpImportForm to McpServerImportRequest.
      *
@@ -299,9 +299,13 @@ public class ConsoleMcpController {
         request.setData(form.getData());
         request.setOverrideExisting(form.isOverrideExisting());
         request.setValidateOnly(form.isValidateOnly());
+        request.setSkipInvalid(form.isSkipInvalid());
         request.setSelectedServers(form.getSelectedServers());
+        // Optional URL pagination parameters
+        request.setCursor(form.getCursor());
+        request.setLimit(form.getLimit());
+        // Optional registry search parameter
+        request.setSearch(form.getSearch());
         return request;
     }
-    
 }
-

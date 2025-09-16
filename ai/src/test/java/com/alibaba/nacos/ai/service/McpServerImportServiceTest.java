@@ -71,7 +71,8 @@ class McpServerImportServiceTest {
         request.setImportType("json");
 
         List<McpServerDetailInfo> servers = new ArrayList<>();
-        when(transformService.transformToNacosFormat(anyString(), anyString())).thenReturn(servers);
+        when(transformService.transformToNacosFormat(anyString(), anyString(), any(), any(), any()))
+                .thenReturn(servers);
 
         McpServerImportValidationResult validationResult = new McpServerImportValidationResult();
         validationResult.setValid(true);
@@ -86,39 +87,13 @@ class McpServerImportServiceTest {
     }
 
     @Test
-    void testValidateImportExceedsBatchSize() throws Exception {
-        // Given
-        McpServerImportRequest request = new McpServerImportRequest();
-        request.setData("{\"servers\":[]}");
-        request.setImportType("json");
-
-        List<McpServerDetailInfo> servers = new ArrayList<>();
-        // Create more than MAX_IMPORT_BATCH_SIZE (100) servers
-        for (int i = 0; i < 101; i++) {
-            servers.add(new McpServerDetailInfo());
-        }
-        when(transformService.transformToNacosFormat(anyString(), anyString())).thenReturn(servers);
-
-        // When
-        McpServerImportValidationResult result = importService.validateImport("test-namespace", request);
-
-        // Then
-        assertNotNull(result);
-        assertFalse(result.isValid());
-        assertEquals(101, result.getTotalCount());
-        assertNotNull(result.getErrors());
-        assertFalse(result.getErrors().isEmpty());
-        assertTrue(result.getErrors().get(0).contains("Import batch size exceeds maximum limit"));
-    }
-
-    @Test
     void testValidateImportTransformationFailure() throws Exception {
         // Given
         McpServerImportRequest request = new McpServerImportRequest();
         request.setData("invalid-json");
         request.setImportType("json");
 
-        when(transformService.transformToNacosFormat(anyString(), anyString()))
+        when(transformService.transformToNacosFormat(anyString(), anyString(), any(), any(), any()))
                 .thenThrow(new RuntimeException("Invalid JSON format"));
 
         // When
@@ -139,7 +114,7 @@ class McpServerImportServiceTest {
         request.setData("invalid-data");
         request.setImportType("json");
 
-        when(transformService.transformToNacosFormat(anyString(), anyString()))
+        when(transformService.transformToNacosFormat(anyString(), anyString(), any(), any(), any()))
                 .thenThrow(new RuntimeException("Invalid data"));
 
         // When
@@ -158,7 +133,7 @@ class McpServerImportServiceTest {
         McpServerImportRequest request = new McpServerImportRequest();
         request.setData("{\"servers\":[]}");
         request.setImportType("json");
-        request.setSelectedServers(new String[]{"server1"});
+        request.setSelectedServers(new String[] { "server1" });
         request.setOverrideExisting(false);
 
         // Mock transformation
@@ -167,7 +142,8 @@ class McpServerImportServiceTest {
         server.setId("server1");
         server.setName("Test Server");
         servers.add(server);
-        when(transformService.transformToNacosFormat(anyString(), anyString())).thenReturn(servers);
+        when(transformService.transformToNacosFormat(anyString(), anyString(), any(), any(), any()))
+                .thenReturn(servers);
 
         // Mock validation
         McpServerImportValidationResult validationResult = new McpServerImportValidationResult();
