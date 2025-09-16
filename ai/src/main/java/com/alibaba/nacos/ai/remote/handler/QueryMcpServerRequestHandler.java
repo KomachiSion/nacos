@@ -19,7 +19,7 @@ package com.alibaba.nacos.ai.remote.handler;
 import com.alibaba.nacos.ai.index.McpServerIndex;
 import com.alibaba.nacos.ai.model.mcp.McpServerIndexData;
 import com.alibaba.nacos.ai.service.McpServerOperationService;
-import com.alibaba.nacos.ai.utils.McpRequestUtils;
+import com.alibaba.nacos.ai.utils.McpRequestUtil;
 import com.alibaba.nacos.api.ai.model.mcp.McpServerDetailInfo;
 import com.alibaba.nacos.api.ai.remote.request.QueryMcpServerRequest;
 import com.alibaba.nacos.api.ai.remote.response.QueryMcpServerResponse;
@@ -27,6 +27,7 @@ import com.alibaba.nacos.api.exception.NacosException;
 import com.alibaba.nacos.api.remote.request.RequestMeta;
 import com.alibaba.nacos.auth.annotation.Secured;
 import com.alibaba.nacos.common.utils.StringUtils;
+import com.alibaba.nacos.core.namespace.filter.NamespaceValidation;
 import com.alibaba.nacos.core.paramcheck.ExtractorManager;
 import com.alibaba.nacos.core.paramcheck.impl.McpServerRequestParamExtractor;
 import com.alibaba.nacos.core.remote.RequestHandler;
@@ -53,10 +54,11 @@ public class QueryMcpServerRequestHandler extends RequestHandler<QueryMcpServerR
     }
     
     @Override
+    @NamespaceValidation
     @ExtractorManager.Extractor(rpcExtractor = McpServerRequestParamExtractor.class)
     @Secured(action = ActionTypes.READ, signType = SignType.AI)
     public QueryMcpServerResponse handle(QueryMcpServerRequest request, RequestMeta meta) throws NacosException {
-        McpRequestUtils.fillNamespaceId(request);
+        McpRequestUtil.fillNamespaceId(request);
         if (StringUtils.isBlank(request.getMcpName())) {
             QueryMcpServerResponse errorResponse = new QueryMcpServerResponse();
             errorResponse.setErrorInfo(NacosException.INVALID_PARAM, "parameters `mcpName` can't be empty or null");

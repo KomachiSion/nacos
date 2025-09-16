@@ -14,27 +14,12 @@
  * limitations under the License.
  */
 
-package com.alibaba.nacos.ai.utils;
-
-import com.alibaba.nacos.api.ai.constant.AiConstants;
-import com.alibaba.nacos.api.ai.remote.request.AbstractMcpRequest;
-import com.alibaba.nacos.common.utils.StringUtils;
+package com.alibaba.nacos.api.ai.listener;
 
 /**
- * Nacos Mcp server request utils.
+ * Nacos AI module agent card event lister.
  *
  * @author xiweng.yy
  */
-public class McpRequestUtils {
-    
-    /**
-     * If request contains valid namespaceId, do nothing. If not, fill default namespaceId.
-     *
-     * @param request mcp request
-     */
-    public static void fillNamespaceId(AbstractMcpRequest request) {
-        if (StringUtils.isEmpty(request.getNamespaceId())) {
-            request.setNamespaceId(AiConstants.Mcp.MCP_DEFAULT_NAMESPACE);
-        }
-    }
+public abstract class AbstractNacosAgentCardListener implements NacosAiListener<NacosAgentCardEvent> {
 }
