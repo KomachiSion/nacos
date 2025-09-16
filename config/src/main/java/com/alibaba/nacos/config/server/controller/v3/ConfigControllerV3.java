@@ -275,6 +275,15 @@ public class ConfigControllerV3 {
      */
     @PostMapping("/metadata")
     @Secured(action = ActionTypes.WRITE, signType = SignType.CONFIG, apiType = ApiType.ADMIN_API)
+    @Operation(summary = "nacos.admin.config.config.api.metadata.summary", description = "nacos.admin.config.config.api.metadata.description",
+            security = @SecurityRequirement(name = "nacos"))
+    @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+            schema = @Schema(implementation = Result.class, example = "nacos.admin.config.config.api.metadata.example")))
+    @Parameters(value = {@Parameter(name = "namespaceId", example = "public"),
+            @Parameter(name = "groupName", required = true, example = "DEFAULT_GROUP"),
+            @Parameter(name = "dataId", required = true, example = "test"),
+            @Parameter(name = "desc", example = "testDesc"), @Parameter(name = "configTags", example = "customTag"),
+            @Parameter(name = "configForm", hidden = true)})
     public Result<Boolean> publishConfigMetadata(HttpServletRequest request, ConfigFormV3 configForm)
             throws NacosException {
         configForm.validate();
