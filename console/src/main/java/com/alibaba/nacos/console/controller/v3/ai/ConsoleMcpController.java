@@ -108,8 +108,10 @@ public class ConsoleMcpController {
      */
     @GetMapping(value = "/list")
     @Secured(action = ActionTypes.READ, signType = SignType.AI, apiType = ApiType.CONSOLE_API)
-    @Operation(summary = "nacos.console.ai.mcp.api.list.summary", description = "nacos.console.ai.mcp.api.list.description", security = @SecurityRequirement(name = "nacos"))
-    @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE, schema = @Schema(implementation = Result.class, example = "nacos.console.ai.mcp.api.list.example")))
+    @Operation(summary = "nacos.console.ai.mcp.api.list.summary", description = "nacos.console.ai.mcp.api.list.description",
+            security = @SecurityRequirement(name = "nacos"))
+    @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+            schema = @Schema(implementation = Result.class, example = "nacos.console.ai.mcp.api.list.example")))
     @Parameters(value = {@Parameter(name = "pageNo", required = true, example = "1"),
             @Parameter(name = "pageSize", required = true, example = "100"),
             @Parameter(name = "namespaceId", example = "public"), @Parameter(name = "mcpName"),
@@ -135,6 +137,13 @@ public class ConsoleMcpController {
      */
     @GetMapping("/importToolsFromMcp")
     @Secured(action = ActionTypes.WRITE, signType = SignType.AI, apiType = ApiType.CONSOLE_API)
+    @Operation(summary = "nacos.console.ai.mcp.api.import.tools.summary", description = "nacos.console.ai.mcp.api.import.tools.description",
+            security = @SecurityRequirement(name = "nacos"))
+    @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+            schema = @Schema(implementation = Result.class, example = "nacos.console.ai.mcp.api.import.tools.example")))
+    @Parameters(value = {@Parameter(name = "transportType", example = "mcp-sse", required = true),
+            @Parameter(name = "baseUrl", required = true), @Parameter(name = "endpoint", required = true),
+            @Parameter(name = "authToken")})
     public Result<List<McpSchema.Tool>> importToolsFromMcp(@RequestParam String transportType,
             @RequestParam String baseUrl, @RequestParam String endpoint,
             @RequestParam(required = false) String authToken) throws NacosException {
@@ -169,8 +178,10 @@ public class ConsoleMcpController {
      */
     @GetMapping
     @Secured(action = ActionTypes.READ, signType = SignType.AI, apiType = ApiType.CONSOLE_API)
-    @Operation(summary = "nacos.console.ai.mcp.api.get.summary", description = "nacos.console.ai.mcp.api.get.description", security = @SecurityRequirement(name = "nacos"))
-    @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE, schema = @Schema(implementation = Result.class, example = "nacos.console.ai.mcp.api.get.example")))
+    @Operation(summary = "nacos.console.ai.mcp.api.get.summary", description = "nacos.console.ai.mcp.api.get.description",
+            security = @SecurityRequirement(name = "nacos"))
+    @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+            schema = @Schema(implementation = Result.class, example = "nacos.console.ai.mcp.api.get.example")))
     @Parameters(value = {@Parameter(name = "namespaceId", example = "public"),
             @Parameter(name = "mcpId", example = "d7a64724-a556-4fe4-82fa-e806d43e00dc"),
             @Parameter(name = "mcpName", example = "test"), @Parameter(name = "version", example = "1.0.0"),
@@ -189,8 +200,10 @@ public class ConsoleMcpController {
      */
     @PostMapping
     @Secured(action = ActionTypes.WRITE, signType = SignType.AI, apiType = ApiType.CONSOLE_API)
-    @Operation(summary = "nacos.console.ai.mcp.api.create.summary", description = "nacos.console.ai.mcp.api.create.description", security = @SecurityRequirement(name = "nacos"))
-    @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE, schema = @Schema(implementation = Result.class, example = "nacos.console.ai.mcp.api.create.example")))
+    @Operation(summary = "nacos.console.ai.mcp.api.create.summary", description = "nacos.console.ai.mcp.api.create.description",
+            security = @SecurityRequirement(name = "nacos"))
+    @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+            schema = @Schema(implementation = Result.class, example = "nacos.console.ai.mcp.api.create.example")))
     @Parameters(value = {@Parameter(name = "namespaceId", example = "public"),
             @Parameter(name = "serverSpecification", required = true, schema = @Schema(implementation = McpServerBasicInfo.class), example = MCP_SERVER_SPEC_EXAMPLE),
             @Parameter(name = "toolSpecification", schema = @Schema(implementation = McpToolSpecification.class), example = "{}"),
@@ -217,8 +230,10 @@ public class ConsoleMcpController {
      */
     @PutMapping
     @Secured(action = ActionTypes.WRITE, signType = SignType.AI, apiType = ApiType.CONSOLE_API)
-    @Operation(summary = "nacos.console.ai.mcp.api.update.summary", description = "nacos.console.ai.mcp.api.update.description", security = @SecurityRequirement(name = "nacos"))
-    @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE, schema = @Schema(implementation = Result.class, example = "nacos.console.ai.mcp.api.update.example")))
+    @Operation(summary = "nacos.console.ai.mcp.api.update.summary", description = "nacos.console.ai.mcp.api.update.description",
+            security = @SecurityRequirement(name = "nacos"))
+    @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+            schema = @Schema(implementation = Result.class, example = "nacos.console.ai.mcp.api.update.example")))
     @Parameters(value = {@Parameter(name = "namespaceId", example = "public"),
             @Parameter(name = "latest", example = "true"),
             @Parameter(name = "serverSpecification", required = true, schema = @Schema(implementation = McpServerBasicInfo.class), example = MCP_SERVER_SPEC_WITH_ID_EXAMPLE),
@@ -242,8 +257,10 @@ public class ConsoleMcpController {
      */
     @DeleteMapping
     @Secured(action = ActionTypes.WRITE, signType = SignType.AI, apiType = ApiType.CONSOLE_API)
-    @Operation(summary = "nacos.console.ai.mcp.api.delete.summary", description = "nacos.console.ai.mcp.api.delete.description", security = @SecurityRequirement(name = "nacos"))
-    @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE, schema = @Schema(implementation = Result.class, example = "nacos.console.ai.mcp.api.delete.example")))
+    @Operation(summary = "nacos.console.ai.mcp.api.delete.summary", description = "nacos.console.ai.mcp.api.delete.description",
+            security = @SecurityRequirement(name = "nacos"))
+    @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+            schema = @Schema(implementation = Result.class, example = "nacos.console.ai.mcp.api.delete.example")))
     @Parameters(value = {@Parameter(name = "namespaceId", example = "public"),
             @Parameter(name = "mcpName", example = "test"), @Parameter(name = "mcpForm", hidden = true),
             @Parameter(name = "mcpId", example = "d7a64724-a556-4fe4-82fa-e806d43e00dc"),
@@ -264,13 +281,23 @@ public class ConsoleMcpController {
      */
     @PostMapping("/import/validate")
     @Secured(action = ActionTypes.WRITE, signType = SignType.AI, apiType = ApiType.CONSOLE_API)
+    @Operation(summary = "nacos.console.ai.mcp.api.import.validate.summary", description = "nacos.console.ai.mcp.api.import.validate.description",
+            security = @SecurityRequirement(name = "nacos"))
+    @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+            schema = @Schema(implementation = Result.class, example = "nacos.console.ai.mcp.api.import.validate.example")))
+    @Parameters(value = {@Parameter(name = "namespaceId", example = "public"),
+            @Parameter(name = "importType", example = "url", required = true, description = "enum of `file`, `json`, `url`"),
+            @Parameter(name = "data", required = true), @Parameter(name = "limit", example = "10"),
+            @Parameter(name = "cursor", description = "Optional start cursor for URL-based import pagination."),
+            @Parameter(name = "search", description = "Optional fuzzy search keyword for registry import listing. Only used when importType is 'url'."),
+            @Parameter(name = "mcpImportForm", hidden = true)})
     public Result<McpServerImportValidationResult> validateImport(McpImportForm mcpImportForm) throws NacosException {
         mcpImportForm.validate();
         McpServerImportRequest request = convertToImportRequest(mcpImportForm);
         McpServerImportValidationResult result = mcpProxy.validateImport(mcpImportForm.getNamespaceId(), request);
         return Result.success(result);
     }
-
+    
     /**
      * Execute MCP server import operation.
      *
@@ -280,13 +307,25 @@ public class ConsoleMcpController {
      */
     @PostMapping("/import/execute")
     @Secured(action = ActionTypes.WRITE, signType = SignType.AI, apiType = ApiType.CONSOLE_API)
+    @Operation(summary = "nacos.console.ai.mcp.api.import.execute.summary", description = "nacos.console.ai.mcp.api.import.execute.description",
+            security = @SecurityRequirement(name = "nacos"))
+    @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+            schema = @Schema(implementation = Result.class, example = "nacos.console.ai.mcp.api.import.execute.example")))
+    @Parameters(value = {@Parameter(name = "namespaceId", example = "public"),
+            @Parameter(name = "importType", example = "url", required = true, description = "enum of `file`, `json`, `url`"),
+            @Parameter(name = "data", required = true), @Parameter(name = "overrideExisting", example = "false"),
+            @Parameter(name = "skipInvalid", example = "false"), @Parameter(name = "selectedServers", example = "[]"),
+            @Parameter(name = "limit", example = "10"),
+            @Parameter(name = "cursor", description = "Optional start cursor for URL-based import pagination."),
+            @Parameter(name = "search", description = "Optional fuzzy search keyword for registry import listing. Only used when importType is 'url'."),
+            @Parameter(name = "mcpImportForm", hidden = true)})
     public Result<McpServerImportResponse> executeImport(McpImportForm mcpImportForm) throws NacosException {
         mcpImportForm.validate();
         McpServerImportRequest request = convertToImportRequest(mcpImportForm);
         McpServerImportResponse response = mcpProxy.executeImport(mcpImportForm.getNamespaceId(), request);
         return Result.success(response);
     }
-
+    
     /**
      * Convert McpImportForm to McpServerImportRequest.
      *
