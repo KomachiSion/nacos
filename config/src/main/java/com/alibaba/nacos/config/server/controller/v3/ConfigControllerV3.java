@@ -97,6 +97,7 @@ import org.springframework.util.CollectionUtils;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -273,7 +274,7 @@ public class ConfigControllerV3 {
      * @return the result
      * @throws NacosException the nacos exception
      */
-    @PostMapping("/metadata")
+    @PutMapping("/metadata")
     @Secured(action = ActionTypes.WRITE, signType = SignType.CONFIG, apiType = ApiType.ADMIN_API)
     @Operation(summary = "nacos.admin.config.config.api.metadata.summary", description = "nacos.admin.config.config.api.metadata.description",
             security = @SecurityRequirement(name = "nacos"))
