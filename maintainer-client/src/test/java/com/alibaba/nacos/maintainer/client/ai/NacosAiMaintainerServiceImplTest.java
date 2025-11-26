@@ -235,6 +235,23 @@ public class NacosAiMaintainerServiceImplTest {
     }
     
     @Test
+    void updateMcpServerWithOverrideExisting() throws NacosException {
+        McpServerBasicInfo serverSpec = new McpServerBasicInfo();
+        serverSpec.setName("test");
+        serverSpec.setProtocol(AiConstants.Mcp.MCP_PROTOCOL_STDIO);
+        McpToolSpecification toolSpec = new McpToolSpecification();
+        McpTool mcpTool = new McpTool();
+        mcpTool.setName("testTool");
+        mcpTool.setName("testToolDescription");
+        toolSpec.setTools(Collections.singletonList(mcpTool));
+        toolSpec.setToolsMeta(Collections.singletonMap("testTool", new McpToolMeta()));
+        final HttpRestResult<String> mockRestResult = new HttpRestResult<>();
+        mockRestResult.setData(JacksonUtils.toJson(Result.success("ok")));
+        when(clientHttpProxy.executeSyncHttpRequest(any(HttpRequest.class))).thenReturn(mockRestResult);
+        assertTrue(aiMaintainerService.updateMcpServer("public", "test", true, serverSpec, toolSpec, null, true));
+    }
+    
+    @Test
     void deleteMcpServer() throws NacosException {
         final HttpRestResult<String> mockRestResult = new HttpRestResult<>();
         mockRestResult.setData(JacksonUtils.toJson(Result.success("ok")));

@@ -16,6 +16,8 @@
 
 package com.alibaba.nacos.api.ai.constant;
 
+import com.alibaba.nacos.api.ai.model.mcp.registry.McpServerStatusEnum;
+
 /**
  * Nacos Ai contants.
  *
@@ -43,9 +45,11 @@ public class AiConstants {
         
         public static final String MCP_FRONT_ENDPOINT_TYPE_TO_BACK = "BACKEND";
         
-        public static final String MCP_STATUS_ACTIVE = "active";
+        public static final String MCP_STATUS_ACTIVE = McpServerStatusEnum.ACTIVE.getName();
         
-        public static final String MCP_STATUS_DEPRECATED = "deprecated";
+        public static final String MCP_STATUS_DEPRECATED = McpServerStatusEnum.DEPRECATED.getName();
+
+        public static final String MCP_STATUS_DELETED = McpServerStatusEnum.DELETED.getName();
         
         public static final String OFFICIAL_TRANSPORT_SSE = "sse";
         
@@ -77,5 +81,7 @@ public class AiConstants {
         public static final String A2A_ENDPOINT_TYPE_SERVICE = "SERVICE";
         
         public static final String A2A_ENDPOINT_DEFAULT_TRANSPORT = "JSONRPC";
+        
+        public static final String A2A_ENDPOINT_DEFAULT_PROTOCOL = "HTTP";
     }
 }

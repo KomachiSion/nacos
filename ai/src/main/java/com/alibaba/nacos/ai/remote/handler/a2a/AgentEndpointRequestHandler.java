@@ -18,8 +18,8 @@ package com.alibaba.nacos.ai.remote.handler.a2a;
 
 import com.alibaba.nacos.ai.constant.Constants;
 import com.alibaba.nacos.ai.service.a2a.identity.AgentIdCodecHolder;
+import com.alibaba.nacos.ai.utils.AgentEndpointUtil;
 import com.alibaba.nacos.ai.utils.AgentRequestUtil;
-import com.alibaba.nacos.api.ai.model.a2a.AgentEndpoint;
 import com.alibaba.nacos.api.ai.remote.AiRemoteConstants;
 import com.alibaba.nacos.api.ai.remote.request.AgentEndpointRequest;
 import com.alibaba.nacos.api.ai.remote.response.AgentEndpointResponse;
@@ -41,8 +41,6 @@ import com.alibaba.nacos.plugin.auth.constant.SignType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
-
-import java.util.Map;
 
 /**
  * Register or Deregister endpoint for agent to nacos AI module request handler.
@@ -70,6 +68,7 @@ public class AgentEndpointRequestHandler extends RequestHandler<AgentEndpointReq
     @Secured(action = ActionTypes.WRITE, signType = SignType.AI)
     public AgentEndpointResponse handle(AgentEndpointRequest request, RequestMeta meta) throws NacosException {
         AgentEndpointResponse response = new AgentEndpointResponse();
+        response.setType(request.getType());
         AgentRequestUtil.fillNamespaceId(request);
         try {
             validateRequest(request);
@@ -100,17 +99,7 @@ public class AgentEndpointRequestHandler extends RequestHandler<AgentEndpointReq
     }
     
     private Instance transferInstance(AgentEndpointRequest request) throws NacosApiException {
-        Instance instance = new Instance();
-        AgentEndpoint endpoint = request.getEndpoint();
-        instance.setIp(endpoint.getAddress());
-        instance.setPort(endpoint.getPort());
-        String path = StringUtils.isBlank(endpoint.getPath()) ? StringUtils.EMPTY : endpoint.getPath();
-        Map<String, String> metadata = Map.of(Constants.A2A.AGENT_ENDPOINT_PATH_KEY, path,
-                Constants.A2A.AGENT_ENDPOINT_TRANSPORT_KEY, endpoint.getTransport(),
-                Constants.A2A.NACOS_AGENT_ENDPOINT_SUPPORT_TLS, String.valueOf(endpoint.isSupportTls()));
-        instance.setMetadata(metadata);
-        instance.validate();
-        return instance;
+        return AgentEndpointUtil.transferToInstance(request.getEndpoint());
     }
     
     private void validateRequest(AgentEndpointRequest request) throws NacosApiException {

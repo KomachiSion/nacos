@@ -24,7 +24,6 @@ import com.alibaba.nacos.plugin.datasource.constants.ContextConstant;
 import com.alibaba.nacos.plugin.datasource.constants.DataSourceConstant;
 import com.alibaba.nacos.plugin.datasource.constants.FieldConstant;
 import com.alibaba.nacos.plugin.datasource.mapper.ConfigInfoMapper;
-import com.alibaba.nacos.plugin.datasource.mapper.ext.WhereBuilder;
 import com.alibaba.nacos.plugin.datasource.model.MapperContext;
 import com.alibaba.nacos.plugin.datasource.model.MapperResult;
 
@@ -192,28 +191,38 @@ public class ConfigInfoMapperByMySql extends AbstractMapperByMysql implements Co
         
         List<Object> paramList = new ArrayList<>();
         
-        final String sql = "SELECT id,data_id,group_id,tenant_id,app_name,content,md5,type,encrypted_data_key FROM config_info";
-        StringBuilder where = new StringBuilder(" WHERE ");
-        where.append(" tenant_id=? ");
+        // 性能优化：先 LIMIT 再 JOIN，减少 JOIN 和 GROUP BY 的数据量
+        StringBuilder innerSql = new StringBuilder("SELECT id,data_id,group_id,tenant_id,app_name,"
+                + "content,md5,type,encrypted_data_key,c_desc FROM config_info WHERE tenant_id=?");
         paramList.add(tenant);
+        
         if (StringUtils.isNotBlank(dataId)) {
-            where.append(" AND data_id=? ");
+            innerSql.append(" AND data_id=?");
             paramList.add(dataId);
         }
         if (StringUtils.isNotBlank(group)) {
-            where.append(" AND group_id=? ");
+            innerSql.append(" AND group_id=?");
             paramList.add(group);
         }
         if (StringUtils.isNotBlank(appName)) {
-            where.append(" AND app_name=? ");
+            innerSql.append(" AND app_name=?");
             paramList.add(appName);
         }
         if (!StringUtils.isBlank(content)) {
-            where.append(" AND content LIKE ? ");
+            innerSql.append(" AND content LIKE ?");
             paramList.add(content);
         }
-        return new MapperResult(sql + where + " LIMIT " + context.getStartRow() + "," + context.getPageSize(),
-                paramList);
+        
+        // 先分页，减少后续 JOIN 的数据量
+        innerSql.append(" LIMIT ").append(context.getStartRow()).append(",").append(context.getPageSize());
+        
+        // 外层查询：对分页后的结果进行标签关联
+        final String sql = "SELECT a.id,a.data_id,a.group_id,a.tenant_id,a.app_name,a.content,a.md5,a.type,a.encrypted_data_key,a.c_desc,"
+                          + "GROUP_CONCAT(b.tag_name SEPARATOR ',') as config_tags "
+                          + "FROM (" + innerSql + ") a LEFT JOIN config_tags_relation b ON a.id=b.id "
+                          + "GROUP BY a.id,a.data_id,a.group_id,a.tenant_id,a.app_name,a.content,a.md5,a.type,a.encrypted_data_key,a.c_desc";
+        
+        return new MapperResult(sql, paramList);
     }
     
     @Override
@@ -233,27 +242,51 @@ public class ConfigInfoMapperByMySql extends AbstractMapperByMysql implements Co
         final String content = (String) context.getWhereParameter(FieldConstant.CONTENT);
         final String[] types = (String[]) context.getWhereParameter(FieldConstant.TYPE);
         
-        WhereBuilder where = new WhereBuilder(
-                "SELECT id,data_id,group_id,tenant_id,app_name,content,md5,encrypted_data_key,type FROM config_info");
-        where.like("tenant_id", tenant);
+        List<Object> paramList = new ArrayList<>();
+        
+        // 性能优化：先 LIMIT 再 JOIN，减少 JOIN 和 GROUP BY 的数据量
+        StringBuilder innerSql = new StringBuilder("SELECT id,data_id,group_id,tenant_id,app_name,content,md5,"
+                + "encrypted_data_key,type,c_desc FROM config_info WHERE tenant_id LIKE ?");
+        paramList.add(tenant);
         
         if (StringUtils.isNotBlank(dataId)) {
-            where.and().like("data_id", dataId);
+            innerSql.append(" AND data_id LIKE ?");
+            paramList.add(dataId);
         }
         if (StringUtils.isNotBlank(group)) {
-            where.and().like("group_id", group);
+            innerSql.append(" AND group_id LIKE ?");
+            paramList.add(group);
         }
         if (StringUtils.isNotBlank(appName)) {
-            where.and().eq("app_name", appName);
+            innerSql.append(" AND app_name = ?");
+            paramList.add(appName);
         }
         if (StringUtils.isNotBlank(content)) {
-            where.and().like("content", content);
+            innerSql.append(" AND content LIKE ?");
+            paramList.add(content);
         }
         if (!ArrayUtils.isEmpty(types)) {
-            where.and().in("type", types);
+            innerSql.append(" AND type IN (");
+            for (int i = 0; i < types.length; i++) {
+                if (i != 0) {
+                    innerSql.append(", ");
+                }
+                innerSql.append("?");
+                paramList.add(types[i]);
+            }
+            innerSql.append(")");
         }
-        where.limit(context.getStartRow(), context.getPageSize());
-        return where.build();
+        
+        // 先分页，减少后续 JOIN 的数据量
+        innerSql.append(" LIMIT ").append(context.getStartRow()).append(",").append(context.getPageSize());
+        
+        // 外层查询：对分页后的结果进行标签关联
+        final String sql = "SELECT a.id,a.data_id,a.group_id,a.tenant_id,a.app_name,a.content,a.md5,a.encrypted_data_key,a.type,a.c_desc,"
+                          + "GROUP_CONCAT(b.tag_name SEPARATOR ',') as config_tags "
+                          + "FROM (" + innerSql + ") a LEFT JOIN config_tags_relation b ON a.id=b.id "
+                          + "GROUP BY a.id,a.data_id,a.group_id,a.tenant_id,a.app_name,a.content,a.md5,a.encrypted_data_key,a.type,a.c_desc";
+        
+        return new MapperResult(sql, paramList);
     }
     
     @Override

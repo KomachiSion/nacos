@@ -49,6 +49,7 @@ import com.alibaba.nacos.plugin.auth.constant.SignType;
 import io.modelcontextprotocol.client.McpClient;
 import io.modelcontextprotocol.client.McpSyncClient;
 import io.modelcontextprotocol.client.transport.HttpClientSseClientTransport;
+import io.modelcontextprotocol.client.transport.HttpClientStreamableHttpTransport;
 import io.modelcontextprotocol.spec.McpClientTransport;
 import io.modelcontextprotocol.spec.McpSchema;
 import io.swagger.v3.oas.annotations.Operation;
@@ -74,6 +75,7 @@ import java.time.Duration;
 import java.util.List;
 
 import static com.alibaba.nacos.api.ai.constant.AiConstants.Mcp.MCP_PROTOCOL_SSE;
+import static com.alibaba.nacos.api.ai.constant.AiConstants.Mcp.MCP_PROTOCOL_STREAMABLE;
 
 /**
  * Nacos Console AI MCP Server Constants.
@@ -151,6 +153,13 @@ public class ConsoleMcpController {
         if (StringUtils.equals(transportType, MCP_PROTOCOL_SSE)) {
             HttpClientSseClientTransport.Builder transportBuilder = HttpClientSseClientTransport.builder(baseUrl)
                     .sseEndpoint(endpoint);
+            if (!StringUtils.isBlank(authToken)) {
+                transportBuilder.customizeRequest(req -> req.header("Authorization", "Bearer " + authToken));
+            }
+            transport = transportBuilder.build();
+        } else if (StringUtils.equals(transportType, MCP_PROTOCOL_STREAMABLE)) {
+            HttpClientStreamableHttpTransport.Builder transportBuilder = HttpClientStreamableHttpTransport.builder(
+                    baseUrl).endpoint(endpoint);
             if (!StringUtils.isBlank(authToken)) {
                 transportBuilder.customizeRequest(req -> req.header("Authorization", "Bearer " + authToken));
             }
@@ -245,7 +254,8 @@ public class ConsoleMcpController {
         McpServerBasicInfo basicInfo = McpRequestUtil.parseMcpServerBasicInfo(mcpForm);
         McpToolSpecification mcpTools = McpRequestUtil.parseMcpTools(mcpForm);
         McpEndpointSpec endpointSpec = McpRequestUtil.parseMcpEndpointSpec(basicInfo, mcpForm);
-        mcpProxy.updateMcpServer(mcpForm.getNamespaceId(), mcpForm.getLatest(), basicInfo, mcpTools, endpointSpec);
+        mcpProxy.updateMcpServer(mcpForm.getNamespaceId(), mcpForm.getLatest(), basicInfo, mcpTools, endpointSpec,
+                mcpForm.isOverrideExisting());
         return Result.success("ok");
     }
     

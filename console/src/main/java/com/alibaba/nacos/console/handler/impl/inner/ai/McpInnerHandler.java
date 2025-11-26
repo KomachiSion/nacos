@@ -27,6 +27,7 @@ import com.alibaba.nacos.api.ai.model.mcp.McpServerImportValidationResult;
 import com.alibaba.nacos.api.ai.model.mcp.McpToolSpecification;
 import com.alibaba.nacos.api.exception.NacosException;
 import com.alibaba.nacos.api.model.Page;
+import com.alibaba.nacos.console.handler.ai.EnabledAiHandler;
 import com.alibaba.nacos.console.handler.ai.McpHandler;
 import com.alibaba.nacos.console.handler.impl.ConditionFunctionEnabled;
 import com.alibaba.nacos.console.handler.impl.inner.EnabledInnerHandler;
@@ -40,6 +41,7 @@ import org.springframework.stereotype.Service;
  */
 @Service
 @EnabledInnerHandler
+@EnabledAiHandler
 @Conditional(ConditionFunctionEnabled.ConditionAiEnabled.class)
 public class McpInnerHandler implements McpHandler {
     
@@ -73,9 +75,9 @@ public class McpInnerHandler implements McpHandler {
     
     @Override
     public void updateMcpServer(String namespaceId, boolean isPublish, McpServerBasicInfo serverSpecification,
-            McpToolSpecification toolSpecification, McpEndpointSpec endpointSpecification) throws NacosException {
+            McpToolSpecification toolSpecification, McpEndpointSpec endpointSpecification, boolean overrideExisting) throws NacosException {
         mcpServerOperationService.updateMcpServer(namespaceId, isPublish, serverSpecification, toolSpecification,
-                endpointSpecification);
+                endpointSpecification, overrideExisting);
     }
     
     @Override

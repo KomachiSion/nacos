@@ -16,11 +16,9 @@
 
 package com.alibaba.nacos.api.ai.model.mcp.registry;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonTypeName;
-import com.fasterxml.jackson.annotation.JsonProperty;
-import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
-import com.fasterxml.jackson.databind.JsonNode;
 
 /**
  * NamedArgument per components.schemas.NamedArgument.
@@ -36,44 +34,79 @@ public class NamedArgument extends InputWithVariables implements Argument {
     
     private String name;
 
-    @JsonProperty("is_repeated")
     private Boolean isRepeated;
 
-    /**
-     * Optional UI/UX hint for value input; accept any JSON type to be forward-compatible.
-     */
-    @JsonProperty("value_hint")
-    private JsonNode valueHint;
+    private String valueHint;
 
+    /**
+     * Get type.
+     *
+     * @return type
+     */
     public String getType() {
         return type;
     }
 
+    /**
+     * Set type.
+     *
+     * @param type type
+     */
     public void setType(String type) {
         this.type = type;
     }
 
+    /**
+     * Get name.
+     *
+     * @return name
+     */
     public String getName() {
         return name;
     }
 
+    /**
+     * Set name.
+     *
+     * @param name name
+     */
     public void setName(String name) {
         this.name = name;
     }
 
+    /**
+     * Get is repeated flag.
+     *
+     * @return is repeated
+     */
     public Boolean getIsRepeated() {
         return isRepeated;
     }
 
+    /**
+     * Set is repeated flag.
+     *
+     * @param isRepeated is repeated
+     */
     public void setIsRepeated(Boolean isRepeated) {
         this.isRepeated = isRepeated;
     }
 
-    public JsonNode getValueHint() {
+    /**
+     * Get value hint.
+     *
+     * @return value hint
+     */
+    public String getValueHint() {
         return valueHint;
     }
 
-    public void setValueHint(JsonNode valueHint) {
+    /**
+     * Set value hint.
+     *
+     * @param valueHint value hint
+     */
+    public void setValueHint(String valueHint) {
         this.valueHint = valueHint;
     }
 }
