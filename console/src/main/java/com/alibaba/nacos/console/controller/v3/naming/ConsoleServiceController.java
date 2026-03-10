@@ -49,7 +49,6 @@ import com.alibaba.nacos.naming.selector.SelectorManager;
 import com.alibaba.nacos.plugin.auth.constant.ActionTypes;
 import com.alibaba.nacos.plugin.auth.constant.ApiType;
 import com.alibaba.nacos.plugin.auth.constant.Constants;
-import com.alibaba.nacos.plugin.auth.impl.constant.AuthConstants;
 import com.fasterxml.jackson.databind.JsonNode;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -182,7 +181,7 @@ public class ConsoleServiceController {
      * @return {@link Selector} types.
      */
     @GetMapping("/selector/types")
-    @Secured(resource = AuthConstants.CONSOLE_RESOURCE_NAME_PREFIX
+    @Secured(resource = Constants.Resource.CONSOLE_RESOURCE_NAME_PREFIX
             + "naming", action = ActionTypes.READ, apiType = ApiType.CONSOLE_API, tags = Constants.Tag.ONLY_IDENTITY)
     @Operation(summary = "nacos.console.naming.service.api.selector.summary", description = "nacos.console.naming.service.api.selector.description",
             security = @SecurityRequirement(name = "nacos"))

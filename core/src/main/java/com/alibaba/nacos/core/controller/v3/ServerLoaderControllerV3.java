@@ -62,7 +62,6 @@ import static com.alibaba.nacos.core.utils.Commons.NACOS_ADMIN_CORE_CONTEXT_V3;
 @RequestMapping(NACOS_ADMIN_CORE_CONTEXT_V3 + "/loader")
 @Tag(name = "nacos.admin.core.loader.api.controller.name", description = "nacos.admin.core.loader.api.controller.description", extensions = {
         @Extension(name = RemoteConstants.LABEL_MODULE, properties = @ExtensionProperty(name = RemoteConstants.LABEL_MODULE, value = "common"))})
-@SuppressWarnings("PMD.MethodTooLongRule")
 public class ServerLoaderControllerV3 {
     
     private static final Logger LOGGER = LoggerFactory.getLogger(ServerLoaderControllerV3.class);
