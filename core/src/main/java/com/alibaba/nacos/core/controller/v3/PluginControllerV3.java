@@ -21,6 +21,7 @@ import com.alibaba.nacos.api.exception.api.NacosApiException;
 import com.alibaba.nacos.api.model.v2.ErrorCode;
 import com.alibaba.nacos.api.model.v2.Result;
 import com.alibaba.nacos.api.plugin.PluginType;
+import com.alibaba.nacos.api.remote.RemoteConstants;
 import com.alibaba.nacos.auth.annotation.Secured;
 import com.alibaba.nacos.common.utils.StringUtils;
 import com.alibaba.nacos.core.plugin.PluginManager;
@@ -33,7 +34,18 @@ import com.alibaba.nacos.core.utils.Commons;
 import com.alibaba.nacos.plugin.auth.constant.ActionTypes;
 import com.alibaba.nacos.plugin.auth.constant.ApiType;
 import com.alibaba.nacos.plugin.auth.constant.SignType;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.Parameters;
+import io.swagger.v3.oas.annotations.extensions.Extension;
+import io.swagger.v3.oas.annotations.extensions.ExtensionProperty;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -53,6 +65,8 @@ import static com.alibaba.nacos.core.utils.Commons.NACOS_ADMIN_CORE_CONTEXT_V3;
 @NacosApi
 @RestController
 @RequestMapping(NACOS_ADMIN_CORE_CONTEXT_V3 + "/plugin")
+@Tag(name = "nacos.admin.core.plugin.api.controller.name", description = "nacos.admin.core.plugin.api.controller.description", extensions = {
+        @Extension(name = RemoteConstants.LABEL_MODULE, properties = @ExtensionProperty(name = RemoteConstants.LABEL_MODULE, value = "common"))})
 public class PluginControllerV3 {
 
     private final PluginManager unifiedPluginManager;
@@ -70,6 +84,9 @@ public class PluginControllerV3 {
     @GetMapping("/list")
     @Secured(resource = Commons.NACOS_ADMIN_CORE_CONTEXT_V3
             + "/plugin", action = ActionTypes.READ, signType = SignType.CONSOLE, apiType = ApiType.ADMIN_API)
+    @Operation(summary = "nacos.admin.core.plugin.api.list.summary", description = "nacos.admin.core.plugin.api.list.description", security = @SecurityRequirement(name = "nacos"))
+    @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE, schema = @Schema(implementation = Result.class, example = "nacos.admin.core.plugin.api.list.example")))
+    @Parameters(value = @Parameter(name = "pluginType", example = "auth"))
     public Result<List<PluginInfoVO>> getPluginList(@RequestParam(value = "pluginType", required = false) String pluginType) {
         List<PluginInfo> plugins = unifiedPluginManager.listAllPlugins();
 
@@ -96,6 +113,9 @@ public class PluginControllerV3 {
     @GetMapping("/detail")
     @Secured(resource = Commons.NACOS_ADMIN_CORE_CONTEXT_V3
             + "/plugin", action = ActionTypes.READ, signType = SignType.CONSOLE, apiType = ApiType.ADMIN_API)
+    @Operation(summary = "nacos.admin.core.plugin.api.detail.summary", description = "nacos.admin.core.plugin.api.detail.description", security = @SecurityRequirement(name = "nacos"))
+    @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE, schema = @Schema(implementation = Result.class, example = "nacos.admin.core.plugin.api.detail.example")))
+    @Parameters(value = {@Parameter(name = "pluginType", required = true, example = "auth"), @Parameter(name = "pluginName", required = true, example = "nacos-default-auth-plugin")})
     public Result<PluginDetailVO> getPluginDetail(
             @RequestParam("pluginType") String pluginType,
             @RequestParam("pluginName") String pluginName) throws NacosApiException {
@@ -118,6 +138,9 @@ public class PluginControllerV3 {
     @PutMapping("/status")
     @Secured(resource = Commons.NACOS_ADMIN_CORE_CONTEXT_V3
             + "/plugin", action = ActionTypes.WRITE, signType = SignType.CONSOLE, apiType = ApiType.ADMIN_API)
+    @Operation(summary = "nacos.admin.core.plugin.api.status.summary", description = "nacos.admin.core.plugin.api.status.description", security = @SecurityRequirement(name = "nacos"))
+    @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE, schema = @Schema(implementation = Result.class, example = "nacos.admin.core.plugin.api.status.example")))
+    @io.swagger.v3.oas.annotations.parameters.RequestBody(description = "nacos.admin.core.plugin.api.status.body.description", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE, schema = @Schema(implementation = PluginStatusForm.class)))
     public Result<String> updatePluginStatus(@RequestBody PluginStatusForm form) throws NacosApiException {
         validatePluginIdentifier(form.getPluginType(), form.getPluginName());
         String pluginId = form.getPluginType() + ":" + form.getPluginName();
@@ -134,6 +157,9 @@ public class PluginControllerV3 {
     @PutMapping("/config")
     @Secured(resource = Commons.NACOS_ADMIN_CORE_CONTEXT_V3
             + "/plugin", action = ActionTypes.WRITE, signType = SignType.CONSOLE, apiType = ApiType.ADMIN_API)
+    @Operation(summary = "nacos.admin.core.plugin.api.config.summary", description = "nacos.admin.core.plugin.api.config.description", security = @SecurityRequirement(name = "nacos"))
+    @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE, schema = @Schema(implementation = Result.class, example = "nacos.admin.core.plugin.api.config.example")))
+    @io.swagger.v3.oas.annotations.parameters.RequestBody(description = "nacos.admin.core.plugin.api.config.body.description", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE, schema = @Schema(implementation = PluginConfigForm.class)))
     public Result<String> updatePluginConfig(@RequestBody PluginConfigForm form) throws NacosApiException {
         validatePluginIdentifier(form.getPluginType(), form.getPluginName());
         if (form.getConfig() == null) {
