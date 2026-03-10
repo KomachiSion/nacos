@@ -25,12 +25,24 @@ import com.alibaba.nacos.api.ai.model.prompt.PromptVersionInfo;
 import com.alibaba.nacos.api.annotation.NacosApi;
 import com.alibaba.nacos.api.exception.NacosException;
 import com.alibaba.nacos.api.model.v2.Result;
+import com.alibaba.nacos.api.remote.RemoteConstants;
 import com.alibaba.nacos.auth.annotation.Secured;
 import com.alibaba.nacos.core.paramcheck.ExtractorManager;
 import com.alibaba.nacos.plugin.auth.constant.ActionTypes;
 import com.alibaba.nacos.plugin.auth.constant.ApiType;
 import com.alibaba.nacos.plugin.auth.constant.SignType;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.Parameters;
+import io.swagger.v3.oas.annotations.extensions.Extension;
+import io.swagger.v3.oas.annotations.extensions.ExtensionProperty;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletResponse;
+import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -44,6 +56,8 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping(Constants.Prompt.CLIENT_PATH)
 @ExtractorManager.Extractor(httpExtractor = PromptHttpParamExtractor.class)
+@Tag(name = "nacos.admin.ai.prompt.client.api.controller.name", description = "nacos.admin.ai.prompt.client.api.controller.description", extensions = {
+        @Extension(name = RemoteConstants.LABEL_MODULE, properties = @ExtensionProperty(name = RemoteConstants.LABEL_MODULE, value = "ai"))})
 public class PromptClientController {
     
     private final PromptClientOperationService promptOperationService;
@@ -57,6 +71,14 @@ public class PromptClientController {
      */
     @GetMapping
     @Secured(action = ActionTypes.READ, signType = SignType.AI, apiType = ApiType.OPEN_API)
+    @Operation(summary = "nacos.admin.ai.prompt.client.api.query.summary", description = "nacos.admin.ai.prompt.client.api.query.description",
+            security = @SecurityRequirement(name = "nacos"))
+    @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+            schema = @Schema(implementation = Result.class, example = "nacos.admin.ai.prompt.client.api.query.example")))
+    @Parameters(value = {@Parameter(name = "namespaceId", example = "public"),
+            @Parameter(name = "promptKey", required = true, example = "my-prompt"),
+            @Parameter(name = "version", example = "1.0.0"), @Parameter(name = "label"), @Parameter(name = "md5"),
+            @Parameter(name = "form", hidden = true)})
     public Result<Prompt> queryPrompt(PromptQueryForm form, HttpServletResponse response) throws NacosException {
         form.validate();
         try {

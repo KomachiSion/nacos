@@ -35,12 +35,24 @@ import com.alibaba.nacos.api.annotation.NacosApi;
 import com.alibaba.nacos.api.exception.NacosException;
 import com.alibaba.nacos.api.model.Page;
 import com.alibaba.nacos.api.model.v2.Result;
+import com.alibaba.nacos.api.remote.RemoteConstants;
 import com.alibaba.nacos.auth.annotation.Secured;
 import com.alibaba.nacos.core.paramcheck.ExtractorManager;
 import com.alibaba.nacos.plugin.auth.constant.ActionTypes;
 import com.alibaba.nacos.plugin.auth.constant.ApiType;
 import com.alibaba.nacos.plugin.auth.constant.SignType;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.Parameters;
+import io.swagger.v3.oas.annotations.extensions.Extension;
+import io.swagger.v3.oas.annotations.extensions.ExtensionProperty;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
+import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -62,6 +74,8 @@ import java.util.List;
 @RestController
 @RequestMapping(Constants.Prompt.ADMIN_PATH)
 @ExtractorManager.Extractor(httpExtractor = PromptHttpParamExtractor.class)
+@Tag(name = "nacos.admin.ai.prompt.api.controller.name", description = "nacos.admin.ai.prompt.api.controller.description", extensions = {
+        @Extension(name = RemoteConstants.LABEL_MODULE, properties = @ExtensionProperty(name = RemoteConstants.LABEL_MODULE, value = "ai"))})
 public class PromptAdminController {
     
     private final PromptAdminOperationService promptOperationService;
@@ -80,6 +94,16 @@ public class PromptAdminController {
      */
     @PostMapping
     @Secured(action = ActionTypes.WRITE, signType = SignType.AI, apiType = ApiType.ADMIN_API)
+    @Operation(summary = "nacos.admin.ai.prompt.api.publish.summary", description = "nacos.admin.ai.prompt.api.publish.description",
+            security = @SecurityRequirement(name = "nacos"))
+    @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+            schema = @Schema(implementation = Result.class, example = "nacos.admin.ai.prompt.api.publish.example")))
+    @Parameters(value = {@Parameter(name = "namespaceId", example = "public"),
+            @Parameter(name = "promptKey", required = true, example = "my-prompt"),
+            @Parameter(name = "version", required = true, example = "1.0.0"),
+            @Parameter(name = "template", required = true), @Parameter(name = "commitMsg"),
+            @Parameter(name = "description"), @Parameter(name = "bizTags"),
+            @Parameter(name = "form", hidden = true)})
     public Result<Boolean> publishPrompt(PromptPublishForm form, HttpServletRequest request) throws NacosException {
         form.validate();
         String srcUser = request.getRemoteUser();
@@ -103,6 +127,13 @@ public class PromptAdminController {
      */
     @GetMapping("/metadata")
     @Secured(action = ActionTypes.READ, signType = SignType.AI, apiType = ApiType.ADMIN_API)
+    @Operation(summary = "nacos.admin.ai.prompt.api.metadata.summary", description = "nacos.admin.ai.prompt.api.metadata.description",
+            security = @SecurityRequirement(name = "nacos"))
+    @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+            schema = @Schema(implementation = Result.class, example = "nacos.admin.ai.prompt.api.metadata.example")))
+    @Parameters(value = {@Parameter(name = "namespaceId", example = "public"),
+            @Parameter(name = "promptKey", required = true, example = "my-prompt"),
+            @Parameter(name = "form", hidden = true)})
     public Result<PromptMetaInfo> getPromptMetadata(PromptForm form) throws NacosException {
         form.validate();
         PromptMetaInfo detail = promptOperationService.getPromptMeta(form.getNamespaceId(), form.getPromptKey());
@@ -119,6 +150,13 @@ public class PromptAdminController {
      */
     @DeleteMapping
     @Secured(action = ActionTypes.WRITE, signType = SignType.AI, apiType = ApiType.ADMIN_API)
+    @Operation(summary = "nacos.admin.ai.prompt.api.delete.summary", description = "nacos.admin.ai.prompt.api.delete.description",
+            security = @SecurityRequirement(name = "nacos"))
+    @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+            schema = @Schema(implementation = Result.class, example = "nacos.admin.ai.prompt.api.delete.example")))
+    @Parameters(value = {@Parameter(name = "namespaceId", example = "public"),
+            @Parameter(name = "promptKey", required = true, example = "my-prompt"),
+            @Parameter(name = "form", hidden = true)})
     public Result<Boolean> deletePrompt(PromptForm form, HttpServletRequest request) throws NacosException {
         form.validate();
         String srcUser = request.getRemoteUser();
@@ -141,6 +179,15 @@ public class PromptAdminController {
      */
     @GetMapping("/list")
     @Secured(action = ActionTypes.READ, signType = SignType.AI, apiType = ApiType.ADMIN_API)
+    @Operation(summary = "nacos.admin.ai.prompt.api.list.summary", description = "nacos.admin.ai.prompt.api.list.description",
+            security = @SecurityRequirement(name = "nacos"))
+    @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+            schema = @Schema(implementation = Result.class, example = "nacos.admin.ai.prompt.api.list.example")))
+    @Parameters(value = {@Parameter(name = "pageNo", required = true, example = "1"),
+            @Parameter(name = "pageSize", required = true, example = "10"),
+            @Parameter(name = "namespaceId", example = "public"),
+            @Parameter(name = "promptKey"), @Parameter(name = "search", example = "blur", description = "blur or accurate"),
+            @Parameter(name = "bizTags"), @Parameter(name = "form", hidden = true)})
     public Result<Page<PromptMetaSummary>> listPrompts(PromptListForm form) throws NacosException {
         form.validate();
         Page<PromptMetaSummary> result = promptOperationService.listPrompts(
@@ -159,6 +206,15 @@ public class PromptAdminController {
      */
     @GetMapping("/versions")
     @Secured(action = ActionTypes.READ, signType = SignType.AI, apiType = ApiType.ADMIN_API)
+    @Operation(summary = "nacos.admin.ai.prompt.api.versions.summary", description = "nacos.admin.ai.prompt.api.versions.description",
+            security = @SecurityRequirement(name = "nacos"))
+    @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+            schema = @Schema(implementation = Result.class, example = "nacos.admin.ai.prompt.api.versions.example")))
+    @Parameters(value = {@Parameter(name = "namespaceId", example = "public"),
+            @Parameter(name = "promptKey", required = true, example = "my-prompt"),
+            @Parameter(name = "pageNo", required = true, example = "1"),
+            @Parameter(name = "pageSize", required = true, example = "10"),
+            @Parameter(name = "form", hidden = true)})
     public Result<Page<PromptVersionSummary>> listPromptVersions(PromptHistoryForm form) throws NacosException {
         form.validate();
         Page<PromptVersionSummary> result = promptOperationService.listPromptVersions(
@@ -175,6 +231,14 @@ public class PromptAdminController {
      */
     @GetMapping("/detail")
     @Secured(action = ActionTypes.READ, signType = SignType.AI, apiType = ApiType.ADMIN_API)
+    @Operation(summary = "nacos.admin.ai.prompt.api.detail.summary", description = "nacos.admin.ai.prompt.api.detail.description",
+            security = @SecurityRequirement(name = "nacos"))
+    @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+            schema = @Schema(implementation = Result.class, example = "nacos.admin.ai.prompt.api.detail.example")))
+    @Parameters(value = {@Parameter(name = "namespaceId", example = "public"),
+            @Parameter(name = "promptKey", required = true, example = "my-prompt"),
+            @Parameter(name = "version", example = "1.0.0"), @Parameter(name = "label"), @Parameter(name = "md5"),
+            @Parameter(name = "form", hidden = true)})
     public Result<PromptVersionInfo> queryPromptDetail(PromptQueryForm form) throws NacosException {
         form.validate();
         PromptVersionInfo detail = promptOperationService.queryPromptDetail(
@@ -191,6 +255,15 @@ public class PromptAdminController {
      */
     @PutMapping("/label")
     @Secured(action = ActionTypes.WRITE, signType = SignType.AI, apiType = ApiType.ADMIN_API)
+    @Operation(summary = "nacos.admin.ai.prompt.api.label.bind.summary", description = "nacos.admin.ai.prompt.api.label.bind.description",
+            security = @SecurityRequirement(name = "nacos"))
+    @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+            schema = @Schema(implementation = Result.class, example = "nacos.admin.ai.prompt.api.label.bind.example")))
+    @Parameters(value = {@Parameter(name = "namespaceId", example = "public"),
+            @Parameter(name = "promptKey", required = true, example = "my-prompt"),
+            @Parameter(name = "label", required = true, example = "stable"),
+            @Parameter(name = "version", required = true, example = "1.0.0"),
+            @Parameter(name = "form", hidden = true)})
     public Result<Boolean> bindLabel(PromptLabelBindForm form, HttpServletRequest request) throws NacosException {
         form.validate();
         String srcUser = request.getRemoteUser();
@@ -211,6 +284,14 @@ public class PromptAdminController {
      */
     @DeleteMapping("/label")
     @Secured(action = ActionTypes.WRITE, signType = SignType.AI, apiType = ApiType.ADMIN_API)
+    @Operation(summary = "nacos.admin.ai.prompt.api.label.unbind.summary", description = "nacos.admin.ai.prompt.api.label.unbind.description",
+            security = @SecurityRequirement(name = "nacos"))
+    @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+            schema = @Schema(implementation = Result.class, example = "nacos.admin.ai.prompt.api.label.unbind.example")))
+    @Parameters(value = {@Parameter(name = "namespaceId", example = "public"),
+            @Parameter(name = "promptKey", required = true, example = "my-prompt"),
+            @Parameter(name = "label", required = true, example = "stable"),
+            @Parameter(name = "form", hidden = true)})
     public Result<Boolean> unbindLabel(PromptLabelForm form, HttpServletRequest request) throws NacosException {
         form.validate();
         String srcUser = request.getRemoteUser();
@@ -235,6 +316,14 @@ public class PromptAdminController {
      */
     @PutMapping("/metadata")
     @Secured(action = ActionTypes.WRITE, signType = SignType.AI, apiType = ApiType.ADMIN_API)
+    @Operation(summary = "nacos.admin.ai.prompt.api.metadata.update.summary", description = "nacos.admin.ai.prompt.api.metadata.update.description",
+            security = @SecurityRequirement(name = "nacos"))
+    @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+            schema = @Schema(implementation = Result.class, example = "nacos.admin.ai.prompt.api.metadata.update.example")))
+    @Parameters(value = {@Parameter(name = "namespaceId", example = "public"),
+            @Parameter(name = "promptKey", required = true, example = "my-prompt"),
+            @Parameter(name = "description"), @Parameter(name = "bizTags"),
+            @Parameter(name = "form", hidden = true)})
     public Result<Boolean> updatePromptMetadata(PromptMetadataForm form, HttpServletRequest request)
             throws NacosException {
         form.validate();
