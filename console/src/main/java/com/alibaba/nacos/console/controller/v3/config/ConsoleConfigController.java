@@ -219,7 +219,7 @@ public class ConsoleConfigController {
             description = "nacos.console.config.config.api.batchDelete.description", security = @SecurityRequirement(name = "nacos"))
     @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
             schema = @Schema(implementation = Result.class, example = "nacos.console.config.config.api.batchDelete.example")))
-    @Parameters(value = {@Parameter(name = "id", required = true, example = "1")})
+    @Parameters(value = {@Parameter(name = "ids", required = true, example = "1")})
     public Result<Boolean> batchDeleteConfigs(HttpServletRequest request, @RequestParam(value = "ids") List<Long> ids)
             throws NacosException {
         String clientIp = RequestUtil.getRemoteIp(request);
@@ -393,7 +393,8 @@ public class ConsoleConfigController {
             security = @SecurityRequirement(name = "nacos"))
     @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_OCTET_STREAM_VALUE))
     @Parameters(value = {@Parameter(name = "namespaceId"), @Parameter(name = "groupName"), @Parameter(name = "dataId"),
-            @Parameter(name = "ids", example = "[1,2,3]"), @Parameter(name = "configForm", hidden = true)})
+            @Parameter(name = "ids", example = "[1,2,3]"), @Parameter(name = "appName", example = "UNKNOWN"),
+            @Parameter(name = "configForm", hidden = true)})
     public ResponseEntity<byte[]> exportConfigV2(ConfigFormV3 configForm,
             @RequestParam(value = "ids", required = false) List<Long> ids) throws Exception {
         configForm.blurSearchValidate();
@@ -467,7 +468,6 @@ public class ConsoleConfigController {
     @io.swagger.v3.oas.annotations.parameters.RequestBody(content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
             array = @ArraySchema(schema = @Schema(implementation = SameNamespaceCloneConfigBean.class))))
     @Parameters(value = {@Parameter(name = "srcUser", example = "nacos"),
-            @Parameter(name = "namespaceId", example = "public"),
             @Parameter(name = "policy", required = true, schema = @Schema(implementation = SameConfigPolicy.class))})
     public Result<Map<String, Object>> cloneConfig(HttpServletRequest request,
             @RequestParam(required = false) String srcUser,

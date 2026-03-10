@@ -26,6 +26,8 @@ import com.alibaba.nacos.console.paramcheck.ConsoleDefaultHttpParamExtractor;
 import com.alibaba.nacos.console.proxy.ServerStateProxy;
 import com.alibaba.nacos.core.paramcheck.ExtractorManager;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.Parameters;
 import io.swagger.v3.oas.annotations.extensions.Extension;
 import io.swagger.v3.oas.annotations.extensions.ExtensionProperty;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -84,6 +86,7 @@ public class ConsoleServerStateController {
     @Operation(summary = "nacos.console.state.api.announcement.summary", description = "nacos.console.state.api.announcement.description")
     @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
             schema = @Schema(implementation = Result.class, example = "nacos.console.state.api.announcement.example")))
+    @Parameters(value = {@Parameter(name = "language", example = "zh-CN")})
     public Result<String> getAnnouncement(
             @RequestParam(required = false, name = "language", defaultValue = "zh-CN") String language) {
         // Validate the language parameter

@@ -303,8 +303,9 @@ public class ConsoleServiceController {
             @Parameter(name = "groupName", example = "DEFAULT_GROUP"),
             @Parameter(name = "serviceName", required = true, example = "test"),
             @Parameter(name = "clusterName", required = true, example = "DEFAULT"),
-            @Parameter(name = "checkPort", example = "8080"), @Parameter(name = "useInstancePort4Check", example = "false"),
-            @Parameter(name = "healthChecker", example = "{\"type\":\"none\"}"),
+            @Parameter(name = "checkPort", required = true, example = "8080"),
+            @Parameter(name = "useInstancePort4Check", required = true, example = "false"),
+            @Parameter(name = "healthChecker", required = true, example = "{\"type\":\"none\"}"),
             @Parameter(name = "metadata", example = "{\"version\":\"1.0\"}"),
             @Parameter(name = "updateClusterForm", hidden = true)})
     public Result<String> updateCluster(UpdateClusterForm updateClusterForm) throws Exception {
