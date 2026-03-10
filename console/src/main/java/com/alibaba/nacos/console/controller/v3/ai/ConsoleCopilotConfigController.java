@@ -18,19 +18,29 @@ package com.alibaba.nacos.console.controller.v3.ai;
 
 import com.alibaba.nacos.api.annotation.NacosApi;
 import com.alibaba.nacos.api.exception.NacosException;
+import com.alibaba.nacos.api.model.v2.Result;
+import com.alibaba.nacos.api.remote.RemoteConstants;
+import com.alibaba.nacos.auth.annotation.Secured;
 import com.alibaba.nacos.copilot.config.CopilotAgentManager;
 import com.alibaba.nacos.copilot.config.CopilotConfigStorage;
 import com.alibaba.nacos.copilot.config.CopilotProperties;
 import com.alibaba.nacos.copilot.constant.CopilotConstants;
-import com.alibaba.nacos.api.model.v2.Result;
-import com.alibaba.nacos.auth.annotation.Secured;
 import com.alibaba.nacos.plugin.auth.constant.ActionTypes;
 import com.alibaba.nacos.plugin.auth.constant.ApiType;
 import com.alibaba.nacos.plugin.auth.constant.SignType;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.extensions.Extension;
+import io.swagger.v3.oas.annotations.extensions.ExtensionProperty;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.parameters.RequestBody;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -42,26 +52,29 @@ import org.springframework.web.bind.annotation.RestController;
 @NacosApi
 @RestController
 @RequestMapping(CopilotConstants.COPILOT_CONSOLE_PATH + "/config")
+@Tag(name = "nacos.console.ai.copilot.config.api.controller.name", description = "nacos.console.ai.copilot.config.api.controller.description", extensions = {
+        @Extension(name = RemoteConstants.LABEL_MODULE, properties = @ExtensionProperty(name = RemoteConstants.LABEL_MODULE, value = "ai"))})
 public class ConsoleCopilotConfigController {
     
     private final CopilotConfigStorage configStorage;
+    
     private final CopilotAgentManager agentManager;
     
     @Autowired
-    public ConsoleCopilotConfigController(CopilotConfigStorage configStorage,
-                                         CopilotAgentManager agentManager) {
+    public ConsoleCopilotConfigController(CopilotConfigStorage configStorage, CopilotAgentManager agentManager) {
         this.configStorage = configStorage;
         this.agentManager = agentManager;
     }
     
     /**
-     * Get current Copilot configuration.
-     * Only returns apiKey, model, studioUrl and studioProject fields.
+     * Get current Copilot configuration. Only returns apiKey, model, studioUrl and studioProject fields.
      *
      * @return Simplified CopilotProperties with only apiKey, model, studioUrl and studioProject
      */
     @GetMapping
     @Secured(action = ActionTypes.READ, signType = SignType.AI, apiType = ApiType.CONSOLE_API)
+    @Operation(summary = "nacos.console.ai.copilot.config.api.get.summary", description = "nacos.console.ai.copilot.config.api.get.description", security = @SecurityRequirement(name = "nacos"))
+    @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE, schema = @Schema(implementation = Result.class, example = "nacos.console.ai.copilot.config.api.get.example")))
     public Result<CopilotProperties> getConfig() throws NacosException {
         CopilotProperties config = configStorage.getConfig();
         if (config == null) {
@@ -80,15 +93,19 @@ public class ConsoleCopilotConfigController {
     }
     
     /**
-     * Create or update Copilot configuration.
-     * Only accepts apiKey, model, studioUrl and studioProject fields, other fields use defaults.
+     * Create or update Copilot configuration. Only accepts apiKey, model, studioUrl and studioProject fields, other
+     * fields use defaults.
      *
      * @param config Simplified CopilotProperties with only apiKey, model, studioUrl and studioProject
      * @return success result
      */
     @PostMapping
     @Secured(action = ActionTypes.WRITE, signType = SignType.AI, apiType = ApiType.CONSOLE_API)
-    public Result<Boolean> saveConfig(@RequestBody CopilotProperties config) throws NacosException {
+    @Operation(summary = "nacos.console.ai.copilot.config.api.save.summary", description = "nacos.console.ai.copilot.config.api.save.description", security = @SecurityRequirement(name = "nacos"))
+    @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE, schema = @Schema(implementation = Result.class, example = "nacos.console.ai.copilot.config.api.save.example")))
+    @RequestBody(description = "nacos.console.ai.copilot.config.api.save.body.description", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE, schema = @Schema(implementation = CopilotProperties.class)))
+    public Result<Boolean> saveConfig(@org.springframework.web.bind.annotation.RequestBody CopilotProperties config)
+            throws NacosException {
         if (config == null) {
             throw new NacosException(NacosException.INVALID_PARAM, "Configuration cannot be null");
         }
