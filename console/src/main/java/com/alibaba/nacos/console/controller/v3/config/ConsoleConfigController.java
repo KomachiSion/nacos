@@ -18,6 +18,7 @@
 package com.alibaba.nacos.console.controller.v3.config;
 
 import com.alibaba.nacos.api.annotation.NacosApi;
+import com.alibaba.nacos.api.common.ApiType;
 import com.alibaba.nacos.api.config.ConfigType;
 import com.alibaba.nacos.api.config.model.ConfigBasicInfo;
 import com.alibaba.nacos.api.config.model.ConfigDetailInfo;
@@ -45,7 +46,6 @@ import com.alibaba.nacos.core.model.form.AggregationForm;
 import com.alibaba.nacos.core.model.form.PageForm;
 import com.alibaba.nacos.core.paramcheck.ExtractorManager;
 import com.alibaba.nacos.plugin.auth.constant.ActionTypes;
-import com.alibaba.nacos.plugin.auth.constant.ApiType;
 import com.alibaba.nacos.plugin.auth.constant.SignType;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -176,8 +176,8 @@ public class ConsoleConfigController {
     /**
      * Delete configuration.
      *
-     * @param request     HTTP servlet request.
-     * @param configForm  Config form.
+     * @param request    HTTP servlet request.
+     * @param configForm Config form.
      * @return Result containing success status.
      * @throws NacosException If a Nacos-specific error occurs.
      */
@@ -332,8 +332,8 @@ public class ConsoleConfigController {
     /**
      * Subscribe to configured client information.
      *
-     * @param configForm        config form
-     * @param aggregationForm   aggregation form
+     * @param configForm      config form
+     * @param aggregationForm aggregation form
      * @return Result containing listener status.
      * @throws Exception If an error occurs during the operation.
      */
@@ -382,8 +382,8 @@ public class ConsoleConfigController {
     /**
      * New version export config adds metadata.yml file to record config metadata.
      *
-     * @param configForm  config form
-     * @param ids         List of config IDs.
+     * @param configForm config form
+     * @param ids        List of config IDs.
      * @return ResponseEntity containing the exported configuration.
      * @throws Exception If an error occurs during the export.
      */
@@ -522,7 +522,7 @@ public class ConsoleConfigController {
     /**
      * Execute to query beta operation.
      *
-     * @param configForm  config form
+     * @param configForm config form
      * @return Result containing the ConfigInfo4Beta details.
      * @throws NacosException If a Nacos-specific error occurs.
      */

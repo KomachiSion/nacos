@@ -100,4 +100,26 @@ public class AuthConstants {
     public static final String ROLE_PATH = "/v3/auth/role";
     
     public static final String PERMISSION_PATH = "/v3/auth/permission";
+    
+    /**
+     * System-reserved anonymous user name. Used for unauthenticated access to PUBLIC AI resources.
+     */
+    public static final String ANONYMOUS_USER = "__nacos_anonymous__";
+    
+    /**
+     * System-reserved anonymous role name bound to {@link #ANONYMOUS_USER}.
+     */
+    public static final String ANONYMOUS_ROLE = "__nacos_anonymous_role__";
+    
+    /**
+     * Tag value that marks a {@link com.alibaba.nacos.auth.annotation.Secured} API as allowing anonymous access.
+     *
+     * @see Constants.Tag#ALLOW_ANONYMOUS
+     */
+    public static final String TAG_ALLOW_ANONYMOUS = Constants.Tag.ALLOW_ANONYMOUS;
+    
+    /**
+     * Configuration key controlling whether anonymous access to AI resources is enabled.
+     */
+    public static final String NACOS_CORE_AUTH_NACOS_ANONYMOUS_AI_ENABLED = "nacos.core.auth.nacos.anonymous.ai.enabled";
 }

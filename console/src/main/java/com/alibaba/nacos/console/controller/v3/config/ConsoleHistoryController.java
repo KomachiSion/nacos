@@ -18,6 +18,7 @@
 package com.alibaba.nacos.console.controller.v3.config;
 
 import com.alibaba.nacos.api.annotation.NacosApi;
+import com.alibaba.nacos.api.common.ApiType;
 import com.alibaba.nacos.api.config.model.ConfigBasicInfo;
 import com.alibaba.nacos.api.config.model.ConfigHistoryBasicInfo;
 import com.alibaba.nacos.api.config.model.ConfigHistoryDetailInfo;
@@ -33,7 +34,6 @@ import com.alibaba.nacos.console.proxy.config.HistoryProxy;
 import com.alibaba.nacos.core.model.form.PageForm;
 import com.alibaba.nacos.core.paramcheck.ExtractorManager;
 import com.alibaba.nacos.plugin.auth.constant.ActionTypes;
-import com.alibaba.nacos.plugin.auth.constant.ApiType;
 import com.alibaba.nacos.plugin.auth.constant.SignType;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -78,8 +78,8 @@ public class ConsoleHistoryController {
     /**
      * Query the detailed configuration history information. notes:
      *
-     * @param nid         history_config_info nid
-     * @param configForm  config form
+     * @param nid        history_config_info nid
+     * @param configForm config form
      * @return history config info
      */
     @GetMapping
@@ -104,8 +104,8 @@ public class ConsoleHistoryController {
     /**
      * Query the list history config. notes:
      *
-     * @param configForm  config form
-     * @param pageForm    page form
+     * @param configForm config form
+     * @param pageForm   page form
      * @return the page of history config.
      */
     @GetMapping("/list")
@@ -134,8 +134,8 @@ public class ConsoleHistoryController {
     /**
      * Query previous config history information. notes:
      *
-     * @param id          config_info id
-     * @param configForm  config form
+     * @param id         config_info id
+     * @param configForm config form
      * @return history config info
      */
     @GetMapping(value = "/previous")

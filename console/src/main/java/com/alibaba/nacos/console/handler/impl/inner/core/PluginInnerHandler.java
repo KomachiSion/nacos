@@ -144,16 +144,17 @@ public class PluginInnerHandler implements PluginHandler {
     }
 
     @Override
-    public void updatePluginStatus(String pluginType, String pluginName, boolean enabled) throws NacosException {
+    public void updatePluginStatus(String pluginType, String pluginName, boolean enabled, boolean localOnly)
+            throws NacosException {
         String pluginId = pluginType + ":" + pluginName;
-        pluginManager.setPluginEnabled(pluginId, enabled);
+        pluginManager.setPluginEnabled(pluginId, enabled, localOnly);
     }
 
     @Override
-    public void updatePluginConfig(String pluginType, String pluginName, Map<String, String> config)
-            throws NacosException {
+    public void updatePluginConfig(String pluginType, String pluginName, Map<String, String> config,
+            boolean localOnly) throws NacosException {
         String pluginId = pluginType + ":" + pluginName;
-        pluginManager.updatePluginConfig(pluginId, config);
+        pluginManager.updatePluginConfig(pluginId, config, localOnly);
     }
 
     @Override
@@ -235,11 +236,13 @@ public class PluginInnerHandler implements PluginHandler {
      * Check if the plugin type is exclusive (only one can be active at a time).
      * Exclusive types: AUTH, DATASOURCE_DIALECT.
      *
+     * TODO: first return fixed {@code true}, will read from plugin define in future.
+     *
      * @param type plugin type
      * @return true if exclusive
      */
     private boolean isExclusiveType(PluginType type) {
-        return type == PluginType.AUTH || type == PluginType.DATASOURCE_DIALECT;
+        return true;
     }
 
     private PluginDetailVO convertToDetailVO(PluginInfo pluginInfo) {

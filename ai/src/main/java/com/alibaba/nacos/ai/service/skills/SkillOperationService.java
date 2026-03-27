@@ -18,8 +18,12 @@ package com.alibaba.nacos.ai.service.skills;
 
 import com.alibaba.nacos.api.ai.model.skills.Skill;
 import com.alibaba.nacos.api.ai.model.skills.SkillBasicInfo;
+import com.alibaba.nacos.api.ai.model.skills.SkillMeta;
+import com.alibaba.nacos.api.ai.model.skills.SkillSummary;
 import com.alibaba.nacos.api.exception.NacosException;
 import com.alibaba.nacos.api.model.Page;
+
+import java.util.Map;
 
 /**
  * Skill operation service.
@@ -27,58 +31,9 @@ import com.alibaba.nacos.api.model.Page;
  * @author nacos
  */
 public interface SkillOperationService {
-    
-    /**
-     * Register a new skill.
-     *
-     * @param skill skill object
-     * @param namespaceId namespace ID
-     * @return skill ID
-     * @throws NacosException if registration failed
-     */
-    String registerSkill(Skill skill, String namespaceId) throws NacosException;
-    
-    /**
-     * Get skill detail.
-     *
-     * @param namespaceId namespace ID
-     * @param skillName skill name
-     * @return skill detail
-     * @throws NacosException if skill not found
-     */
-    Skill getSkillDetail(String namespaceId, String skillName) throws NacosException;
-    
-    /**
-     * Update skill.
-     *
-     * @param skill skill object
-     * @param namespaceId namespace ID
-     * @throws NacosException if update failed
-     */
-    void updateSkill(Skill skill, String namespaceId) throws NacosException;
-    
-    /**
-     * Delete skill.
-     *
-     * @param namespaceId namespace ID
-     * @param skillName skill name
-     * @throws NacosException if delete failed
-     */
-    void deleteSkill(String namespaceId, String skillName) throws NacosException;
-    
-    /**
-     * List skills with pagination.
-     *
-     * @param namespaceId namespace ID
-     * @param skillName skill name (for search)
-     * @param search search keyword
-     * @param pageNo page number
-     * @param pageSize page size
-     * @return skill list page
-     * @throws NacosException if query failed
-     */
-    Page<SkillBasicInfo> listSkills(String namespaceId, String skillName, String search, int pageNo, int pageSize) throws NacosException;
-    
+
+    // ========== Admin APIs ==========
+
     /**
      * Upload skill from zip file.
      *
@@ -87,5 +42,223 @@ public interface SkillOperationService {
      * @return skill name
      * @throws NacosException if upload failed
      */
-    String uploadSkillFromZip(String namespaceId, byte[] zipBytes) throws NacosException;
+    default String uploadSkillFromZip(String namespaceId, byte[] zipBytes) throws NacosException {
+        return uploadSkillFromZip(namespaceId, zipBytes, false);
+    }
+
+    /**
+     * Upload skill from zip file with original upload file name.
+     *
+     * @param namespaceId namespace ID
+     * @param zipBytes zip file bytes
+     * @param zipFileName uploaded zip file name (optional, used to infer version)
+     * @param overwrite whether to overwrite the current editable draft when the skill already exists
+     * @return skill name
+     * @throws NacosException if upload failed
+     */
+    default String uploadSkillFromZip(String namespaceId, byte[] zipBytes, String zipFileName, boolean overwrite)
+            throws NacosException {
+        return uploadSkillFromZip(namespaceId, zipBytes, overwrite);
+    }
+
+    /**
+     * Upload skill from zip file.
+     *
+     * @param namespaceId namespace ID
+     * @param zipBytes zip file bytes
+     * @param overwrite whether to overwrite the current editable draft when the skill already exists
+     * @return skill name
+     * @throws NacosException if upload failed
+     */
+    String uploadSkillFromZip(String namespaceId, byte[] zipBytes, boolean overwrite) throws NacosException;
+
+    /**
+     * Bootstrap skill from zip file as an online skill.
+     *
+     * <p>This is intended for server-side built-in data initialization and bypasses draft/pipeline flow.</p>
+     *
+     * @param namespaceId namespace ID
+     * @param zipBytes zip file bytes
+     * @throws NacosException if bootstrap failed
+     */
+    void bootstrapSkillFromZip(String namespaceId, byte[] zipBytes) throws NacosException;
+
+    /**
+     * Bootstrap skill from zip file as an online skill with source metadata.
+     *
+     * @param namespaceId namespace ID
+     * @param zipBytes zip file bytes
+     * @param from source identifier, e.g. github.com/nacos
+     * @throws NacosException if bootstrap failed
+     */
+    default void bootstrapSkillFromZip(String namespaceId, byte[] zipBytes, String from) throws NacosException {
+        bootstrapSkillFromZip(namespaceId, zipBytes);
+    }
+
+    /**
+     * Get skill detail for admin usage. Returns version governance metadata and all version summaries.
+     *
+     * @param namespaceId namespace ID
+     * @param skillName skill name
+     * @return skill admin detail (governance info + version summaries)
+     * @throws NacosException if skill not found
+     */
+    SkillMeta getSkillDetail(String namespaceId, String skillName) throws NacosException;
+
+    /**
+     * Get skill version detail for admin usage. Returns full skill content for a specific version, used for viewing or editing.
+     *
+     * @param namespaceId namespace ID
+     * @param skillName skill name
+     * @param version target version
+     * @return full skill content for the specified version
+     * @throws NacosException if skill or version not found
+     */
+    Skill getSkillVersionDetail(String namespaceId, String skillName, String version) throws NacosException;
+
+    /**
+     * Download skill version. Semantically identical to {@link #getSkillVersionDetail} but provides a separate
+     * entry point so that download events can be tracked independently (e.g. download count statistics).
+     *
+     * @param namespaceId namespace ID
+     * @param skillName skill name
+     * @param version target version
+     * @return full skill content for the specified version
+     * @throws NacosException if skill or version not found
+     */
+    Skill downloadSkillVersion(String namespaceId, String skillName, String version) throws NacosException;
+
+    /**
+     * Delete skill.
+     *
+     * @param namespaceId namespace ID
+     * @param skillName skill name
+     * @throws NacosException if delete failed
+     */
+    void deleteSkill(String namespaceId, String skillName) throws NacosException;
+
+    /**
+     * List skills with pagination for admin usage. Returns full governance metadata.
+     *
+     * @param namespaceId namespace ID
+     * @param skillName skill name (for search)
+     * @param search search type (accurate/blur)
+     * @param pageNo page number
+     * @param pageSize page size
+     * @return skill admin list page with governance metadata
+     * @throws NacosException if query failed
+     */
+    Page<SkillSummary> listSkills(String namespaceId, String skillName, String search, int pageNo, int pageSize) throws NacosException;
+
+    /**
+     * List skills with pagination and optional ordering for admin usage.
+     *
+     * @param namespaceId namespace ID
+     * @param skillName skill name (for search)
+     * @param search search type (accurate/blur)
+     * @param orderBy sort field (e.g. "download_count"), null defaults to gmt_modified
+     * @param pageNo page number
+     * @param pageSize page size
+     * @return skill admin list page with governance metadata
+     * @throws NacosException if query failed
+     */
+    Page<SkillSummary> listSkills(String namespaceId, String skillName, String search, String orderBy,
+                                   int pageNo, int pageSize) throws NacosException;
+
+    /**
+     * Create a new draft version.
+     * <p>
+     * {@code initialContent} is required for a brand-new skill or when no published version exists to fork from.
+     * When forking from an existing version, {@code initialContent} must be null and content is copied from the base
+     * version.
+     * </p>
+     *
+     * @param namespaceId namespace ID
+     * @param name skill name
+     * @param basedOnVersion base version to fork from (optional; defaults per server rules when resolving base)
+     * @param targetVersion target draft version to create (optional; auto-generated when empty)
+     * @param initialContent full skill from {@code skillCard}, or null when forking
+     * @return created draft version
+     */
+    String createDraft(String namespaceId, String name, String basedOnVersion, String targetVersion,
+            Skill initialContent)
+            throws NacosException;
+
+    /**
+     * Update existing draft content.
+     *
+     * @param namespaceId namespace ID
+     * @param draftSkill full skill content to write into draft
+     */
+    void updateDraft(String namespaceId, Skill draftSkill) throws NacosException;
+
+    /**
+     * Delete current draft and release working pointer.
+     */
+    void deleteDraft(String namespaceId, String name) throws NacosException;
+
+    /**
+     * Submit a draft version for publish. If no pipeline plugins configured, will directly publish.
+     *
+     * @return submit result identifier or current version
+     */
+    String submit(String namespaceId, String name, String version) throws NacosException;
+
+    /**
+     * Publish a reviewing version. Must have pipeline all passed when pipeline exists.
+     */
+    void publish(String namespaceId, String name, String version, boolean updateLatestLabel) throws NacosException;
+
+    /**
+     * Update labels mapping (label -> version) without changing any version status.
+     */
+    void updateLabels(String namespaceId, String name, Map<String, String> labels) throws NacosException;
+
+    /**
+     * Update skill biz tags JSON.
+     */
+    void updateBizTags(String namespaceId, String name, String bizTags) throws NacosException;
+
+    /**
+     * Online/offline operation.
+     *
+     * @param scope "skill" for global enable/disable, otherwise version scope
+     * @param version version to operate when scope is version-level
+     * @param online true means online/enable, false means offline/disable
+     */
+    void changeOnlineStatus(String namespaceId, String name, String scope, String version, boolean online) throws NacosException;
+
+    /**
+     * Update skill visibility scope (PUBLIC or PRIVATE). Only the owner or users with explicit write permission can
+     * change the scope.
+     *
+     * @param namespaceId namespace ID
+     * @param name        skill name
+     * @param scope       target scope: PUBLIC or PRIVATE
+     * @throws NacosException if skill not found or no permission
+     */
+    void updateScope(String namespaceId, String name, String scope) throws NacosException;
+
+    // ========== Client APIs ==========
+
+    /**
+     * Search skills for runtime client usage. Only returns enabled skills that have at least one online version.
+     * Returns only name and description for client consumption.
+     *
+     * @param namespaceId namespace ID
+     * @param keyword keyword (optional)
+     * @param pageNo page number
+     * @param pageSize page size
+     */
+    Page<SkillBasicInfo> searchSkills(String namespaceId, String keyword, int pageNo, int pageSize) throws NacosException;
+
+    /**
+     * Query skill for runtime client usage. Priority: label > version > latest(label).
+     *
+     * @param namespaceId namespace ID
+     * @param name skill name
+     * @param version explicit version (optional)
+     * @param label route label, e.g. latest/stable (optional)
+     */
+    Skill querySkill(String namespaceId, String name, String version, String label) throws NacosException;
 }

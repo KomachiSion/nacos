@@ -16,12 +16,19 @@
 
 package com.alibaba.nacos.console.handler.impl.remote.ai;
 
-import com.alibaba.nacos.ai.form.skills.admin.SkillDetailForm;
+import com.alibaba.nacos.ai.form.skills.admin.SkillDraftCreateForm;
+import com.alibaba.nacos.ai.form.skills.admin.SkillBizTagsUpdateForm;
+import com.alibaba.nacos.ai.form.skills.admin.SkillLabelsUpdateForm;
+import com.alibaba.nacos.ai.form.skills.admin.SkillOnlineForm;
+import com.alibaba.nacos.ai.form.skills.admin.SkillPublishForm;
+import com.alibaba.nacos.ai.form.skills.admin.SkillScopeForm;
 import com.alibaba.nacos.ai.form.skills.admin.SkillForm;
 import com.alibaba.nacos.ai.form.skills.admin.SkillListForm;
+import com.alibaba.nacos.ai.form.skills.admin.SkillSubmitForm;
 import com.alibaba.nacos.ai.form.skills.admin.SkillUpdateForm;
 import com.alibaba.nacos.api.ai.model.skills.Skill;
-import com.alibaba.nacos.api.ai.model.skills.SkillBasicInfo;
+import com.alibaba.nacos.api.ai.model.skills.SkillMeta;
+import com.alibaba.nacos.api.ai.model.skills.SkillSummary;
 import com.alibaba.nacos.api.exception.NacosException;
 import com.alibaba.nacos.api.model.Page;
 import com.alibaba.nacos.console.handler.ai.SkillHandler;
@@ -46,52 +53,115 @@ public class SkillRemoteHandler implements SkillHandler {
     
     private final NacosMaintainerClientHolder clientHolder;
     
-    private final SkillUploadService skillUploadService;
-    
-    public SkillRemoteHandler(NacosMaintainerClientHolder clientHolder, SkillUploadService skillUploadService) {
+    public SkillRemoteHandler(NacosMaintainerClientHolder clientHolder) {
         this.clientHolder = clientHolder;
-        this.skillUploadService = skillUploadService;
     }
-    
+
     @Override
-    public void registerSkill(Skill skill, SkillDetailForm form) throws NacosException {
-        clientHolder.getAiMaintainerService().registerSkill(form.getNamespaceId(), skill);
-    }
-    
-    @Override
-    public Skill getSkill(SkillForm form) throws NacosException {
-        return clientHolder.getAiMaintainerService().getSkillDetail(
+    public SkillMeta getSkill(SkillForm form) throws NacosException {
+        return clientHolder.getAiMaintainerService().skill().getSkillMeta(
                 form.getNamespaceId(),
                 form.getSkillName()
         );
+    }
+
+    @Override
+    public Skill getSkillVersion(SkillForm form) throws NacosException {
+        return clientHolder.getAiMaintainerService().skill().getSkillVersionDetail(
+                form.getNamespaceId(),
+                form.getSkillName(),
+                form.getVersion()
+        );
+    }
+
+    @Override
+    public Skill downloadSkillVersion(SkillForm form) throws NacosException {
+        return getSkillVersion(form);
     }
     
     @Override
     public void deleteSkill(SkillForm form) throws NacosException {
-        clientHolder.getAiMaintainerService().deleteSkill(
+        clientHolder.getAiMaintainerService().skill().deleteSkill(
                 form.getNamespaceId(),
                 form.getSkillName()
         );
     }
-    
+
     @Override
-    public void updateSkill(Skill skill, SkillUpdateForm form) throws NacosException {
-        clientHolder.getAiMaintainerService().updateSkill(form.getNamespaceId(), skill);
-    }
-    
-    @Override
-    public Page<SkillBasicInfo> listSkills(SkillListForm skillListForm, PageForm pageForm) throws NacosException {
-        return clientHolder.getAiMaintainerService().listSkills(
+    public Page<SkillSummary> listSkills(SkillListForm skillListForm, PageForm pageForm) throws NacosException {
+        Page<SkillSummary> result = clientHolder.getAiMaintainerService().skill().listSkills(
                 skillListForm.getNamespaceId(),
                 skillListForm.getSkillName(),
                 skillListForm.getSearch(),
                 pageForm.getPageNo(),
                 pageForm.getPageSize()
         );
+        if (result == null) {
+            Page<SkillSummary> empty = new Page<>();
+            empty.setTotalCount(0);
+            empty.setPagesAvailable(0);
+            empty.setPageNumber(pageForm.getPageNo());
+            empty.setPageItems(new java.util.ArrayList<>());
+            return empty;
+        }
+        return result;
     }
     
     @Override
-    public String uploadSkillFromZip(String namespaceId, byte[] zipBytes) throws NacosException {
-        return skillUploadService.uploadSkillFromZip(namespaceId, zipBytes);
+    public String uploadSkillFromZip(String namespaceId, byte[] zipBytes, boolean overwrite) throws NacosException {
+        return clientHolder.getAiMaintainerService().skill().uploadSkillFromZip(namespaceId, zipBytes, overwrite);
+    }
+
+    @Override
+    public String createDraft(SkillDraftCreateForm form) throws NacosException {
+        return clientHolder.getAiMaintainerService().skill().createDraft(form.getNamespaceId(), form.getSkillName(),
+                form.getBasedOnVersion(), form.getSkillCard());
+    }
+
+    @Override
+    public void updateDraft(SkillUpdateForm form) throws NacosException {
+        clientHolder.getAiMaintainerService().skill().updateDraft(form.getNamespaceId(), form.getSkillCard(),
+                form.getSetAsLatest());
+    }
+
+    @Override
+    public void deleteDraft(SkillForm form) throws NacosException {
+        clientHolder.getAiMaintainerService().skill().deleteDraft(form.getNamespaceId(), form.getSkillName());
+    }
+
+    @Override
+    public String submit(SkillSubmitForm form) throws NacosException {
+        return clientHolder.getAiMaintainerService().skill()
+                .submit(form.getNamespaceId(), form.getSkillName(), form.getVersion());
+    }
+
+    @Override
+    public void publish(SkillPublishForm form) throws NacosException {
+        clientHolder.getAiMaintainerService().skill()
+                .publish(form.getNamespaceId(), form.getSkillName(), form.getVersion(), form.getUpdateLatestLabel());
+    }
+
+    @Override
+    public void updateLabels(SkillLabelsUpdateForm form) throws NacosException {
+        clientHolder.getAiMaintainerService().skill()
+                .updateLabels(form.getNamespaceId(), form.getSkillName(), form.getLabels());
+    }
+
+    @Override
+    public void updateBizTags(SkillBizTagsUpdateForm form) throws NacosException {
+        clientHolder.getAiMaintainerService().skill()
+                .updateBizTags(form.getNamespaceId(), form.getSkillName(), form.getBizTags());
+    }
+
+    @Override
+    public void changeOnlineStatus(SkillOnlineForm form, boolean online) throws NacosException {
+        clientHolder.getAiMaintainerService().skill().changeOnlineStatus(form.getNamespaceId(),
+                form.getSkillName(), form.getScope(), form.getVersion(), online);
+    }
+    
+    @Override
+    public void updateScope(SkillScopeForm form) throws NacosException {
+        clientHolder.getAiMaintainerService().skill().updateScope(form.getNamespaceId(), form.getSkillName(),
+                form.getScope());
     }
 }

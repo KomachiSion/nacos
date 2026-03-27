@@ -29,6 +29,7 @@ import com.alibaba.nacos.api.ai.model.mcp.McpServerBasicInfo;
 import com.alibaba.nacos.api.ai.model.mcp.McpServerDetailInfo;
 import com.alibaba.nacos.api.ai.model.mcp.McpToolSpecification;
 import com.alibaba.nacos.api.annotation.NacosApi;
+import com.alibaba.nacos.api.common.ApiType;
 import com.alibaba.nacos.api.exception.NacosException;
 import com.alibaba.nacos.api.exception.api.NacosApiException;
 import com.alibaba.nacos.api.model.Page;
@@ -38,7 +39,6 @@ import com.alibaba.nacos.auth.annotation.Secured;
 import com.alibaba.nacos.core.model.form.PageForm;
 import com.alibaba.nacos.core.paramcheck.ExtractorManager;
 import com.alibaba.nacos.plugin.auth.constant.ActionTypes;
-import com.alibaba.nacos.plugin.auth.constant.ApiType;
 import com.alibaba.nacos.plugin.auth.constant.SignType;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -86,7 +86,7 @@ public class McpAdminController {
      * List mcp server.
      *
      * @param mcpListForm list mcp servers request form.
-     * @param pageForm page info about the request.
+     * @param pageForm    page info about the request.
      * @return mcp server list wrapper with {@link Result}
      * @throws NacosApiException if request parameter is invalid or handle error
      */
@@ -106,8 +106,8 @@ public class McpAdminController {
         mcpListForm.validate();
         pageForm.validate();
         return Result.success(
-                mcpServerOperationService.listMcpServerWithPage(mcpListForm.getNamespaceId(), mcpListForm.getMcpName(), mcpListForm.getSearch(),
-                         pageForm.getPageNo(), pageForm.getPageSize()));
+                mcpServerOperationService.listMcpServerWithPage(mcpListForm.getNamespaceId(), mcpListForm.getMcpName(),
+                        mcpListForm.getSearch(), pageForm.getPageNo(), pageForm.getPageSize()));
     }
     
     /**
@@ -210,7 +210,8 @@ public class McpAdminController {
             @Parameter(name = "mcpId", example = "d7a64724-a556-4fe4-82fa-e806d43e00dc"), @Parameter(name = "version", example = "1.0.0")})
     public Result<String> deleteMcpServer(McpForm mcpForm) throws NacosException {
         mcpForm.validate();
-        mcpServerOperationService.deleteMcpServer(mcpForm.getNamespaceId(), mcpForm.getMcpName(), mcpForm.getMcpId(), mcpForm.getVersion());
+        mcpServerOperationService.deleteMcpServer(mcpForm.getNamespaceId(), mcpForm.getMcpName(), mcpForm.getMcpId(),
+                mcpForm.getVersion());
         return Result.success("ok");
     }
 }

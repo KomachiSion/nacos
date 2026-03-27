@@ -17,6 +17,7 @@
 package com.alibaba.nacos.console.controller.v3.core;
 
 import com.alibaba.nacos.api.annotation.NacosApi;
+import com.alibaba.nacos.api.common.ApiType;
 import com.alibaba.nacos.api.exception.NacosException;
 import com.alibaba.nacos.api.exception.api.NacosApiException;
 import com.alibaba.nacos.api.model.v2.ErrorCode;
@@ -31,7 +32,7 @@ import com.alibaba.nacos.core.plugin.model.vo.PluginDetailVO;
 import com.alibaba.nacos.core.plugin.model.vo.PluginInfoVO;
 import com.alibaba.nacos.api.remote.RemoteConstants;
 import com.alibaba.nacos.plugin.auth.constant.ActionTypes;
-import com.alibaba.nacos.plugin.auth.constant.ApiType;
+import com.alibaba.nacos.plugin.auth.constant.Constants;
 import com.alibaba.nacos.plugin.auth.constant.SignType;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -66,13 +67,13 @@ import java.util.Map;
 @Tag(name = "nacos.console.core.plugin.api.controller.name", description = "nacos.console.core.plugin.api.controller.description", extensions = {
         @Extension(name = RemoteConstants.LABEL_MODULE, properties = @ExtensionProperty(name = RemoteConstants.LABEL_MODULE, value = "common"))})
 public class ConsolePluginController {
-
+    
     private final PluginProxy pluginProxy;
-
+    
     public ConsolePluginController(PluginProxy pluginProxy) {
         this.pluginProxy = pluginProxy;
     }
-
+    
     /**
      * Get plugin list.
      *
@@ -80,7 +81,8 @@ public class ConsolePluginController {
      * @return plugin list
      */
     @GetMapping("/list")
-    @Secured(action = ActionTypes.READ, signType = SignType.CONSOLE, apiType = ApiType.CONSOLE_API)
+    @Secured(resource = Constants.Resource.CONSOLE_RESOURCE_NAME_PREFIX
+            + "plugins", action = ActionTypes.READ, signType = SignType.CONSOLE, apiType = ApiType.CONSOLE_API)
     @Operation(summary = "nacos.console.core.plugin.api.list.summary", description = "nacos.console.core.plugin.api.list.description", security = @SecurityRequirement(name = "nacos"))
     @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE, schema = @Schema(implementation = Result.class, example = "nacos.console.core.plugin.api.list.example")))
     @Parameters(value = @Parameter(name = "pluginType", example = "auth"))
@@ -88,7 +90,7 @@ public class ConsolePluginController {
             @RequestParam(value = "pluginType", required = false) String pluginType) throws NacosException {
         return Result.success(pluginProxy.listPlugins(pluginType));
     }
-
+    
     /**
      * Get plugin detail.
      *
@@ -97,16 +99,16 @@ public class ConsolePluginController {
      * @return plugin detail
      */
     @GetMapping
-    @Secured(action = ActionTypes.READ, signType = SignType.CONSOLE, apiType = ApiType.CONSOLE_API)
+    @Secured(resource = Constants.Resource.CONSOLE_RESOURCE_NAME_PREFIX
+            + "plugins", action = ActionTypes.READ, signType = SignType.CONSOLE, apiType = ApiType.CONSOLE_API)
     @Operation(summary = "nacos.console.core.plugin.api.get.summary", description = "nacos.console.core.plugin.api.get.description", security = @SecurityRequirement(name = "nacos"))
     @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE, schema = @Schema(implementation = Result.class, example = "nacos.console.core.plugin.api.get.example")))
     @Parameters(value = {@Parameter(name = "pluginType", required = true, example = "auth"), @Parameter(name = "pluginName", required = true, example = "nacos-default-auth-plugin")})
-    public Result<PluginDetailVO> getPluginDetail(
-            @RequestParam("pluginType") String pluginType,
+    public Result<PluginDetailVO> getPluginDetail(@RequestParam("pluginType") String pluginType,
             @RequestParam("pluginName") String pluginName) throws NacosException {
         return Result.success(pluginProxy.getPluginDetail(pluginType, pluginName));
     }
-
+    
     /**
      * Enable or disable plugin.
      *
@@ -116,18 +118,18 @@ public class ConsolePluginController {
      * @return success result
      */
     @PutMapping("/status")
-    @Secured(action = ActionTypes.WRITE, signType = SignType.CONSOLE, apiType = ApiType.CONSOLE_API)
+    @Secured(resource = Constants.Resource.CONSOLE_RESOURCE_NAME_PREFIX
+            + "plugins", action = ActionTypes.WRITE, signType = SignType.CONSOLE, apiType = ApiType.CONSOLE_API)
     @Operation(summary = "nacos.console.core.plugin.api.status.summary", description = "nacos.console.core.plugin.api.status.description", security = @SecurityRequirement(name = "nacos"))
     @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE, schema = @Schema(implementation = Result.class, example = "nacos.console.core.plugin.api.status.example")))
     @Parameters(value = {@Parameter(name = "pluginType", required = true, example = "auth"), @Parameter(name = "pluginName", required = true, example = "nacos-default-auth-plugin"), @Parameter(name = "enabled", required = true, example = "true")})
-    public Result<String> updatePluginStatus(
-            @RequestParam("pluginType") String pluginType,
-            @RequestParam("pluginName") String pluginName,
-            @RequestParam("enabled") boolean enabled) throws NacosException {
-        pluginProxy.updatePluginStatus(pluginType, pluginName, enabled);
+    public Result<String> updatePluginStatus(@RequestParam("pluginType") String pluginType,
+            @RequestParam("pluginName") String pluginName, @RequestParam("enabled") boolean enabled,
+            @RequestParam(value = "localOnly", defaultValue = "false") boolean localOnly) throws NacosException {
+        pluginProxy.updatePluginStatus(pluginType, pluginName, enabled, localOnly);
         return Result.success("Plugin status updated successfully");
     }
-
+    
     /**
      * Update plugin configuration.
      *
@@ -135,7 +137,8 @@ public class ConsolePluginController {
      * @return success result
      */
     @PutMapping("/config")
-    @Secured(action = ActionTypes.WRITE, signType = SignType.CONSOLE, apiType = ApiType.CONSOLE_API)
+    @Secured(resource = Constants.Resource.CONSOLE_RESOURCE_NAME_PREFIX
+            + "plugins", action = ActionTypes.WRITE, signType = SignType.CONSOLE, apiType = ApiType.CONSOLE_API)
     @Operation(summary = "nacos.console.core.plugin.api.config.summary", description = "nacos.console.core.plugin.api.config.description", security = @SecurityRequirement(name = "nacos"))
     @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE, schema = @Schema(implementation = Result.class, example = "nacos.console.core.plugin.api.config.example")))
     @Parameters(value = {@Parameter(name = "pluginType", required = true, example = "auth"), @Parameter(name = "pluginName", required = true, example = "nacos-default-auth-plugin"), @Parameter(name = "config", example = "{}"), @Parameter(name = "form", hidden = true)})
@@ -148,10 +151,11 @@ public class ConsolePluginController {
             throw new NacosApiException(HttpStatus.BAD_REQUEST.value(), ErrorCode.PARAMETER_VALIDATE_ERROR,
                     "Plugin configuration is required");
         }
-        pluginProxy.updatePluginConfig(form.getPluginType(), form.getPluginName(), form.getConfig());
+        pluginProxy.updatePluginConfig(form.getPluginType(), form.getPluginName(), form.getConfig(),
+                form.isLocalOnly());
         return Result.success("Plugin configuration updated successfully");
     }
-
+    
     /**
      * Get plugin availability across cluster nodes.
      *
@@ -160,12 +164,12 @@ public class ConsolePluginController {
      * @return node availability map
      */
     @GetMapping("/availability")
-    @Secured(action = ActionTypes.READ, signType = SignType.CONSOLE, apiType = ApiType.CONSOLE_API)
+    @Secured(resource = Constants.Resource.CONSOLE_RESOURCE_NAME_PREFIX
+            + "plugins", action = ActionTypes.READ, signType = SignType.CONSOLE, apiType = ApiType.CONSOLE_API)
     @Operation(summary = "nacos.console.core.plugin.api.availability.summary", description = "nacos.console.core.plugin.api.availability.description", security = @SecurityRequirement(name = "nacos"))
     @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE, schema = @Schema(implementation = Result.class, example = "nacos.console.core.plugin.api.availability.example")))
     @Parameters(value = {@Parameter(name = "pluginType", required = true, example = "auth"), @Parameter(name = "pluginName", required = true, example = "nacos-default-auth-plugin")})
-    public Result<Map<String, Boolean>> getPluginAvailability(
-            @RequestParam("pluginType") String pluginType,
+    public Result<Map<String, Boolean>> getPluginAvailability(@RequestParam("pluginType") String pluginType,
             @RequestParam("pluginName") String pluginName) throws NacosException {
         return Result.success(pluginProxy.getPluginAvailability(pluginType, pluginName));
     }

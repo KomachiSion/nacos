@@ -18,6 +18,7 @@
 package com.alibaba.nacos.console.controller.v3.naming;
 
 import com.alibaba.nacos.api.annotation.NacosApi;
+import com.alibaba.nacos.api.common.ApiType;
 import com.alibaba.nacos.api.exception.NacosException;
 import com.alibaba.nacos.api.exception.api.NacosApiException;
 import com.alibaba.nacos.api.model.Page;
@@ -38,7 +39,6 @@ import com.alibaba.nacos.naming.model.form.InstanceListForm;
 import com.alibaba.nacos.naming.paramcheck.NamingDefaultHttpParamExtractor;
 import com.alibaba.nacos.naming.web.CanDistro;
 import com.alibaba.nacos.plugin.auth.constant.ActionTypes;
-import com.alibaba.nacos.plugin.auth.constant.ApiType;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.Parameters;
@@ -66,8 +66,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/v3/console/ns/instance")
 @ExtractorManager.Extractor(httpExtractor = NamingDefaultHttpParamExtractor.class)
 @Tag(name = "nacos.console.naming.instance.api.controller.name", description = "nacos.console.naming.instance.api.controller.description", extensions = {
-        @Extension(name = RemoteConstants.LABEL_MODULE,
-                properties = @ExtensionProperty(name = RemoteConstants.LABEL_MODULE, value = RemoteConstants.LABEL_MODULE_NAMING))})
+        @Extension(name = RemoteConstants.LABEL_MODULE, properties = @ExtensionProperty(name = RemoteConstants.LABEL_MODULE, value = RemoteConstants.LABEL_MODULE_NAMING))})
 public class ConsoleInstanceController {
     
     private final InstanceProxy instanceProxy;
@@ -85,15 +84,13 @@ public class ConsoleInstanceController {
      * List instances of special service.
      *
      * @param instanceForm instance list form
-     * @param pageForm Page form
+     * @param pageForm     Page form
      * @return instances information
      */
     @Secured(action = ActionTypes.READ, apiType = ApiType.CONSOLE_API)
     @GetMapping("/list")
-    @Operation(summary = "nacos.console.naming.instance.api.list.summary", description = "nacos.console.naming.instance.api.list.description",
-            security = @SecurityRequirement(name = "nacos"))
-    @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
-            schema = @Schema(implementation = Result.class, example = "nacos.console.naming.instance.api.list.example")))
+    @Operation(summary = "nacos.console.naming.instance.api.list.summary", description = "nacos.console.naming.instance.api.list.description", security = @SecurityRequirement(name = "nacos"))
+    @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE, schema = @Schema(implementation = Result.class, example = "nacos.console.naming.instance.api.list.example")))
     @Parameters(value = {@Parameter(name = "pageNo", required = true, example = "1"),
             @Parameter(name = "pageSize", required = true, example = "100"),
             @Parameter(name = "namespaceId", example = "public"),
@@ -104,6 +101,7 @@ public class ConsoleInstanceController {
     public Result<Page<? extends Instance>> getInstanceList(InstanceListForm instanceForm, PageForm pageForm)
             throws NacosException {
         instanceForm.validate();
+        pageForm.validate();
         Page<? extends Instance> instancePage = instanceProxy.listInstances(instanceForm.getNamespaceId(),
                 instanceForm.getServiceName(), instanceForm.getGroupName(), instanceForm.getClusterName(),
                 pageForm.getPageNo(), pageForm.getPageSize());
@@ -117,14 +115,13 @@ public class ConsoleInstanceController {
     @PutMapping
     @TpsControl(pointName = "NamingInstanceUpdate", name = "HttpNamingInstanceUpdate")
     @Secured(action = ActionTypes.WRITE, apiType = ApiType.CONSOLE_API)
-    @Operation(summary = "nacos.console.naming.instance.api.update.summary", description = "nacos.console.naming.instance.api.update.description",
-            security = @SecurityRequirement(name = "nacos"))
-    @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
-            schema = @Schema(implementation = Result.class, example = "nacos.console.naming.instance.api.update.example")))
+    @Operation(summary = "nacos.console.naming.instance.api.update.summary", description = "nacos.console.naming.instance.api.update.description", security = @SecurityRequirement(name = "nacos"))
+    @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE, schema = @Schema(implementation = Result.class, example = "nacos.console.naming.instance.api.update.example")))
     @Parameters(value = {@Parameter(name = "namespaceId", example = "public"),
             @Parameter(name = "groupName", example = "DEFAULT_GROUP"),
             @Parameter(name = "serviceName", required = true, example = "test"),
-            @Parameter(name = "clusterName", example = "DEFAULT"), @Parameter(name = "ip", required = true, example = "127.0.0.1"),
+            @Parameter(name = "clusterName", example = "DEFAULT"),
+            @Parameter(name = "ip", required = true, example = "127.0.0.1"),
             @Parameter(name = "port", required = true, example = "8080"), @Parameter(name = "weight", example = "1.0"),
             @Parameter(name = "healthy", example = "true"), @Parameter(name = "ephemeral", example = "true"),
             @Parameter(name = "enabled", example = "true"), @Parameter(name = "metadata", example = "{\"zone\":\"a\"}"),

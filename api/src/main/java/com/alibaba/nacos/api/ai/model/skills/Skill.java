@@ -24,63 +24,24 @@ import java.util.Map;
  *
  * @author nacos
  */
-public class Skill {
+public class Skill extends SkillBase {
     
     /**
-     * Namespace ID (Nacos management field).
+     * Full SKILL.md content.
      */
-    private String namespaceId;
-    
-    /**
-     * Skill name (unique identifier, only allows English letters, underscore, and hyphen).
-     */
-    private String name;
-    
-    /**
-     * Skill description.
-     */
-    private String description;
-    
-    /**
-     * Claude instruction (note: singular instruction).
-     */
-    private String instruction;
+    private String skillMd;
     
     /**
      * Resource map (note: singular resource, key is resource name).
      */
     private Map<String, SkillResource> resource;
     
-    public String getNamespaceId() {
-        return namespaceId;
+    public String getSkillMd() {
+        return skillMd;
     }
     
-    public void setNamespaceId(String namespaceId) {
-        this.namespaceId = namespaceId;
-    }
-    
-    public String getName() {
-        return name;
-    }
-    
-    public void setName(String name) {
-        this.name = name;
-    }
-    
-    public String getDescription() {
-        return description;
-    }
-    
-    public void setDescription(String description) {
-        this.description = description;
-    }
-    
-    public String getInstruction() {
-        return instruction;
-    }
-    
-    public void setInstruction(String instruction) {
-        this.instruction = instruction;
+    public void setSkillMd(String skillMd) {
+        this.skillMd = skillMd;
     }
     
     public Map<String, SkillResource> getResource() {

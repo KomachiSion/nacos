@@ -31,7 +31,7 @@ public class SkillOptimizationPrompt {
         
         你的任务是：
         1. 分析用户提供的 Skill，包括：
-           - Skill 的名称、描述、指令（instruction）
+           - Skill 的名称、描述、SKILL.md 内容（skillMd）
            - Skill 的资源（resources）结构和内容
            - Skill 的整体结构和逻辑
         2. **重要：只在有明显可优化点时才进行优化**
@@ -63,14 +63,23 @@ public class SkillOptimizationPrompt {
         - 遵循 Agent Skill 最佳实践
         
         Agent Skill 最佳实践指南（优化时必须遵循）：
-        1. **名称规范**：
+        1. **名称规范**（name 字段必须严格遵守以下所有规则）：
            - **重要：必须保持原始 Skill 的名称不变，不要修改 name 字段**
            - 在返回的 JSON 中，optimizedSkill.name 必须与原始 Skill 的 name 完全一致
+           - name 字段的格式要求（仅供参考，不要修改原始名称）：
+             * 长度必须在 1-64 个字符之间
+             * 只能包含 Unicode 小写字母（a-z）、数字（0-9）和连字符（-）
+             * 不能以连字符（-）开头或结尾
+             * 不能包含连续的连字符（--）
         
-        2. **描述规范**：
-           - 一句话概括 Skill 的核心功能
+        2. **描述规范**（description 字段必须严格遵守以下所有规则）：
+           - 长度必须在 1-1024 个字符之间
+           - 必须同时描述 Skill 的功能（做什么）和适用场景（什么时候使用）
+           - 应包含能帮助 Agent 识别相关任务的特定关键词
            - 简洁、准确、有吸引力
-           - 例如："处理 Nacos 配置未推送的情况"、"分析服务健康状态"
+           - 例如："Process Nacos config not push issues.
+             Use when config changes are not being pushed to subscribers,
+             including push failures and connectivity problems."
         
         3. **指令规范**：
            - 清晰、具体、可执行
@@ -95,7 +104,7 @@ public class SkillOptimizationPrompt {
              * 在 resource 中添加任何与 SKILL.md 相关的资源
              * 将 SKILL.md 放在任何资源类型（template、data、script 等）下
              * 创建任何包含 "SKILL.md" 的资源
-           - SKILL.md 的内容由 Skill 的 name、description 和 instruction 字段自动生成，不需要也不应该在 resource 中定义
+           - SKILL.md 的内容位于 skillMd 字段，不需要也不应该在 resource 中定义
            - **如果用户要求"增加资源"或"添加资源"，只能添加真正的资源文件（如 .json、.yaml、.txt 等），绝对不能添加 SKILL.md**
         
         5. **MCP 工具使用**：
@@ -120,7 +129,7 @@ public class SkillOptimizationPrompt {
              * 确保整合后的 Skill 仍然保持清晰、可执行
         
         请以 JSON 格式返回优化结果，只包含 optimizedSkill 字段：
-        - optimizedSkill: 优化后的完整 Skill 对象（必须包含所有字段：name, description, instruction, resource）
+        - optimizedSkill: 优化后的完整 Skill 对象（必须包含所有字段：name, description, skillMd, resource）
           resource 字段是一个 Map<String, SkillResource>，其中：
           - key 是资源名称（resource name）
           - value 是 SkillResource 对象，包含：name, type, content, metadata
@@ -128,9 +137,9 @@ public class SkillOptimizationPrompt {
         返回格式示例：
         {
           "optimizedSkill": {
-            "name": "skill_name",
-            "description": "skill description",
-            "instruction": "skill instruction",
+            "name": "my-skill-name",
+            "description": "What the skill does. Use when [triggers].",
+            "skillMd": "---\\nname: my-skill-name\\ndescription: ...\\n---\\n\\nskill instruction",
             "resource": {
               "resource_key": {
                 "name": "resource_file.json",

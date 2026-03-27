@@ -88,7 +88,7 @@
     </issueManagement>
     
     <properties>
-        <revision>3.2.0-BETA</revision>
+        <revision>3.2.0</revision>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
         <!-- Compiler settings properties -->
@@ -139,7 +139,7 @@
         <postgresql.version>42.7.2</postgresql.version>
         <derby.version>10.14.2.0</derby.version>
         <jjwt.version>0.11.2</jjwt.version>
-        <grpc-java.version>1.75.0</grpc-java.version>
+        <grpc-java.version>1.78.0</grpc-java.version>
         <proto-google-common-protos.version>2.17.0</proto-google-common-protos.version>
         <protobuf-java.version>3.25.5</protobuf-java.version>
         <protoc-gen-grpc-java.version>${grpc-java.version}</protoc-gen-grpc-java.version>
@@ -330,6 +330,7 @@
                         <exclude>**/*.txt</exclude>
                         <exclude>**/*.factories</exclude>
                         <exclude>/console-ui/**</exclude>
+                        <exclude>/console-ui-next/**</exclude>
                         <exclude>**/gogo.proto</exclude>
                         <exclude>**/any.proto</exclude>
                         <exclude>src/main/java/com/alibaba/nacos/common/packagescan/classreading/**</exclude>
@@ -350,6 +351,7 @@
                         <exclude>.cursor/**</exclude>
                         <exclude>.agents/**</exclude>
                         <exclude>.qoder/**</exclude>
+                        <exclude>.tools/**</exclude>
                         <exclude>skills/**</exclude>
                     </excludes>
                 </configuration>
@@ -873,6 +875,16 @@
             </dependency>
             <dependency>
                 <groupId>${project.groupId}</groupId>
+                <artifactId>nacos-ai-plugin</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>${project.groupId}</groupId>
+                <artifactId>nacos-visibility-plugin</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>${project.groupId}</groupId>
                 <artifactId>nacos-auth</artifactId>
                 <version>${project.version}</version>
             </dependency>
@@ -980,7 +992,7 @@
                 <artifactId>derby</artifactId>
                 <version>${derby.version}</version>
             </dependency>
-            
+
             <!-- JRaft -->
             <dependency>
                 <groupId>com.alipay.sofa</groupId>
@@ -1156,4 +1168,3 @@
     </dependencyManagement>
 
 </project>
-

@@ -57,7 +57,22 @@ public enum PluginType {
     /**
      * Control plugin.
      */
-    CONTROL("control", "Control plugin");
+    CONTROL("control", "Control plugin"),
+    
+    /**
+     * Visibility plugin.
+     */
+    VISIBILITY("visibility", "Visibility plugin"),
+    
+    /**
+     * AI publish pipeline plugin.
+     */
+    AI_PIPELINE("ai-pipeline", "AI publish pipeline plugin"),
+    
+    /**
+     * AI resource storage plugin.
+     */
+    AI_STORAGE("ai-storage", "AI resource storage plugin");
 
     private final String type;
 
