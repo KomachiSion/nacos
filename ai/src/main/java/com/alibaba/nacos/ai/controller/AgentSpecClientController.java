@@ -30,8 +30,20 @@ import com.alibaba.nacos.api.model.v2.Result;
 import com.alibaba.nacos.auth.annotation.Secured;
 import com.alibaba.nacos.core.model.form.PageForm;
 import com.alibaba.nacos.core.paramcheck.ExtractorManager;
+import com.alibaba.nacos.api.remote.RemoteConstants;
 import com.alibaba.nacos.plugin.auth.constant.ActionTypes;
 import com.alibaba.nacos.plugin.auth.constant.SignType;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.Parameters;
+import io.swagger.v3.oas.annotations.extensions.Extension;
+import io.swagger.v3.oas.annotations.extensions.ExtensionProperty;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -47,6 +59,9 @@ import static com.alibaba.nacos.plugin.auth.constant.Constants.Tag.ALLOW_ANONYMO
 @RestController
 @RequestMapping(Constants.AgentSpecs.CLIENT_PATH)
 @ExtractorManager.Extractor(httpExtractor = ExtractorManager.DefaultHttpExtractor.class)
+@Tag(name = "nacos.admin.ai.agentspec.client.api.controller.name", description = "nacos.admin.ai.agentspec.client.api.controller.description", extensions = {
+        @Extension(name = RemoteConstants.LABEL_MODULE,
+                properties = @ExtensionProperty(name = RemoteConstants.LABEL_MODULE, value = "ai"))})
 public class AgentSpecClientController {
     
     private final AgentSpecOperationService agentSpecOperationService;
@@ -60,6 +75,13 @@ public class AgentSpecClientController {
      */
     @GetMapping("/search")
     @Secured(action = ActionTypes.READ, signType = SignType.AI, apiType = ApiType.OPEN_API)
+    @Operation(summary = "nacos.admin.ai.agentspec.client.api.search.summary", description = "nacos.admin.ai.agentspec.client.api.search.description", security = @SecurityRequirement(name = "nacos"))
+    @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE, schema = @Schema(implementation = Result.class, example = "nacos.admin.ai.agentspec.client.api.search.example")))
+    @Parameters(value = {@Parameter(name = "namespaceId", example = "public"),
+            @Parameter(name = "keyword", example = "my-agentspec"),
+            @Parameter(name = "pageNo", required = true, example = "1"),
+            @Parameter(name = "pageSize", required = true, example = "100"),
+            @Parameter(name = "form", hidden = true), @Parameter(name = "pageForm", hidden = true)})
     public Result<Page<AgentSpecBasicInfo>> search(AgentSpecSearchForm form, PageForm pageForm) throws NacosException {
         form.validate();
         pageForm.validate();
@@ -72,6 +94,13 @@ public class AgentSpecClientController {
      */
     @GetMapping
     @Secured(action = ActionTypes.READ, signType = SignType.AI, apiType = ApiType.OPEN_API, tags = {ALLOW_ANONYMOUS})
+    @Operation(summary = "nacos.admin.ai.agentspec.client.api.get.summary", description = "nacos.admin.ai.agentspec.client.api.get.description", security = @SecurityRequirement(name = "nacos"))
+    @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE, schema = @Schema(implementation = Result.class, example = "nacos.admin.ai.agentspec.client.api.get.example")))
+    @Parameters(value = {@Parameter(name = "namespaceId", example = "public"),
+            @Parameter(name = "name", required = true, example = "my-agentspec"),
+            @Parameter(name = "version", example = "1.0.0"),
+            @Parameter(name = "label"),
+            @Parameter(name = "form", hidden = true)})
     public Result<AgentSpec> get(AgentSpecQueryForm form) throws NacosException {
         form.validate();
         return Result.success(

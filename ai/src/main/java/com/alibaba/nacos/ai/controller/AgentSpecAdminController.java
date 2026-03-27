@@ -43,9 +43,22 @@ import com.alibaba.nacos.common.utils.JacksonUtils;
 import com.alibaba.nacos.common.utils.NamespaceUtil;
 import com.alibaba.nacos.core.model.form.PageForm;
 import com.alibaba.nacos.core.paramcheck.ExtractorManager;
+import com.alibaba.nacos.api.remote.RemoteConstants;
 import com.alibaba.nacos.plugin.auth.constant.ActionTypes;
 import com.alibaba.nacos.plugin.auth.constant.SignType;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.Parameters;
+import io.swagger.v3.oas.annotations.extensions.Extension;
+import io.swagger.v3.oas.annotations.extensions.ExtensionProperty;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.media.SchemaProperty;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
+import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -68,6 +81,9 @@ import static com.alibaba.nacos.plugin.auth.constant.Constants.Tag.ALLOW_ANONYMO
 @RestController
 @RequestMapping(Constants.AgentSpecs.ADMIN_PATH)
 @ExtractorManager.Extractor(httpExtractor = AgentSpecHttpParamExtractor.class)
+@Tag(name = "nacos.admin.ai.agentspec.api.controller.name", description = "nacos.admin.ai.agentspec.api.controller.description", extensions = {
+        @Extension(name = RemoteConstants.LABEL_MODULE,
+                properties = @ExtensionProperty(name = RemoteConstants.LABEL_MODULE, value = "ai"))})
 public class AgentSpecAdminController {
     
     private final AgentSpecOperationService agentSpecOperationService;
@@ -85,6 +101,11 @@ public class AgentSpecAdminController {
      */
     @GetMapping
     @Secured(action = ActionTypes.READ, signType = SignType.AI, apiType = ApiType.ADMIN_API)
+    @Operation(summary = "nacos.admin.ai.agentspec.api.get.summary", description = "nacos.admin.ai.agentspec.api.get.description", security = @SecurityRequirement(name = "nacos"))
+    @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE, schema = @Schema(implementation = Result.class, example = "nacos.admin.ai.agentspec.api.get.example")))
+    @Parameters(value = {@Parameter(name = "namespaceId", example = "public"),
+            @Parameter(name = "agentSpecName", required = true, example = "my-agentspec"),
+            @Parameter(name = "form", hidden = true)})
     public Result<AgentSpecMeta> getAgentSpec(AgentSpecForm form) throws NacosException {
         form.validate();
         return Result.success(
@@ -100,6 +121,12 @@ public class AgentSpecAdminController {
      */
     @GetMapping("/version")
     @Secured(action = ActionTypes.READ, signType = SignType.AI, apiType = ApiType.ADMIN_API)
+    @Operation(summary = "nacos.admin.ai.agentspec.api.get.version.summary", description = "nacos.admin.ai.agentspec.api.get.version.description", security = @SecurityRequirement(name = "nacos"))
+    @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE, schema = @Schema(implementation = Result.class, example = "nacos.admin.ai.agentspec.api.get.version.example")))
+    @Parameters(value = {@Parameter(name = "namespaceId", example = "public"),
+            @Parameter(name = "agentSpecName", required = true, example = "my-agentspec"),
+            @Parameter(name = "version", example = "1.0.0"),
+            @Parameter(name = "form", hidden = true)})
     public Result<AgentSpec> getAgentSpecVersion(AgentSpecForm form) throws NacosException {
         form.validate();
         return Result.success(
@@ -116,6 +143,11 @@ public class AgentSpecAdminController {
      */
     @DeleteMapping
     @Secured(action = ActionTypes.WRITE, signType = SignType.AI, apiType = ApiType.ADMIN_API)
+    @Operation(summary = "nacos.admin.ai.agentspec.api.delete.summary", description = "nacos.admin.ai.agentspec.api.delete.description", security = @SecurityRequirement(name = "nacos"))
+    @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE, schema = @Schema(implementation = Result.class, example = "nacos.admin.ai.agentspec.api.delete.example")))
+    @Parameters(value = {@Parameter(name = "namespaceId", example = "public"),
+            @Parameter(name = "agentSpecName", required = true, example = "my-agentspec"),
+            @Parameter(name = "form", hidden = true)})
     public Result<String> deleteAgentSpec(AgentSpecForm form) throws NacosException {
         form.validate();
         agentSpecOperationService.deleteAgentSpec(form.getNamespaceId(), form.getAgentSpecName());
@@ -133,6 +165,14 @@ public class AgentSpecAdminController {
     @GetMapping("/list")
     @Secured(action = ActionTypes.READ, signType = SignType.AI, apiType = ApiType.ADMIN_API,
             tags = {ALLOW_ANONYMOUS})
+    @Operation(summary = "nacos.admin.ai.agentspec.api.list.summary", description = "nacos.admin.ai.agentspec.api.list.description", security = @SecurityRequirement(name = "nacos"))
+    @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE, schema = @Schema(implementation = Result.class, example = "nacos.admin.ai.agentspec.api.list.example")))
+    @Parameters(value = {@Parameter(name = "pageNo", required = true, example = "1"),
+            @Parameter(name = "pageSize", required = true, example = "100"),
+            @Parameter(name = "namespaceId", example = "public"),
+            @Parameter(name = "agentSpecName", example = "my-agentspec"),
+            @Parameter(name = "search", example = "blur", description = "Search mode: accurate or blur"),
+            @Parameter(name = "agentSpecListForm", hidden = true), @Parameter(name = "pageForm", hidden = true)})
     public Result<Page<AgentSpecSummary>> listAgentSpecs(AgentSpecListForm agentSpecListForm, PageForm pageForm)
             throws NacosException {
         agentSpecListForm.validate();
@@ -154,6 +194,11 @@ public class AgentSpecAdminController {
     @PostMapping(value = "/upload", consumes = "multipart/form-data")
     @Secured(action = ActionTypes.WRITE, signType = SignType.AI, apiType = ApiType.ADMIN_API)
     @ExtractorManager.Extractor(httpExtractor = ExtractorManager.DefaultHttpExtractor.class)
+    @Operation(summary = "nacos.admin.ai.agentspec.api.upload.summary", description = "nacos.admin.ai.agentspec.api.upload.description", security = @SecurityRequirement(name = "nacos"))
+    @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE, schema = @Schema(implementation = Result.class, example = "nacos.admin.ai.agentspec.api.upload.example")))
+    @io.swagger.v3.oas.annotations.parameters.RequestBody(description = "nacos.admin.ai.agentspec.api.upload.body.description", content = @Content(mediaType = MediaType.MULTIPART_FORM_DATA_VALUE, schemaProperties = {
+            @SchemaProperty(name = "namespaceId", schema = @Schema(type = "string", example = "public")),
+            @SchemaProperty(name = "file", schema = @Schema(type = "string", format = "binary", description = "ZIP file containing agentspec package"))}))
     public Result<String> uploadAgentSpec(HttpServletRequest request,
             @RequestParam(value = "namespaceId", required = false) String namespaceId,
             @RequestParam(value = "overwrite", required = false, defaultValue = "false") boolean overwrite,
@@ -169,6 +214,12 @@ public class AgentSpecAdminController {
      */
     @PostMapping("/draft")
     @Secured(action = ActionTypes.WRITE, signType = SignType.AI, apiType = ApiType.ADMIN_API)
+    @Operation(summary = "nacos.admin.ai.agentspec.api.draft.create.summary", description = "nacos.admin.ai.agentspec.api.draft.create.description", security = @SecurityRequirement(name = "nacos"))
+    @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE, schema = @Schema(implementation = Result.class, example = "nacos.admin.ai.agentspec.api.draft.create.example")))
+    @Parameters(value = {@Parameter(name = "namespaceId", example = "public"),
+            @Parameter(name = "agentSpecName", required = true, example = "my-agentspec"),
+            @Parameter(name = "basedOnVersion", example = "1.0.0"),
+            @Parameter(name = "form", hidden = true)})
     public Result<String> createDraft(AgentSpecDraftCreateForm form) throws NacosException {
         form.validate();
         String v = agentSpecOperationService.createDraft(form.getNamespaceId(), form.getAgentSpecName(),
@@ -181,6 +232,12 @@ public class AgentSpecAdminController {
      */
     @PutMapping("/draft")
     @Secured(action = ActionTypes.WRITE, signType = SignType.AI, apiType = ApiType.ADMIN_API)
+    @Operation(summary = "nacos.admin.ai.agentspec.api.draft.update.summary", description = "nacos.admin.ai.agentspec.api.draft.update.description", security = @SecurityRequirement(name = "nacos"))
+    @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE, schema = @Schema(implementation = Result.class, example = "nacos.admin.ai.agentspec.api.draft.update.example")))
+    @Parameters(value = {@Parameter(name = "namespaceId", example = "public"),
+            @Parameter(name = "agentSpecName", example = "my-agentspec"),
+            @Parameter(name = "agentSpecCard", required = true, description = "AgentSpec card JSON string containing complete AgentSpec information"),
+            @Parameter(name = "form", hidden = true)})
     public Result<String> updateDraft(AgentSpecUpdateForm form) throws NacosException {
         form.validate();
         AgentSpec agentSpec = AgentSpecRequestUtil.parseAgentSpec(form);
@@ -193,6 +250,11 @@ public class AgentSpecAdminController {
      */
     @DeleteMapping("/draft")
     @Secured(action = ActionTypes.WRITE, signType = SignType.AI, apiType = ApiType.ADMIN_API)
+    @Operation(summary = "nacos.admin.ai.agentspec.api.draft.delete.summary", description = "nacos.admin.ai.agentspec.api.draft.delete.description", security = @SecurityRequirement(name = "nacos"))
+    @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE, schema = @Schema(implementation = Result.class, example = "nacos.admin.ai.agentspec.api.draft.delete.example")))
+    @Parameters(value = {@Parameter(name = "namespaceId", example = "public"),
+            @Parameter(name = "agentSpecName", required = true, example = "my-agentspec"),
+            @Parameter(name = "form", hidden = true)})
     public Result<String> deleteDraft(AgentSpecForm form) throws NacosException {
         form.validate();
         agentSpecOperationService.deleteDraft(form.getNamespaceId(), form.getAgentSpecName());
@@ -204,6 +266,12 @@ public class AgentSpecAdminController {
      */
     @PostMapping("/submit")
     @Secured(action = ActionTypes.WRITE, signType = SignType.AI, apiType = ApiType.ADMIN_API)
+    @Operation(summary = "nacos.admin.ai.agentspec.api.submit.summary", description = "nacos.admin.ai.agentspec.api.submit.description", security = @SecurityRequirement(name = "nacos"))
+    @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE, schema = @Schema(implementation = Result.class, example = "nacos.admin.ai.agentspec.api.submit.example")))
+    @Parameters(value = {@Parameter(name = "namespaceId", example = "public"),
+            @Parameter(name = "agentSpecName", required = true, example = "my-agentspec"),
+            @Parameter(name = "version", example = "1.0.0"),
+            @Parameter(name = "form", hidden = true)})
     public Result<String> submit(AgentSpecSubmitForm form) throws NacosException {
         form.validate();
         String result = agentSpecOperationService.submit(form.getNamespaceId(), form.getAgentSpecName(),
@@ -216,6 +284,13 @@ public class AgentSpecAdminController {
      */
     @PostMapping("/publish")
     @Secured(action = ActionTypes.WRITE, signType = SignType.AI, apiType = ApiType.ADMIN_API)
+    @Operation(summary = "nacos.admin.ai.agentspec.api.publish.summary", description = "nacos.admin.ai.agentspec.api.publish.description", security = @SecurityRequirement(name = "nacos"))
+    @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE, schema = @Schema(implementation = Result.class, example = "nacos.admin.ai.agentspec.api.publish.example")))
+    @Parameters(value = {@Parameter(name = "namespaceId", example = "public"),
+            @Parameter(name = "agentSpecName", required = true, example = "my-agentspec"),
+            @Parameter(name = "version", required = true, example = "1.0.0"),
+            @Parameter(name = "updateLatestLabel", example = "true"),
+            @Parameter(name = "form", hidden = true)})
     public Result<String> publish(AgentSpecPublishForm form) throws NacosException {
         form.validate();
         boolean updateLatest = form.getUpdateLatestLabel() == null || form.getUpdateLatestLabel();
@@ -229,6 +304,12 @@ public class AgentSpecAdminController {
      */
     @PutMapping("/labels")
     @Secured(action = ActionTypes.WRITE, signType = SignType.AI, apiType = ApiType.ADMIN_API)
+    @Operation(summary = "nacos.admin.ai.agentspec.api.labels.update.summary", description = "nacos.admin.ai.agentspec.api.labels.update.description", security = @SecurityRequirement(name = "nacos"))
+    @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE, schema = @Schema(implementation = Result.class, example = "nacos.admin.ai.agentspec.api.labels.update.example")))
+    @Parameters(value = {@Parameter(name = "namespaceId", example = "public"),
+            @Parameter(name = "agentSpecName", required = true, example = "my-agentspec"),
+            @Parameter(name = "labels", required = true, example = "{\"latest\":\"v1.0.0\"}"),
+            @Parameter(name = "form", hidden = true)})
     public Result<String> updateLabels(AgentSpecLabelsUpdateForm form) throws NacosException {
         form.validate();
         Map<String, String> labels = JacksonUtils.toObj(form.getLabels(), Map.class);
@@ -241,6 +322,12 @@ public class AgentSpecAdminController {
      */
     @PutMapping("/biz-tags")
     @Secured(action = ActionTypes.WRITE, signType = SignType.AI, apiType = ApiType.ADMIN_API)
+    @Operation(summary = "nacos.admin.ai.agentspec.api.biz.tags.update.summary", description = "nacos.admin.ai.agentspec.api.biz.tags.update.description", security = @SecurityRequirement(name = "nacos"))
+    @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE, schema = @Schema(implementation = Result.class, example = "nacos.admin.ai.agentspec.api.biz.tags.update.example")))
+    @Parameters(value = {@Parameter(name = "namespaceId", example = "public"),
+            @Parameter(name = "agentSpecName", required = true, example = "my-agentspec"),
+            @Parameter(name = "bizTags", required = true, example = "[\"tag1\",\"tag2\"]"),
+            @Parameter(name = "form", hidden = true)})
     public Result<String> updateBizTags(AgentSpecBizTagsUpdateForm form) throws NacosException {
         form.validate();
         agentSpecOperationService.updateBizTags(form.getNamespaceId(), form.getAgentSpecName(), form.getBizTags());
@@ -252,6 +339,13 @@ public class AgentSpecAdminController {
      */
     @PostMapping("/online")
     @Secured(action = ActionTypes.WRITE, signType = SignType.AI, apiType = ApiType.ADMIN_API)
+    @Operation(summary = "nacos.admin.ai.agentspec.api.online.summary", description = "nacos.admin.ai.agentspec.api.online.description", security = @SecurityRequirement(name = "nacos"))
+    @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE, schema = @Schema(implementation = Result.class, example = "nacos.admin.ai.agentspec.api.online.example")))
+    @Parameters(value = {@Parameter(name = "namespaceId", example = "public"),
+            @Parameter(name = "agentSpecName", required = true, example = "my-agentspec"),
+            @Parameter(name = "scope", example = "agentspec", description = "Use 'agentspec' for agentspec-level online; otherwise version-level"),
+            @Parameter(name = "version", example = "1.0.0"),
+            @Parameter(name = "form", hidden = true)})
     public Result<String> online(AgentSpecOnlineForm form) throws NacosException {
         form.validate();
         agentSpecOperationService.changeOnlineStatus(form.getNamespaceId(), form.getAgentSpecName(), form.getScope(),
@@ -268,6 +362,12 @@ public class AgentSpecAdminController {
      */
     @PutMapping("/scope")
     @Secured(action = ActionTypes.WRITE, signType = SignType.AI, apiType = ApiType.ADMIN_API)
+    @Operation(summary = "nacos.admin.ai.agentspec.api.scope.update.summary", description = "nacos.admin.ai.agentspec.api.scope.update.description", security = @SecurityRequirement(name = "nacos"))
+    @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE, schema = @Schema(implementation = Result.class, example = "nacos.admin.ai.agentspec.api.scope.update.example")))
+    @Parameters(value = {@Parameter(name = "namespaceId", example = "public"),
+            @Parameter(name = "agentSpecName", required = true, example = "my-agentspec"),
+            @Parameter(name = "scope", required = true, example = "PUBLIC", description = "PUBLIC or PRIVATE"),
+            @Parameter(name = "form", hidden = true)})
     public Result<String> updateScope(AgentSpecScopeForm form) throws NacosException {
         form.validate();
         agentSpecOperationService.updateScope(form.getNamespaceId(), form.getAgentSpecName(), form.getScope());
@@ -279,6 +379,13 @@ public class AgentSpecAdminController {
      */
     @PostMapping("/offline")
     @Secured(action = ActionTypes.WRITE, signType = SignType.AI, apiType = ApiType.ADMIN_API)
+    @Operation(summary = "nacos.admin.ai.agentspec.api.offline.summary", description = "nacos.admin.ai.agentspec.api.offline.description", security = @SecurityRequirement(name = "nacos"))
+    @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE, schema = @Schema(implementation = Result.class, example = "nacos.admin.ai.agentspec.api.offline.example")))
+    @Parameters(value = {@Parameter(name = "namespaceId", example = "public"),
+            @Parameter(name = "agentSpecName", required = true, example = "my-agentspec"),
+            @Parameter(name = "scope", example = "agentspec", description = "Use 'agentspec' for agentspec-level offline; otherwise version-level"),
+            @Parameter(name = "version", example = "1.0.0"),
+            @Parameter(name = "form", hidden = true)})
     public Result<String> offline(AgentSpecOnlineForm form) throws NacosException {
         form.validate();
         agentSpecOperationService.changeOnlineStatus(form.getNamespaceId(), form.getAgentSpecName(), form.getScope(),

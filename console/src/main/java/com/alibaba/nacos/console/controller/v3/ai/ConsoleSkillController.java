@@ -116,11 +116,12 @@ public class ConsoleSkillController {
      */
     @GetMapping("/version")
     @Secured(action = ActionTypes.READ, signType = SignType.AI, apiType = ApiType.CONSOLE_API)
-    @Operation(summary = "nacos.console.ai.skill.api.update.summary", description = "nacos.console.ai.skill.api.update.description", security = @SecurityRequirement(name = "nacos"))
-    @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE, schema = @Schema(implementation = Result.class, example = "nacos.console.ai.skill.api.update.example")))
+    @Operation(summary = "nacos.console.ai.skill.api.get.version.summary", description = "nacos.console.ai.skill.api.get.version.description", security = @SecurityRequirement(name = "nacos"))
+    @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE, schema = @Schema(implementation = Result.class, example = "nacos.console.ai.skill.api.get.version.example")))
     @Parameters(value = {@Parameter(name = "namespaceId", example = "public"),
-            @Parameter(name = "skillCard", required = true, description = "Skill card JSON"),
-            @Parameter(name = "skillName"), @Parameter(name = "version"), @Parameter(name = "form", hidden = true)})
+            @Parameter(name = "skillName", required = true, example = "my-skill"),
+            @Parameter(name = "version", example = "1.0.0"),
+            @Parameter(name = "form", hidden = true)})
     public Result<Skill> getSkillVersion(SkillForm form) throws NacosException {
         form.validate();
         return Result.success(skillProxy.getSkillVersion(form));
@@ -135,6 +136,12 @@ public class ConsoleSkillController {
      */
     @GetMapping("/version/download")
     @Secured(action = ActionTypes.READ, signType = SignType.AI, apiType = ApiType.CONSOLE_API)
+    @Operation(summary = "nacos.console.ai.skill.api.download.version.summary", description = "nacos.console.ai.skill.api.download.version.description", security = @SecurityRequirement(name = "nacos"))
+    @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_OCTET_STREAM_VALUE, schema = @Schema(type = "string", format = "binary", description = "ZIP file containing the skill package")))
+    @Parameters(value = {@Parameter(name = "namespaceId", example = "public"),
+            @Parameter(name = "skillName", required = true, example = "my-skill"),
+            @Parameter(name = "version", example = "1.0.0"),
+            @Parameter(name = "form", hidden = true)})
     public ResponseEntity<byte[]> downloadSkillVersion(SkillForm form) throws NacosException {
         form.validate();
         Skill skill = skillProxy.downloadSkillVersion(form);
@@ -216,6 +223,14 @@ public class ConsoleSkillController {
      */
     @PostMapping("/draft")
     @Secured(action = ActionTypes.WRITE, signType = SignType.AI, apiType = ApiType.CONSOLE_API)
+    @Operation(summary = "nacos.console.ai.skill.api.draft.create.summary", description = "nacos.console.ai.skill.api.draft.create.description", security = @SecurityRequirement(name = "nacos"))
+    @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE, schema = @Schema(implementation = Result.class, example = "nacos.console.ai.skill.api.draft.create.example")))
+    @Parameters(value = {@Parameter(name = "namespaceId", example = "public"),
+            @Parameter(name = "skillName", example = "my-skill"),
+            @Parameter(name = "basedOnVersion", example = "1.0.0"),
+            @Parameter(name = "targetVersion", example = "1.1.0"),
+            @Parameter(name = "skillCard", description = "Skill card JSON; required if basedOnVersion is not set"),
+            @Parameter(name = "form", hidden = true)})
     public Result<String> createDraft(SkillDraftCreateForm form) throws NacosException {
         form.prepareCreateDraftRequest();
         return Result.success(skillProxy.createDraft(form));
@@ -226,6 +241,12 @@ public class ConsoleSkillController {
      */
     @PutMapping("/draft")
     @Secured(action = ActionTypes.WRITE, signType = SignType.AI, apiType = ApiType.CONSOLE_API)
+    @Operation(summary = "nacos.console.ai.skill.api.draft.update.summary", description = "nacos.console.ai.skill.api.draft.update.description", security = @SecurityRequirement(name = "nacos"))
+    @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE, schema = @Schema(implementation = Result.class, example = "nacos.console.ai.skill.api.draft.update.example")))
+    @Parameters(value = {@Parameter(name = "namespaceId", example = "public"),
+            @Parameter(name = "skillName", required = true, example = "my-skill"),
+            @Parameter(name = "skillCard", required = true, description = "Skill card JSON string containing complete Skill information"),
+            @Parameter(name = "form", hidden = true)})
     public Result<String> updateDraft(SkillUpdateForm form) throws NacosException {
         form.validate();
         skillProxy.updateDraft(form);
@@ -237,6 +258,11 @@ public class ConsoleSkillController {
      */
     @DeleteMapping("/draft")
     @Secured(action = ActionTypes.WRITE, signType = SignType.AI, apiType = ApiType.CONSOLE_API)
+    @Operation(summary = "nacos.console.ai.skill.api.draft.delete.summary", description = "nacos.console.ai.skill.api.draft.delete.description", security = @SecurityRequirement(name = "nacos"))
+    @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE, schema = @Schema(implementation = Result.class, example = "nacos.console.ai.skill.api.draft.delete.example")))
+    @Parameters(value = {@Parameter(name = "namespaceId", example = "public"),
+            @Parameter(name = "skillName", required = true, example = "my-skill"),
+            @Parameter(name = "form", hidden = true)})
     public Result<String> deleteDraft(SkillForm form) throws NacosException {
         form.validate();
         skillProxy.deleteDraft(form);
@@ -248,6 +274,12 @@ public class ConsoleSkillController {
      */
     @PostMapping("/submit")
     @Secured(action = ActionTypes.WRITE, signType = SignType.AI, apiType = ApiType.CONSOLE_API)
+    @Operation(summary = "nacos.console.ai.skill.api.submit.summary", description = "nacos.console.ai.skill.api.submit.description", security = @SecurityRequirement(name = "nacos"))
+    @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE, schema = @Schema(implementation = Result.class, example = "nacos.console.ai.skill.api.submit.example")))
+    @Parameters(value = {@Parameter(name = "namespaceId", example = "public"),
+            @Parameter(name = "skillName", required = true, example = "my-skill"),
+            @Parameter(name = "version", example = "1.0.0"),
+            @Parameter(name = "form", hidden = true)})
     public Result<String> submit(SkillSubmitForm form) throws NacosException {
         form.validate();
         return Result.success(skillProxy.submit(form));
@@ -258,6 +290,13 @@ public class ConsoleSkillController {
      */
     @PostMapping("/publish")
     @Secured(action = ActionTypes.WRITE, signType = SignType.AI, apiType = ApiType.CONSOLE_API)
+    @Operation(summary = "nacos.console.ai.skill.api.publish.summary", description = "nacos.console.ai.skill.api.publish.description", security = @SecurityRequirement(name = "nacos"))
+    @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE, schema = @Schema(implementation = Result.class, example = "nacos.console.ai.skill.api.publish.example")))
+    @Parameters(value = {@Parameter(name = "namespaceId", example = "public"),
+            @Parameter(name = "skillName", required = true, example = "my-skill"),
+            @Parameter(name = "version", required = true, example = "1.0.0"),
+            @Parameter(name = "updateLatestLabel", example = "true"),
+            @Parameter(name = "form", hidden = true)})
     public Result<String> publish(SkillPublishForm form) throws NacosException {
         form.validate();
         skillProxy.publish(form);
@@ -269,6 +308,12 @@ public class ConsoleSkillController {
      */
     @PutMapping("/labels")
     @Secured(action = ActionTypes.WRITE, signType = SignType.AI, apiType = ApiType.CONSOLE_API)
+    @Operation(summary = "nacos.console.ai.skill.api.labels.update.summary", description = "nacos.console.ai.skill.api.labels.update.description", security = @SecurityRequirement(name = "nacos"))
+    @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE, schema = @Schema(implementation = Result.class, example = "nacos.console.ai.skill.api.labels.update.example")))
+    @Parameters(value = {@Parameter(name = "namespaceId", example = "public"),
+            @Parameter(name = "skillName", required = true, example = "my-skill"),
+            @Parameter(name = "labels", required = true, example = "{\"latest\":\"v1.0.0\"}"),
+            @Parameter(name = "form", hidden = true)})
     public Result<String> updateLabels(SkillLabelsUpdateForm form) throws NacosException {
         form.validate();
         skillProxy.updateLabels(form);
@@ -280,6 +325,12 @@ public class ConsoleSkillController {
      */
     @PutMapping("/biz-tags")
     @Secured(action = ActionTypes.WRITE, signType = SignType.AI, apiType = ApiType.CONSOLE_API)
+    @Operation(summary = "nacos.console.ai.skill.api.biz.tags.update.summary", description = "nacos.console.ai.skill.api.biz.tags.update.description", security = @SecurityRequirement(name = "nacos"))
+    @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE, schema = @Schema(implementation = Result.class, example = "nacos.console.ai.skill.api.biz.tags.update.example")))
+    @Parameters(value = {@Parameter(name = "namespaceId", example = "public"),
+            @Parameter(name = "skillName", required = true, example = "my-skill"),
+            @Parameter(name = "bizTags", required = true, example = "[\"tag1\",\"tag2\"]"),
+            @Parameter(name = "form", hidden = true)})
     public Result<String> updateBizTags(SkillBizTagsUpdateForm form) throws NacosException {
         form.validate();
         skillProxy.updateBizTags(form);
@@ -291,6 +342,13 @@ public class ConsoleSkillController {
      */
     @PostMapping("/online")
     @Secured(action = ActionTypes.WRITE, signType = SignType.AI, apiType = ApiType.CONSOLE_API)
+    @Operation(summary = "nacos.console.ai.skill.api.online.summary", description = "nacos.console.ai.skill.api.online.description", security = @SecurityRequirement(name = "nacos"))
+    @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE, schema = @Schema(implementation = Result.class, example = "nacos.console.ai.skill.api.online.example")))
+    @Parameters(value = {@Parameter(name = "namespaceId", example = "public"),
+            @Parameter(name = "skillName", required = true, example = "my-skill"),
+            @Parameter(name = "scope", example = "skill", description = "Use 'skill' for skill-level online; otherwise version-level"),
+            @Parameter(name = "version", example = "1.0.0"),
+            @Parameter(name = "form", hidden = true)})
     public Result<String> online(SkillOnlineForm form) throws NacosException {
         form.validate();
         skillProxy.online(form);
@@ -302,6 +360,13 @@ public class ConsoleSkillController {
      */
     @PostMapping("/offline")
     @Secured(action = ActionTypes.WRITE, signType = SignType.AI, apiType = ApiType.CONSOLE_API)
+    @Operation(summary = "nacos.console.ai.skill.api.offline.summary", description = "nacos.console.ai.skill.api.offline.description", security = @SecurityRequirement(name = "nacos"))
+    @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE, schema = @Schema(implementation = Result.class, example = "nacos.console.ai.skill.api.offline.example")))
+    @Parameters(value = {@Parameter(name = "namespaceId", example = "public"),
+            @Parameter(name = "skillName", required = true, example = "my-skill"),
+            @Parameter(name = "scope", example = "skill", description = "Use 'skill' for skill-level offline; otherwise version-level"),
+            @Parameter(name = "version", example = "1.0.0"),
+            @Parameter(name = "form", hidden = true)})
     public Result<String> offline(SkillOnlineForm form) throws NacosException {
         form.validate();
         skillProxy.offline(form);
@@ -313,6 +378,12 @@ public class ConsoleSkillController {
      */
     @PutMapping("/scope")
     @Secured(action = ActionTypes.WRITE, signType = SignType.AI, apiType = ApiType.CONSOLE_API)
+    @Operation(summary = "nacos.console.ai.skill.api.scope.update.summary", description = "nacos.console.ai.skill.api.scope.update.description", security = @SecurityRequirement(name = "nacos"))
+    @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE, schema = @Schema(implementation = Result.class, example = "nacos.console.ai.skill.api.scope.update.example")))
+    @Parameters(value = {@Parameter(name = "namespaceId", example = "public"),
+            @Parameter(name = "skillName", required = true, example = "my-skill"),
+            @Parameter(name = "scope", required = true, example = "PUBLIC", description = "PUBLIC or PRIVATE"),
+            @Parameter(name = "form", hidden = true)})
     public Result<String> updateScope(SkillScopeForm form) throws NacosException {
         form.validate();
         skillProxy.updateScope(form);
