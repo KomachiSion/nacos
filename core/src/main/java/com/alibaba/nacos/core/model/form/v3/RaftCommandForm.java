@@ -42,13 +42,13 @@ public class RaftCommandForm implements NacosForm {
     /**
      * Raft command. Valid values:  "transferLeader", "doSnapshot", "resetRaftCluster", "removePeer".
      */
-    @Schema(example = "doSnapshot")
+    @Schema(requiredMode = Schema.RequiredMode.REQUIRED, example = "doSnapshot")
     private String command;
     
     /**
      * Command value. The format: {raft_server_ip}:{raft_port}[,{raft_server_ip}:{raft_port}]
      */
-    @Schema(example = "127.0.0.1:8848")
+    @Schema(requiredMode = Schema.RequiredMode.REQUIRED, example = "127.0.0.1:8848")
     private String value;
     
     @Override

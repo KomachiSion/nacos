@@ -28,8 +28,6 @@ import com.alibaba.nacos.common.utils.JacksonUtils;
 import com.alibaba.nacos.common.utils.StringUtils;
 import com.alibaba.nacos.core.plugin.PluginManager;
 import com.alibaba.nacos.core.plugin.model.PluginInfo;
-import com.alibaba.nacos.core.plugin.model.form.PluginConfigForm;
-import com.alibaba.nacos.core.plugin.model.form.PluginStatusForm;
 import com.alibaba.nacos.core.plugin.model.vo.PluginDetailVO;
 import com.alibaba.nacos.core.plugin.model.vo.PluginInfoVO;
 import com.alibaba.nacos.core.utils.Commons;
@@ -142,7 +140,10 @@ public class PluginControllerV3 {
             + "/plugin", action = ActionTypes.WRITE, signType = SignType.CONSOLE, apiType = ApiType.ADMIN_API)
     @Operation(summary = "nacos.admin.core.plugin.api.status.summary", description = "nacos.admin.core.plugin.api.status.description", security = @SecurityRequirement(name = "nacos"))
     @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE, schema = @Schema(implementation = Result.class, example = "nacos.admin.core.plugin.api.status.example")))
-    @io.swagger.v3.oas.annotations.parameters.RequestBody(description = "nacos.admin.core.plugin.api.status.body.description", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE, schema = @Schema(implementation = PluginStatusForm.class)))
+    @Parameters(value = {@Parameter(name = "pluginType", required = true, example = "auth"),
+            @Parameter(name = "pluginName", required = true, example = "nacos-default-auth-plugin"),
+            @Parameter(name = "enabled", required = true, example = "true"),
+            @Parameter(name = "localOnly", example = "false")})
     public Result<String> updatePluginStatus(@RequestParam("pluginType") String pluginType,
             @RequestParam("pluginName") String pluginName, @RequestParam("enabled") boolean enabled,
             @RequestParam(value = "localOnly", defaultValue = "false") boolean localOnly) throws NacosApiException {
@@ -166,7 +167,10 @@ public class PluginControllerV3 {
             + "/plugin", action = ActionTypes.WRITE, signType = SignType.CONSOLE, apiType = ApiType.ADMIN_API)
     @Operation(summary = "nacos.admin.core.plugin.api.config.summary", description = "nacos.admin.core.plugin.api.config.description", security = @SecurityRequirement(name = "nacos"))
     @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE, schema = @Schema(implementation = Result.class, example = "nacos.admin.core.plugin.api.config.example")))
-    @io.swagger.v3.oas.annotations.parameters.RequestBody(description = "nacos.admin.core.plugin.api.config.body.description", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE, schema = @Schema(implementation = PluginConfigForm.class)))
+    @Parameters(value = {@Parameter(name = "pluginType", required = true, example = "auth"),
+            @Parameter(name = "pluginName", required = true, example = "nacos-default-auth-plugin"),
+            @Parameter(name = "config", required = true, example = "{\"key\":\"value\"}"),
+            @Parameter(name = "localOnly", example = "false")})
     public Result<String> updatePluginConfig(@RequestParam("pluginType") String pluginType,
             @RequestParam("pluginName") String pluginName, @RequestParam("config") String configJson,
             @RequestParam(value = "localOnly", defaultValue = "false") boolean localOnly) throws NacosApiException {

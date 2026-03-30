@@ -103,6 +103,8 @@ public class NacosClusterControllerV3 {
             security = @SecurityRequirement(name = "nacos"))
     @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
             schema = @Schema(implementation = Result.class, example = "nacos.admin.core.cluster.api.node.list.example")))
+    @Parameters(value = {@Parameter(name = "address", example = "127.0.0.1:8848"),
+            @Parameter(name = "state", example = "UP", description = "Node state: UP/DOWN/SUSPICIOUS")})
     public Result<Collection<Member>> listNodes(@RequestParam(value = "address", required = false) String address,
             @RequestParam(value = "state", required = false) String state) throws NacosException {
         
@@ -131,7 +133,7 @@ public class NacosClusterControllerV3 {
             security = @SecurityRequirement(name = "nacos"))
     @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
             schema = @Schema(implementation = Result.class, example = "nacos.admin.core.cluster.api.node.update.example")))
-    @io.swagger.v3.oas.annotations.parameters.RequestBody(content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+    @io.swagger.v3.oas.annotations.parameters.RequestBody(description = "nacos.admin.core.cluster.api.node.update.body.description", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
             array = @ArraySchema(schema = @Schema(implementation = Member.class))))
     public Result<Boolean> updateNodes(@RequestBody List<Member> nodes) throws NacosApiException {
         if (nodes == null || nodes.isEmpty()) {

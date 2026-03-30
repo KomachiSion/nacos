@@ -90,7 +90,7 @@ public class CoreOpsControllerV3 {
             + "/ops", action = ActionTypes.WRITE, signType = SignType.CONSOLE, apiType = ApiType.ADMIN_API)
     @Operation(summary = "nacos.admin.core.ops.api.raft.summary", description = "nacos.admin.core.ops.api.raft.description", security = @SecurityRequirement(name = "nacos"))
     @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE, schema = @Schema(implementation = Result.class, example = "nacos.admin.core.cluster.api.raft.example")))
-    @io.swagger.v3.oas.annotations.parameters.RequestBody(content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE, schema = @Schema(implementation = RaftCommandForm.class)))
+    @io.swagger.v3.oas.annotations.parameters.RequestBody(description = "nacos.admin.core.ops.api.raft.body.description", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE, schema = @Schema(implementation = RaftCommandForm.class)))
     public Result<String> raftOps(@RequestBody RaftCommandForm form) throws NacosApiException {
         form.validate();
         return Result.success(protocolManager.getCpProtocol().execute(form.toMap()).getData());
@@ -135,7 +135,7 @@ public class CoreOpsControllerV3 {
             + "/ops", action = ActionTypes.WRITE, signType = SignType.CONSOLE, apiType = ApiType.ADMIN_API)
     @Operation(summary = "nacos.admin.core.ops.api.log.summary", description = "nacos.admin.core.ops.api.log.description", security = @SecurityRequirement(name = "nacos"))
     @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE, schema = @Schema(implementation = Result.class, example = "nacos.admin.core.cluster.api.log.example")))
-    @io.swagger.v3.oas.annotations.parameters.RequestBody(content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE, schema = @Schema(implementation = LogUpdateRequest.class)))
+    @io.swagger.v3.oas.annotations.parameters.RequestBody(description = "nacos.admin.core.ops.api.log.body.description", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE, schema = @Schema(implementation = LogUpdateRequest.class)))
     public Result<Void> updateLog(@RequestBody LogUpdateRequest logUpdateRequest) throws NacosApiException {
         logUpdateRequest.validate();
         Loggers.setLogLevel(logUpdateRequest.getLogName(), logUpdateRequest.getLogLevel());

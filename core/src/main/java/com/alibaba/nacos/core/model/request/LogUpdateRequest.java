@@ -29,10 +29,10 @@ import io.swagger.v3.oas.annotations.media.Schema;
  */
 public class LogUpdateRequest implements NacosForm {
     
-    @Schema(example = "core-auth")
+    @Schema(requiredMode = Schema.RequiredMode.REQUIRED, example = "core-auth")
     private String logName;
     
-    @Schema(example = "DEBUG")
+    @Schema(requiredMode = Schema.RequiredMode.REQUIRED, example = "DEBUG")
     private String logLevel;
     
     public String getLogName() {
