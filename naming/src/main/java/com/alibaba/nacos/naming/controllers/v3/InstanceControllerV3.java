@@ -352,6 +352,7 @@ public class InstanceControllerV3 {
             @Parameter(name = "groupName", example = "DEFAULT_GROUP"),
             @Parameter(name = "serviceName", required = true, example = "test"),
             @Parameter(name = "clusterName", example = "DEFAULT"),
+            @Parameter(name = "healthyOnly", schema = @Schema(type = "boolean"), example = "false"),
             @Parameter(name = "instanceListForm", hidden = true)})
     public Result<List<? extends Instance>> list(InstanceListForm instanceListForm) throws NacosException {
         instanceListForm.validate();

@@ -123,7 +123,7 @@ public class OperatorControllerV3 {
     @Operation(summary = "nacos.admin.naming.ops.api.log.summary", description = "nacos.admin.naming.ops.api.log.description", security = @SecurityRequirement(name = "nacos"))
     @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE, schema = @Schema(implementation = Result.class, example = "nacos.admin.naming.ops.api.log.example")))
     @Parameters(value = {@Parameter(name = "logName", required = true, example = "naming-event"),
-            @Parameter(name = "value", required = true, example = "DEBUG")})
+            @Parameter(name = "logLevel", required = true, example = "DEBUG")})
     public Result<String> setLogLevel(@RequestParam String logName, @RequestParam String logLevel) {
         operatorV2Impl.setLogLevel(logName, logLevel);
         
