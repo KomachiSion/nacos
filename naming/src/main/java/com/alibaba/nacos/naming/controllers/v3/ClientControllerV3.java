@@ -100,7 +100,7 @@ public class ClientControllerV3 {
             security = @SecurityRequirement(name = "nacos"))
     @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
             schema = @Schema(implementation = Result.class, example = "nacos.admin.naming.client.api.get.example")))
-    @Parameters(value = {@Parameter(name = "clientId", example = "public")})
+    @Parameters(value = {@Parameter(name = "clientId", required = true, example = "public")})
     public Result<ClientSummaryInfo> getClientDetail(@RequestParam("clientId") String clientId)
             throws NacosApiException {
         checkClientId(clientId);
@@ -116,7 +116,7 @@ public class ClientControllerV3 {
             security = @SecurityRequirement(name = "nacos"))
     @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
             schema = @Schema(implementation = Result.class, example = "nacos.admin.naming.client.api.publish.list.example")))
-    @Parameters(value = {@Parameter(name = "clientId", example = "public")})
+    @Parameters(value = {@Parameter(name = "clientId", required = true, example = "public")})
     public Result<List<ClientServiceInfo>> getPublishedServiceList(@RequestParam("clientId") String clientId)
             throws NacosApiException {
         checkClientId(clientId);
@@ -132,7 +132,7 @@ public class ClientControllerV3 {
             description = "nacos.admin.naming.client.api.subscribe.list.description", security = @SecurityRequirement(name = "nacos"))
     @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
             schema = @Schema(implementation = Result.class, example = "nacos.admin.naming.client.api.subscribe.list.example")))
-    @Parameters(value = {@Parameter(name = "clientId", example = "public")})
+    @Parameters(value = {@Parameter(name = "clientId", required = true, example = "public")})
     public Result<List<ClientServiceInfo>> getSubscribeServiceList(@RequestParam("clientId") String clientId)
             throws NacosApiException {
         checkClientId(clientId);

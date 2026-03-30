@@ -79,7 +79,7 @@ public class HealthControllerV3 {
             @Parameter(name = "clusterName", example = "DEFAULT"),
             @Parameter(name = "ip", required = true, example = "127.0.0.1"),
             @Parameter(name = "port", required = true, schema = @Schema(type = "integer"), example = "8080"),
-            @Parameter(name = "healthy", schema = @Schema(type = "boolean"), example = "true"), @Parameter(name = "updateHealthForm", hidden = true)})
+            @Parameter(name = "healthy", required = true, schema = @Schema(type = "boolean"), example = "true"), @Parameter(name = "updateHealthForm", hidden = true)})
     public Result<String> update(UpdateHealthForm updateHealthForm) throws NacosException {
         updateHealthForm.validate();
         healthOperatorV2.updateHealthStatusForPersistentInstance(updateHealthForm.getNamespaceId(),
