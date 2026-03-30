@@ -169,7 +169,7 @@ public class ConsoleHistoryController {
             security = @SecurityRequirement(name = "nacos"))
     @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
             schema = @Schema(implementation = Result.class, example = "nacos.console.config.history.api.names.example")))
-    @Parameters(value = {@Parameter(name = "namespaceId", example = "public")})
+    @Parameters(value = {@Parameter(name = "namespaceId", required = true, example = "public")})
     public Result<List<ConfigBasicInfo>> getConfigsByTenant(@RequestParam("namespaceId") String namespaceId)
             throws NacosException {
         namespaceId = NamespaceUtil.processNamespaceParameter(namespaceId);

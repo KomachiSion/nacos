@@ -110,9 +110,9 @@ public class MetricsControllerV3 {
     @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
             schema = @Schema(implementation = Result.class, example = "nacos.admin.config.metrics.api.cluster.example")))
     @Parameters(value = {@Parameter(name = "ip", required = true, example = "127.0.0.1"),
-            @Parameter(name = "dataId", required = true, example = "test"),
-            @Parameter(name = "groupName", required = true, example = "DEFAULT_GROUP"),
-            @Parameter(name = "namespaceId", required = true, example = "public")})
+            @Parameter(name = "dataId", example = "test"),
+            @Parameter(name = "groupName", example = "DEFAULT_GROUP"),
+            @Parameter(name = "namespaceId", example = "public")})
     public Result<Map<String, Object>> metric(@RequestParam("ip") String ip,
             @RequestParam(value = "dataId", required = false) String dataId,
             @RequestParam(value = "groupName", required = false) String groupName,
@@ -209,9 +209,9 @@ public class MetricsControllerV3 {
     @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
             schema = @Schema(implementation = Result.class, example = "nacos.admin.config.metrics.api.ip.example")))
     @Parameters(value = {@Parameter(name = "ip", required = true, example = "127.0.0.1"),
-            @Parameter(name = "dataId", required = true, example = "test"),
-            @Parameter(name = "groupName", required = true, example = "DEFAULT_GROUP"),
-            @Parameter(name = "namespaceId", required = true, example = "public")})
+            @Parameter(name = "dataId", example = "test"),
+            @Parameter(name = "groupName", example = "DEFAULT_GROUP"),
+            @Parameter(name = "namespaceId", example = "public")})
     public Result<Map<String, Object>> getClientMetrics(@RequestParam("ip") String ip,
             @RequestParam(value = "dataId", required = false) String dataId,
             @RequestParam(value = "groupName", required = false) String groupName,

@@ -118,7 +118,7 @@ public class ConfigOpsControllerV3 {
             security = @SecurityRequirement(name = "nacos"))
     @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
             schema = @Schema(implementation = Result.class, example = "nacos.admin.config.ops.api.log.example")))
-    @Parameters(value = {@Parameter(name = "logName", example = "config-server"),
+    @Parameters(value = {@Parameter(name = "logName", required = true, example = "config-server"),
             @Parameter(name = "logLevel", required = true, example = "DEBUG")})
     public Result<String> setLogLevel(@RequestParam String logName, @RequestParam String logLevel) {
         try {
@@ -150,7 +150,7 @@ public class ConfigOpsControllerV3 {
             security = @SecurityRequirement(name = "nacos"))
     @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
             schema = @Schema(implementation = Result.class, example = "nacos.admin.config.ops.api.derby.example")))
-    @Parameters(value = {@Parameter(name = "sql", example = "SELECT dataId FROM config_info")})
+    @Parameters(value = {@Parameter(name = "sql", required = true, example = "SELECT dataId FROM config_info")})
     public Result<Object> derbyOps(@RequestParam(value = "sql") String sql) {
         String selectSign = "SELECT";
         String limitSign = "ROWS FETCH NEXT";
@@ -204,7 +204,7 @@ public class ConfigOpsControllerV3 {
     @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
             schema = @Schema(implementation = Result.class, example = "nacos.admin.config.ops.api.derby.import.example")))
     @io.swagger.v3.oas.annotations.parameters.RequestBody(content = @Content(mediaType = MediaType.MULTIPART_FORM_DATA_VALUE,
-            schemaProperties = {@SchemaProperty(name = "file", schema = @Schema(type = "string", format = "binary"))}))
+            schemaProperties = {@SchemaProperty(name = "file", schema = @Schema(type = "string", format = "binary", requiredMode = Schema.RequiredMode.REQUIRED))}))
     public DeferredResult<Result<String>> importDerby(@RequestParam(value = "file") MultipartFile multipartFile) {
         DeferredResult<RestResult<String>> response = new DeferredResult<>();
         if (!DatasourceConfiguration.isEmbeddedStorage()) {

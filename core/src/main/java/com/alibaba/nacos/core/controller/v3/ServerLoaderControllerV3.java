@@ -114,7 +114,7 @@ public class ServerLoaderControllerV3 {
             + "/loader", action = ActionTypes.WRITE, apiType = ApiType.ADMIN_API)
     @Operation(summary = "nacos.admin.core.loader.api.reload.smart.summary", description = "nacos.admin.core.loader.api.reload.smart.description", security = @SecurityRequirement(name = "nacos"))
     @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE, schema = @Schema(implementation = Result.class, example = "nacos.admin.core.loader.api.reload.smart.example")))
-    @Parameters(value = {@Parameter(name = "loaderFactorStr", required = true, example = "0.1f")})
+    @Parameters(value = {@Parameter(name = "loaderFactor", example = "0.1f")})
     public Result<String> smartReload(HttpServletRequest request,
             @RequestParam(value = "loaderFactor", defaultValue = "0.1f") String loaderFactorStr) {
         LOGGER.info("Smart reload request receive,requestIp={}", WebUtils.getRemoteIp(request));

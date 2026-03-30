@@ -65,7 +65,7 @@ public class ServerStateController {
     @GetMapping()
     @Operation(summary = "nacos.admin.core.state.api.state.summary", description = "nacos.admin.core.state.api.state.description")
     @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
-            schema = @Schema(implementation = Map.class, example = "nacos.admin.core.state.api.state.example")))
+            schema = @Schema(implementation = Result.class, example = "nacos.admin.core.state.api.state.example")))
     public Result<Map<String, String>> serverState() {
         return Result.success(stateService.getServerState());
     }

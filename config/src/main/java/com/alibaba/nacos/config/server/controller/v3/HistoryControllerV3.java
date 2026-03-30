@@ -189,7 +189,7 @@ public class HistoryControllerV3 {
             security = @SecurityRequirement(name = "nacos"))
     @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
             schema = @Schema(implementation = Result.class, example = "nacos.admin.config.history.api.names.example")))
-    @Parameters(value = {@Parameter(name = "namespaceId", example = "public")})
+    @Parameters(value = {@Parameter(name = "namespaceId", required = true, example = "public")})
     public Result<List<ConfigBasicInfo>> getConfigsByNamespace(@RequestParam("namespaceId") String namespaceId)
             throws NacosApiException {
         // check namespaceId

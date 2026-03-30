@@ -198,7 +198,7 @@ public class A2aAdminController {
     @Parameters(value = {@Parameter(name = "pageNo", required = true, example = "1"),
             @Parameter(name = "pageSize", required = true, example = "100"),
             @Parameter(name = "namespaceId", example = "public"), @Parameter(name = "agentName"),
-            @Parameter(name = "search", example = "blur", description = "blur or accurate", required = true),
+            @Parameter(name = "search", example = "blur", description = "blur or accurate"),
             @Parameter(name = "agentListForm", hidden = true), @Parameter(name = "pageForm", hidden = true)})
     public Result<Page<AgentCardVersionInfo>> listAgents(AgentListForm agentListForm, PageForm pageForm)
             throws NacosException {

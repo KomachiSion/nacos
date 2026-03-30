@@ -207,6 +207,7 @@ public class ConsoleSkillController {
     @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE, schema = @Schema(implementation = Result.class, example = "nacos.console.ai.skill.api.upload.example")))
     @RequestBody(description = "nacos.console.ai.skill.api.upload.body.description", content = @Content(mediaType = MediaType.MULTIPART_FORM_DATA_VALUE, schemaProperties = {
             @SchemaProperty(name = "file", schema = @Schema(type = "string", format = "binary", description = "ZIP file containing skill")),
+            @SchemaProperty(name = "overwrite", schema = @Schema(type = "boolean", example = "false")),
             @SchemaProperty(name = "namespaceId", schema = @Schema(type = "string", example = "public"))}))
     public Result<String> uploadSkill(HttpServletRequest request,
             @RequestParam(value = "namespaceId", required = false) String namespaceId,

@@ -87,7 +87,7 @@ public class CapacityControllerV3 {
     @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
             schema = @Schema(implementation = Result.class, example = "nacos.admin.config.capacity.api.get.example")))
     @Parameters(value = {@Parameter(name = "namespaceId", example = "public"),
-            @Parameter(name = "groupName", required = true)})
+            @Parameter(name = "groupName")})
     public Result<Capacity> getCapacity(@RequestParam(required = false) String groupName,
             @RequestParam(required = false) String namespaceId) throws NacosApiException {
         if (StringUtils.isBlank(groupName) && StringUtils.isBlank(namespaceId)) {
@@ -123,7 +123,10 @@ public class CapacityControllerV3 {
             schema = @Schema(implementation = Result.class, example = "nacos.admin.config.capacity.api.update.example")))
     @Parameters(value = {@Parameter(name = "namespaceId", example = "public"),
             @Parameter(name = "groupName", required = true), @Parameter(name = "quota", example = "100"),
-            @Parameter(name = "maxSize", example = "102400"), @Parameter(name = "updateCapacityForm", hidden = true)})
+            @Parameter(name = "maxSize", example = "102400"),
+            @Parameter(name = "maxAggrCount", example = "10"),
+            @Parameter(name = "maxAggrSize", example = "1024"),
+            @Parameter(name = "updateCapacityForm", hidden = true)})
     public Result<Boolean> updateCapacity(UpdateCapacityForm updateCapacityForm) throws NacosApiException {
         updateCapacityForm.checkNamespaceIdAndGroupName(capacityService);
         updateCapacityForm.validate();

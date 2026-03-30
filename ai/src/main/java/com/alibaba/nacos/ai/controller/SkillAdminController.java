@@ -103,7 +103,7 @@ public class SkillAdminController {
     @Secured(action = ActionTypes.READ, signType = SignType.AI, apiType = ApiType.ADMIN_API)
     @Operation(summary = "nacos.admin.ai.skill.api.get.summary", description = "nacos.admin.ai.skill.api.get.description", security = @SecurityRequirement(name = "nacos"))
     @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE, schema = @Schema(implementation = Result.class, example = "nacos.admin.ai.skill.api.get.example")))
-    @Parameters(value = {@Parameter(name = "namespaceId", required = true, example = "public"),
+    @Parameters(value = {@Parameter(name = "namespaceId", example = "public"),
             @Parameter(name = "skillName", required = true, example = "my-skill"),
             @Parameter(name = "form", hidden = true)})
     public Result<SkillMeta> getSkill(SkillForm form) throws NacosException {
@@ -165,7 +165,7 @@ public class SkillAdminController {
     @Secured(action = ActionTypes.WRITE, signType = SignType.AI, apiType = ApiType.ADMIN_API)
     @Operation(summary = "nacos.admin.ai.skill.api.delete.summary", description = "nacos.admin.ai.skill.api.delete.description", security = @SecurityRequirement(name = "nacos"))
     @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE, schema = @Schema(implementation = Result.class, example = "nacos.admin.ai.skill.api.delete.example")))
-    @Parameters(value = {@Parameter(name = "namespaceId", required = true, example = "public"),
+    @Parameters(value = {@Parameter(name = "namespaceId", example = "public"),
             @Parameter(name = "skillName", required = true, example = "my-skill"),
             @Parameter(name = "form", hidden = true)})
     public Result<String> deleteSkill(SkillForm form) throws NacosException {
@@ -215,6 +215,7 @@ public class SkillAdminController {
     @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE, schema = @Schema(implementation = Result.class, example = "nacos.admin.ai.skill.api.upload.example")))
     @io.swagger.v3.oas.annotations.parameters.RequestBody(description = "nacos.admin.ai.skill.api.upload.body.description", content = @Content(mediaType = MediaType.MULTIPART_FORM_DATA_VALUE, schemaProperties = {
             @SchemaProperty(name = "namespaceId", schema = @Schema(type = "string", example = "public")),
+            @SchemaProperty(name = "overwrite", schema = @Schema(type = "boolean", example = "false")),
             @SchemaProperty(name = "file", schema = @Schema(type = "string", format = "binary", description = "ZIP file containing skill package"))}))
     public Result<String> uploadSkill(HttpServletRequest request,
             @RequestParam(value = "namespaceId", required = false) String namespaceId,

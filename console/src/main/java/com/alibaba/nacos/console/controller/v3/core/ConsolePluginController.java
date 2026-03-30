@@ -122,7 +122,7 @@ public class ConsolePluginController {
             + "plugins", action = ActionTypes.WRITE, signType = SignType.CONSOLE, apiType = ApiType.CONSOLE_API)
     @Operation(summary = "nacos.console.core.plugin.api.status.summary", description = "nacos.console.core.plugin.api.status.description", security = @SecurityRequirement(name = "nacos"))
     @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE, schema = @Schema(implementation = Result.class, example = "nacos.console.core.plugin.api.status.example")))
-    @Parameters(value = {@Parameter(name = "pluginType", required = true, example = "auth"), @Parameter(name = "pluginName", required = true, example = "nacos-default-auth-plugin"), @Parameter(name = "enabled", required = true, example = "true")})
+    @Parameters(value = {@Parameter(name = "pluginType", required = true, example = "auth"), @Parameter(name = "pluginName", required = true, example = "nacos-default-auth-plugin"), @Parameter(name = "enabled", required = true, example = "true"), @Parameter(name = "localOnly", example = "false")})
     public Result<String> updatePluginStatus(@RequestParam("pluginType") String pluginType,
             @RequestParam("pluginName") String pluginName, @RequestParam("enabled") boolean enabled,
             @RequestParam(value = "localOnly", defaultValue = "false") boolean localOnly) throws NacosException {

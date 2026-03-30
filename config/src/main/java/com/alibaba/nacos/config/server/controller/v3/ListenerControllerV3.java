@@ -79,6 +79,7 @@ public class ListenerControllerV3 {
     @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
             schema = @Schema(implementation = Result.class, example = "nacos.admin.config.config.api.listener.ip.example")))
     @Parameters(value = {@Parameter(name = "ip", required = true, example = "127.0.0.1"),
+            @Parameter(name = "all", example = "false"),
             @Parameter(name = "namespaceId", example = "public"), @Parameter(name = "aggregation", example = "true"),
             @Parameter(name = "aggregationForm", hidden = true)})
     public Result<ConfigListenerInfo> getAllSubClientConfigByIp(@RequestParam("ip") String ip,

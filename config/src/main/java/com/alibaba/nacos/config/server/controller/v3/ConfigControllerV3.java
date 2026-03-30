@@ -227,6 +227,9 @@ public class ConfigControllerV3 {
             @Parameter(name = "content", required = true, example = "testContent"),
             @Parameter(name = "desc", example = "testDesc"), @Parameter(name = "type", example = "text"),
             @Parameter(name = "configTags", example = "customTag"), @Parameter(name = "appName", example = "testApp"),
+            @Parameter(name = "tag", example = "testTag"),
+            @Parameter(name = "srcUser", example = "nacos"),
+            @Parameter(name = "encryptedDataKey"),
             @Parameter(name = "configForm", hidden = true)})
     public Result<Boolean> publishConfig(HttpServletRequest request, ConfigFormV3 configForm) throws NacosException {
         // check required field
@@ -530,8 +533,7 @@ public class ConfigControllerV3 {
                     @SchemaProperty(name = "file", schema = @Schema(type = "string", format = "binary")),
                     @SchemaProperty(name = "src_user", schema = @Schema(type = "string", example = "nacos")),
                     @SchemaProperty(name = "namespaceId", schema = @Schema(type = "string", example = "public")),
-                    @SchemaProperty(name = "policy", schema = @Schema(requiredMode = Schema.RequiredMode.REQUIRED,
-                            implementation = SameConfigPolicy.class))}))
+                    @SchemaProperty(name = "policy", schema = @Schema(implementation = SameConfigPolicy.class))}))
     public Result<Map<String, Object>> importAndPublishConfig(HttpServletRequest request,
             @RequestParam(value = "src_user", required = false) String srcUser,
             @RequestParam(value = "namespaceId", required = false) String namespaceId,
@@ -688,6 +690,7 @@ public class ConfigControllerV3 {
             security = @SecurityRequirement(name = "nacos"))
     @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_OCTET_STREAM_VALUE))
     @Parameters(value = {@Parameter(name = "namespaceId"), @Parameter(name = "groupName"), @Parameter(name = "dataId"),
+            @Parameter(name = "appName", example = "testApp"),
             @Parameter(name = "ids", example = "[1,2,3]"), @Parameter(name = "configForm", hidden = true)})
     public ResponseEntity<byte[]> exportConfig(ConfigFormV3 configForm,
             @RequestParam(value = "ids", required = false) List<Long> ids) throws NacosApiException {
@@ -735,9 +738,9 @@ public class ConfigControllerV3 {
             schema = @Schema(implementation = Result.class, example = "nacos.admin.config.config.api.clone.example")))
     @io.swagger.v3.oas.annotations.parameters.RequestBody(content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
             array = @ArraySchema(schema = @Schema(implementation = ConfigCloneInfo.class))))
-    @Parameters(value = {@Parameter(name = "srcUser", example = "nacos"),
-            @Parameter(name = "namespaceId", example = "public"),
-            @Parameter(name = "policy", required = true, schema = @Schema(implementation = SameConfigPolicy.class))})
+    @Parameters(value = {@Parameter(name = "src_user", example = "nacos"),
+            @Parameter(name = "namespaceId", required = true, example = "public"),
+            @Parameter(name = "policy", schema = @Schema(implementation = SameConfigPolicy.class))})
     public Result<Map<String, Object>> cloneConfig(HttpServletRequest request,
             @RequestParam(value = "src_user", required = false) String srcUser,
             @RequestParam(value = "namespaceId") String namespaceId, @RequestBody List<ConfigCloneInfo> cloneInfos,

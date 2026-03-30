@@ -368,6 +368,7 @@ public class ConsoleConfigController {
     @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
             schema = @Schema(implementation = Result.class, example = "nacos.console.config.config.api.listener.ip.example")))
     @Parameters(value = {@Parameter(name = "ip", required = true, example = "127.0.0.1"),
+            @Parameter(name = "all", example = "false"),
             @Parameter(name = "namespaceId", example = "public"), @Parameter(name = "aggregation", example = "true"),
             @Parameter(name = "aggregationForm", hidden = true)})
     public Result<ConfigListenerInfo> getAllSubClientConfigByIp(@RequestParam("ip") String ip,
@@ -429,8 +430,7 @@ public class ConsoleConfigController {
                     @SchemaProperty(name = "file", schema = @Schema(type = "string", format = "binary")),
                     @SchemaProperty(name = "src_user", schema = @Schema(type = "string", example = "nacos")),
                     @SchemaProperty(name = "namespaceId", schema = @Schema(type = "string", example = "public")),
-                    @SchemaProperty(name = "policy", schema = @Schema(requiredMode = Schema.RequiredMode.REQUIRED,
-                            implementation = SameConfigPolicy.class))}))
+                    @SchemaProperty(name = "policy", schema = @Schema(implementation = SameConfigPolicy.class))}))
     public Result<Map<String, Object>> importAndPublishConfig(HttpServletRequest request,
             @RequestParam(required = false) String srcUser,
             @RequestParam(value = "namespaceId", required = false) String namespaceId,
@@ -468,7 +468,8 @@ public class ConsoleConfigController {
     @io.swagger.v3.oas.annotations.parameters.RequestBody(content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
             array = @ArraySchema(schema = @Schema(implementation = SameNamespaceCloneConfigBean.class))))
     @Parameters(value = {@Parameter(name = "srcUser", example = "nacos"),
-            @Parameter(name = "policy", required = true, schema = @Schema(implementation = SameConfigPolicy.class))})
+            @Parameter(name = "targetNamespaceId", required = true, example = "public"),
+            @Parameter(name = "policy", schema = @Schema(implementation = SameConfigPolicy.class))})
     public Result<Map<String, Object>> cloneConfig(HttpServletRequest request,
             @RequestParam(required = false) String srcUser,
             @RequestParam(value = "targetNamespaceId") String namespaceId,

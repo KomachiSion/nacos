@@ -223,7 +223,7 @@ public class NamespaceControllerV3 {
             security = @SecurityRequirement(name = "nacos"))
     @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
             schema = @Schema(implementation = Result.class, example = "nacos.admin.core.namespace.api.check.example")))
-    @Parameters(value = @Parameter(name = "customNamespaceId", required = true, example = "public"))
+    @Parameters(value = @Parameter(name = "namespaceId", required = true, example = "public"))
     public Result<Integer> checkNamespaceIdExist(@RequestParam("namespaceId") String namespaceId) {
         return Result.success(namespacePersistService.tenantInfoCountByTenantId(namespaceId));
     }

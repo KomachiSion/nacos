@@ -188,6 +188,7 @@ public class ConsoleAgentSpecController {
     @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE, schema = @Schema(implementation = Result.class, example = "nacos.console.ai.agentspec.api.upload.example")))
     @io.swagger.v3.oas.annotations.parameters.RequestBody(description = "nacos.console.ai.agentspec.api.upload.body.description", content = @Content(mediaType = MediaType.MULTIPART_FORM_DATA_VALUE, schemaProperties = {
             @SchemaProperty(name = "namespaceId", schema = @Schema(type = "string", example = "public")),
+            @SchemaProperty(name = "overwrite", schema = @Schema(type = "boolean", example = "false")),
             @SchemaProperty(name = "file", schema = @Schema(type = "string", format = "binary", description = "ZIP file containing agentspec package"))}))
     public Result<String> uploadAgentSpec(HttpServletRequest request,
             @RequestParam(value = "namespaceId", required = false) String namespaceId,

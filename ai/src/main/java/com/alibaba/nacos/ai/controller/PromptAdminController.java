@@ -104,7 +104,8 @@ public class PromptAdminController {
             @Parameter(name = "promptKey", required = true, example = "my-prompt"),
             @Parameter(name = "version", required = true, example = "1.0.0"),
             @Parameter(name = "template", required = true), @Parameter(name = "commitMsg"),
-            @Parameter(name = "description"), @Parameter(name = "bizTags"), @Parameter(name = "form", hidden = true)})
+            @Parameter(name = "description"), @Parameter(name = "bizTags"),
+            @Parameter(name = "variables"), @Parameter(name = "form", hidden = true)})
     public Result<Boolean> publishPrompt(PromptPublishForm form, HttpServletRequest request) throws NacosException {
         form.validate();
         String srcUser = request.getRemoteUser();

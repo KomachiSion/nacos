@@ -178,6 +178,7 @@ public class McpAdminController {
             schema = @Schema(implementation = Result.class, example = "nacos.admin.ai.mcp.api.update.example")))
     @Parameters(value = {@Parameter(name = "namespaceId", example = "public"),
             @Parameter(name = "latest", example = "true"),
+            @Parameter(name = "overrideExisting", example = "false"),
             @Parameter(name = "serverSpecification", required = true,
                     schema = @Schema(implementation = McpServerBasicInfo.class), example = MCP_SERVER_SPEC_WITH_ID_EXAMPLE),
             @Parameter(name = "toolSpecification", schema = @Schema(implementation = McpToolSpecification.class), example = "{}"),

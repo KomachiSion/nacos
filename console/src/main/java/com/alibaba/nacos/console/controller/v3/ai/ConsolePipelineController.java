@@ -31,6 +31,7 @@ import com.alibaba.nacos.core.model.form.PageForm;
 import com.alibaba.nacos.plugin.auth.constant.ActionTypes;
 import com.alibaba.nacos.plugin.auth.constant.SignType;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.enums.ParameterIn;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.Parameters;
 import io.swagger.v3.oas.annotations.extensions.Extension;
@@ -73,7 +74,7 @@ public class ConsolePipelineController {
     @Secured(action = ActionTypes.READ, signType = SignType.AI, apiType = ApiType.CONSOLE_API)
     @Operation(summary = "nacos.console.ai.pipeline.api.get.summary", description = "nacos.console.ai.pipeline.api.get.description", security = @SecurityRequirement(name = "nacos"))
     @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE, schema = @Schema(implementation = Result.class, example = "nacos.console.ai.pipeline.api.get.example")))
-    @Parameter(name = "pipelineId", required = true, example = "pipeline-id-example")
+    @Parameter(name = "pipelineId", required = true, in = ParameterIn.PATH, example = "pipeline-id-example")
     public Result<PipelineExecution> getPipeline(@PathVariable String pipelineId) throws NacosException {
         return Result.success(pipelineProxy.getPipeline(pipelineId));
     }
