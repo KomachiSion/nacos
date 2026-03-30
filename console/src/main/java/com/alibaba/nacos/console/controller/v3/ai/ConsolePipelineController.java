@@ -90,8 +90,8 @@ public class ConsolePipelineController {
             @Parameter(name = "resourceName", example = "my-skill"),
             @Parameter(name = "namespaceId", example = "public"),
             @Parameter(name = "version", example = "1.0.0"),
-            @Parameter(name = "pageNo", required = true, example = "1"),
-            @Parameter(name = "pageSize", required = true, example = "100"),
+            @Parameter(name = "pageNo", required = true, schema = @Schema(type = "integer"), example = "1"),
+            @Parameter(name = "pageSize", required = true, schema = @Schema(type = "integer"), example = "100"),
             @Parameter(name = "form", hidden = true), @Parameter(name = "pageForm", hidden = true)})
     public Result<Page<PipelineExecution>> listPipelines(PipelineListForm form, PageForm pageForm)
             throws NacosException {

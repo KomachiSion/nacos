@@ -167,8 +167,8 @@ public class PromptAdminController {
     @Secured(action = ActionTypes.READ, signType = SignType.AI, apiType = ApiType.ADMIN_API)
     @Operation(summary = "nacos.admin.ai.prompt.api.list.summary", description = "nacos.admin.ai.prompt.api.list.description", security = @SecurityRequirement(name = "nacos"))
     @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE, schema = @Schema(implementation = Result.class, example = "nacos.admin.ai.prompt.api.list.example")))
-    @Parameters(value = {@Parameter(name = "pageNo", required = true, example = "1"),
-            @Parameter(name = "pageSize", required = true, example = "10"),
+    @Parameters(value = {@Parameter(name = "pageNo", required = true, schema = @Schema(type = "integer"), example = "1"),
+            @Parameter(name = "pageSize", required = true, schema = @Schema(type = "integer"), example = "10"),
             @Parameter(name = "namespaceId", example = "public"), @Parameter(name = "promptKey"),
             @Parameter(name = "search", example = "blur", description = "blur or accurate"),
             @Parameter(name = "bizTags"), @Parameter(name = "form", hidden = true)})
@@ -188,8 +188,8 @@ public class PromptAdminController {
     @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE, schema = @Schema(implementation = Result.class, example = "nacos.admin.ai.prompt.api.versions.example")))
     @Parameters(value = {@Parameter(name = "namespaceId", example = "public"),
             @Parameter(name = "promptKey", required = true, example = "my-prompt"),
-            @Parameter(name = "pageNo", required = true, example = "1"),
-            @Parameter(name = "pageSize", required = true, example = "10"), @Parameter(name = "form", hidden = true)})
+            @Parameter(name = "pageNo", required = true, schema = @Schema(type = "integer"), example = "1"),
+            @Parameter(name = "pageSize", required = true, schema = @Schema(type = "integer"), example = "10"), @Parameter(name = "form", hidden = true)})
     public Result<Page<PromptVersionSummary>> listPromptVersions(PromptHistoryForm form) throws NacosException {
         form.validate();
         Page<PromptVersionSummary> result = promptOperationService.listPromptVersions(form.getNamespaceId(),

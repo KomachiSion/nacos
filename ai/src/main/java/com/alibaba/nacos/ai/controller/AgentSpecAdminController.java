@@ -167,8 +167,8 @@ public class AgentSpecAdminController {
             tags = {ALLOW_ANONYMOUS})
     @Operation(summary = "nacos.admin.ai.agentspec.api.list.summary", description = "nacos.admin.ai.agentspec.api.list.description", security = @SecurityRequirement(name = "nacos"))
     @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE, schema = @Schema(implementation = Result.class, example = "nacos.admin.ai.agentspec.api.list.example")))
-    @Parameters(value = {@Parameter(name = "pageNo", required = true, example = "1"),
-            @Parameter(name = "pageSize", required = true, example = "100"),
+    @Parameters(value = {@Parameter(name = "pageNo", required = true, schema = @Schema(type = "integer"), example = "1"),
+            @Parameter(name = "pageSize", required = true, schema = @Schema(type = "integer"), example = "100"),
             @Parameter(name = "namespaceId", example = "public"),
             @Parameter(name = "agentSpecName", example = "my-agentspec"),
             @Parameter(name = "search", example = "blur", description = "Search mode: accurate or blur"),
@@ -290,7 +290,7 @@ public class AgentSpecAdminController {
     @Parameters(value = {@Parameter(name = "namespaceId", example = "public"),
             @Parameter(name = "agentSpecName", required = true, example = "my-agentspec"),
             @Parameter(name = "version", required = true, example = "1.0.0"),
-            @Parameter(name = "updateLatestLabel", example = "true"),
+            @Parameter(name = "updateLatestLabel", schema = @Schema(type = "boolean"), example = "true"),
             @Parameter(name = "form", hidden = true)})
     public Result<String> publish(AgentSpecPublishForm form) throws NacosException {
         form.validate();

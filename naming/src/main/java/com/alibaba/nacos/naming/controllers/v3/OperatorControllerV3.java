@@ -89,7 +89,7 @@ public class OperatorControllerV3 {
     @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE, schema = @Schema(implementation = Result.class, example = "nacos.admin.naming.ops.api.switches.update.example")))
     @Parameters(value = {@Parameter(name = "entry", required = true, example = "pushEnabled"),
             @Parameter(name = "value", required = true, example = "true"),
-            @Parameter(name = "debug", example = "false"), @Parameter(name = "updateSwitchForm", hidden = true)})
+            @Parameter(name = "debug", schema = @Schema(type = "boolean"), example = "false"), @Parameter(name = "updateSwitchForm", hidden = true)})
     public Result<String> updateSwitch(UpdateSwitchForm updateSwitchForm) throws Exception {
         updateSwitchForm.validate();
         try {
@@ -109,7 +109,7 @@ public class OperatorControllerV3 {
     @Secured(resource = UtilsAndCommons.OPERATOR_CONTROLLER_V3_ADMIN_PATH, action = ActionTypes.READ, apiType = ApiType.ADMIN_API)
     @Operation(summary = "nacos.admin.naming.ops.api.metrics.summary", description = "nacos.admin.naming.ops.api.metrics.description", security = @SecurityRequirement(name = "nacos"))
     @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE, schema = @Schema(implementation = Result.class, example = "nacos.admin.naming.ops.api.metrics.example")))
-    @Parameters(value = {@Parameter(name = "onlyStatus", example = "true")})
+    @Parameters(value = {@Parameter(name = "onlyStatus", schema = @Schema(type = "boolean"), example = "true")})
     public Result<MetricsInfo> metrics(
             @RequestParam(value = "onlyStatus", required = false, defaultValue = "true") Boolean onlyStatus) {
         return Result.success(MetricsInfoVo.toNewMetricsInfo(operatorV2Impl.metrics(onlyStatus)));

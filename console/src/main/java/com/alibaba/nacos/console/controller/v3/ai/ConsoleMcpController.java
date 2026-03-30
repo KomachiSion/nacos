@@ -114,8 +114,8 @@ public class ConsoleMcpController {
             security = @SecurityRequirement(name = "nacos"))
     @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
             schema = @Schema(implementation = Result.class, example = "nacos.console.ai.mcp.api.list.example")))
-    @Parameters(value = {@Parameter(name = "pageNo", required = true, example = "1"),
-            @Parameter(name = "pageSize", required = true, example = "100"),
+    @Parameters(value = {@Parameter(name = "pageNo", required = true, schema = @Schema(type = "integer"), example = "1"),
+            @Parameter(name = "pageSize", required = true, schema = @Schema(type = "integer"), example = "100"),
             @Parameter(name = "namespaceId", example = "public"), @Parameter(name = "mcpName"),
             @Parameter(name = "search", example = "blur", description = "blur or accurate"),
             @Parameter(name = "mcpListForm", hidden = true), @Parameter(name = "pageForm", hidden = true)})
@@ -244,7 +244,8 @@ public class ConsoleMcpController {
     @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
             schema = @Schema(implementation = Result.class, example = "nacos.console.ai.mcp.api.update.example")))
     @Parameters(value = {@Parameter(name = "namespaceId", example = "public"),
-            @Parameter(name = "latest", example = "true"),
+            @Parameter(name = "latest", schema = @Schema(type = "boolean"), example = "true"),
+            @Parameter(name = "overrideExisting", schema = @Schema(type = "boolean"), example = "false"),
             @Parameter(name = "serverSpecification", required = true, schema = @Schema(implementation = McpServerBasicInfo.class), example = MCP_SERVER_SPEC_WITH_ID_EXAMPLE),
             @Parameter(name = "toolSpecification", schema = @Schema(implementation = McpToolSpecification.class), example = "{}"),
             @Parameter(name = "endpointSpecification", schema = @Schema(implementation = McpEndpointSpec.class), example = "{}"),
@@ -297,7 +298,7 @@ public class ConsoleMcpController {
             schema = @Schema(implementation = Result.class, example = "nacos.console.ai.mcp.api.import.validate.example")))
     @Parameters(value = {@Parameter(name = "namespaceId", example = "public"),
             @Parameter(name = "importType", example = "url", required = true, description = "enum of `file`, `json`, `url`"),
-            @Parameter(name = "data", required = true), @Parameter(name = "limit", example = "10"),
+            @Parameter(name = "data", required = true), @Parameter(name = "limit", schema = @Schema(type = "integer"), example = "10"),
             @Parameter(name = "cursor", description = "Optional start cursor for URL-based import pagination."),
             @Parameter(name = "search", description = "Optional fuzzy search keyword for registry import listing. Only used when importType is 'url'."),
             @Parameter(name = "mcpImportForm", hidden = true)})
@@ -323,9 +324,9 @@ public class ConsoleMcpController {
             schema = @Schema(implementation = Result.class, example = "nacos.console.ai.mcp.api.import.execute.example")))
     @Parameters(value = {@Parameter(name = "namespaceId", example = "public"),
             @Parameter(name = "importType", example = "url", required = true, description = "enum of `file`, `json`, `url`"),
-            @Parameter(name = "data", required = true), @Parameter(name = "overrideExisting", example = "false"),
-            @Parameter(name = "skipInvalid", example = "false"), @Parameter(name = "selectedServers", example = "[]"),
-            @Parameter(name = "limit", example = "10"),
+            @Parameter(name = "data", required = true), @Parameter(name = "overrideExisting", schema = @Schema(type = "boolean"), example = "false"),
+            @Parameter(name = "skipInvalid", schema = @Schema(type = "boolean"), example = "false"), @Parameter(name = "selectedServers", example = "[]"),
+            @Parameter(name = "limit", schema = @Schema(type = "integer"), example = "10"),
             @Parameter(name = "cursor", description = "Optional start cursor for URL-based import pagination."),
             @Parameter(name = "search", description = "Optional fuzzy search keyword for registry import listing. Only used when importType is 'url'."),
             @Parameter(name = "mcpImportForm", hidden = true)})

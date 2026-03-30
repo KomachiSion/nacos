@@ -113,10 +113,10 @@ public class InstanceOpenApiController {
             @Parameter(name = "serviceName", required = true, example = "test"),
             @Parameter(name = "clusterName", example = "DEFAULT"),
             @Parameter(name = "ip", required = true, example = "127.0.0.1"),
-            @Parameter(name = "port", required = true, example = "8080"), @Parameter(name = "weight", example = "1.0"),
-            @Parameter(name = "healthy", example = "true"), @Parameter(name = "enabled", example = "true"),
+            @Parameter(name = "port", required = true, schema = @Schema(type = "integer"), example = "8080"), @Parameter(name = "weight", schema = @Schema(type = "number"), example = "1.0"),
+            @Parameter(name = "healthy", schema = @Schema(type = "boolean"), example = "true"), @Parameter(name = "enabled", schema = @Schema(type = "boolean"), example = "true"),
             @Parameter(name = "metadata", example = "{\"zone\":\"a\"}"),
-            @Parameter(name = "heartBeat", example = "false"), @Parameter(name = "instanceForm", hidden = true)})
+            @Parameter(name = "heartBeat", schema = @Schema(type = "boolean"), example = "false"), @Parameter(name = "instanceForm", hidden = true)})
     public Result<String> register(InstanceForm instanceForm, @RequestParam(defaultValue = "false") boolean heartBeat)
             throws NacosException {
         // check param
@@ -149,7 +149,7 @@ public class InstanceOpenApiController {
             @Parameter(name = "serviceName", required = true, example = "test"),
             @Parameter(name = "clusterName", example = "DEFAULT"),
             @Parameter(name = "ip", required = true, example = "127.0.0.1"),
-            @Parameter(name = "port", required = true, example = "8080"),
+            @Parameter(name = "port", required = true, schema = @Schema(type = "integer"), example = "8080"),
             @Parameter(name = "instanceForm", hidden = true)})
     public Result<String> deregister(InstanceForm instanceForm) throws NacosException {
         // check param

@@ -78,7 +78,7 @@ public class ClusterControllerV3 {
             @Parameter(name = "groupName", example = "DEFAULT_GROUP"),
             @Parameter(name = "serviceName", required = true, example = "test"),
             @Parameter(name = "clusterName", required = true, example = "DEFAULT"),
-            @Parameter(name = "checkPort", example = "8080"), @Parameter(name = "useInstancePort4Check", example = "false"),
+            @Parameter(name = "checkPort", schema = @Schema(type = "integer"), example = "8080"), @Parameter(name = "useInstancePort4Check", schema = @Schema(type = "boolean"), example = "false"),
             @Parameter(name = "healthChecker", example = "{\"type\":\"none\"}"),
             @Parameter(name = "metadata", example = "{\"version\":\"1.0\"}"),
             @Parameter(name = "updateClusterForm", hidden = true)})

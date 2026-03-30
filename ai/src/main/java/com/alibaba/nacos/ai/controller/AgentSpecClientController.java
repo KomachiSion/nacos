@@ -79,8 +79,8 @@ public class AgentSpecClientController {
     @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE, schema = @Schema(implementation = Result.class, example = "nacos.admin.ai.agentspec.client.api.search.example")))
     @Parameters(value = {@Parameter(name = "namespaceId", example = "public"),
             @Parameter(name = "keyword", example = "my-agentspec"),
-            @Parameter(name = "pageNo", required = true, example = "1"),
-            @Parameter(name = "pageSize", required = true, example = "100"),
+            @Parameter(name = "pageNo", required = true, schema = @Schema(type = "integer"), example = "1"),
+            @Parameter(name = "pageSize", required = true, schema = @Schema(type = "integer"), example = "100"),
             @Parameter(name = "form", hidden = true), @Parameter(name = "pageForm", hidden = true)})
     public Result<Page<AgentSpecBasicInfo>> search(AgentSpecSearchForm form, PageForm pageForm) throws NacosException {
         form.validate();

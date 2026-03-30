@@ -110,7 +110,7 @@ public class ConsoleServiceController {
     @Parameters(value = {@Parameter(name = "namespaceId", example = "public"),
             @Parameter(name = "groupName", example = "DEFAULT_GROUP"),
             @Parameter(name = "serviceName", required = true, example = "test"),
-            @Parameter(name = "protectThreshold", example = "0.5"), @Parameter(name = "ephemeral", example = "false"),
+            @Parameter(name = "protectThreshold", schema = @Schema(type = "number"), example = "0.5"), @Parameter(name = "ephemeral", schema = @Schema(type = "boolean"), example = "false"),
             @Parameter(name = "selector", example = "{\"type\":\"none\"}"),
             @Parameter(name = "metadata", example = "{\"version\":\"1.0\"}"),
             @Parameter(name = "serviceForm", hidden = true)})
@@ -160,7 +160,7 @@ public class ConsoleServiceController {
     @Parameters(value = {@Parameter(name = "namespaceId", example = "public"),
             @Parameter(name = "groupName", example = "DEFAULT_GROUP"),
             @Parameter(name = "serviceName", required = true, example = "test"),
-            @Parameter(name = "protectThreshold", example = "0.5"), @Parameter(name = "ephemeral", example = "false"),
+            @Parameter(name = "protectThreshold", schema = @Schema(type = "number"), example = "0.5"), @Parameter(name = "ephemeral", schema = @Schema(type = "boolean"), example = "false"),
             @Parameter(name = "selector", example = "{\"type\":\"none\"}"),
             @Parameter(name = "metadata", example = "{\"version\":\"1.0\"}"),
             @Parameter(name = "serviceForm", hidden = true)})

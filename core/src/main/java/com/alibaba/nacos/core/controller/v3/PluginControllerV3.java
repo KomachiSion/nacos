@@ -142,8 +142,8 @@ public class PluginControllerV3 {
     @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE, schema = @Schema(implementation = Result.class, example = "nacos.admin.core.plugin.api.status.example")))
     @Parameters(value = {@Parameter(name = "pluginType", required = true, example = "auth"),
             @Parameter(name = "pluginName", required = true, example = "nacos-default-auth-plugin"),
-            @Parameter(name = "enabled", required = true, example = "true"),
-            @Parameter(name = "localOnly", example = "false")})
+            @Parameter(name = "enabled", required = true, schema = @Schema(type = "boolean"), example = "true"),
+            @Parameter(name = "localOnly", schema = @Schema(type = "boolean"), example = "false")})
     public Result<String> updatePluginStatus(@RequestParam("pluginType") String pluginType,
             @RequestParam("pluginName") String pluginName, @RequestParam("enabled") boolean enabled,
             @RequestParam(value = "localOnly", defaultValue = "false") boolean localOnly) throws NacosApiException {
@@ -170,7 +170,7 @@ public class PluginControllerV3 {
     @Parameters(value = {@Parameter(name = "pluginType", required = true, example = "auth"),
             @Parameter(name = "pluginName", required = true, example = "nacos-default-auth-plugin"),
             @Parameter(name = "config", required = true, example = "{\"key\":\"value\"}"),
-            @Parameter(name = "localOnly", example = "false")})
+            @Parameter(name = "localOnly", schema = @Schema(type = "boolean"), example = "false")})
     public Result<String> updatePluginConfig(@RequestParam("pluginType") String pluginType,
             @RequestParam("pluginName") String pluginName, @RequestParam("config") String configJson,
             @RequestParam(value = "localOnly", defaultValue = "false") boolean localOnly) throws NacosApiException {

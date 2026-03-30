@@ -374,7 +374,7 @@ public class ConfigControllerV3 {
             schema = @Schema(implementation = Result.class, example = "nacos.admin.config.config.api.listener.example")))
     @Parameters(value = {@Parameter(name = "namespaceId", example = "public"),
             @Parameter(name = "groupName", required = true, example = "DEFAULT_GROUP"),
-            @Parameter(name = "dataId", required = true, example = "test"), @Parameter(name = "aggregation", example = "true"),
+            @Parameter(name = "dataId", required = true, example = "test"), @Parameter(name = "aggregation", schema = @Schema(type = "boolean"), example = "true"),
             @Parameter(name = "configForm", hidden = true), @Parameter(name = "aggregationForm", hidden = true)})
     public Result<ConfigListenerInfo> getListeners(ConfigFormV3 configForm, AggregationForm aggregationForm)
             throws Exception {
@@ -403,8 +403,8 @@ public class ConfigControllerV3 {
             security = @SecurityRequirement(name = "nacos"))
     @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
             schema = @Schema(implementation = Result.class, example = "nacos.admin.config.config.api.list.example")))
-    @Parameters(value = {@Parameter(name = "pageNo", required = true, example = "1"),
-            @Parameter(name = "pageSize", required = true, example = "100"),
+    @Parameters(value = {@Parameter(name = "pageNo", required = true, schema = @Schema(type = "integer"), example = "1"),
+            @Parameter(name = "pageSize", required = true, schema = @Schema(type = "integer"), example = "100"),
             @Parameter(name = "namespaceId", example = "public"), @Parameter(name = "groupName", required = true),
             @Parameter(name = "dataId", required = true), @Parameter(name = "type", example = "text"),
             @Parameter(name = "configTags", example = "customTag"), @Parameter(name = "appName", example = "testApp"),

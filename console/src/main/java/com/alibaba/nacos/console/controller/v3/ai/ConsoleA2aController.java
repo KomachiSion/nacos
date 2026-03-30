@@ -147,7 +147,7 @@ public class ConsoleA2aController {
             @Parameter(name = "agentCard", required = true,
                     schema = @Schema(implementation = AgentCard.class), example = AGENT_CARD_EXAMPLE),
             @Parameter(name = "registrationType", example = AiConstants.A2a.A2A_ENDPOINT_TYPE_SERVICE),
-            @Parameter(name = "setAsLatest", example = "true"),
+            @Parameter(name = "setAsLatest", schema = @Schema(type = "boolean"), example = "true"),
             @Parameter(name = "form", hidden = true)})
     public Result<String> updateAgentCard(AgentCardUpdateForm form) throws NacosException {
         form.validate();
@@ -192,8 +192,8 @@ public class ConsoleA2aController {
             security = @SecurityRequirement(name = "nacos"))
     @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
             schema = @Schema(implementation = Result.class, example = "nacos.console.ai.a2a.api.list.example")))
-    @Parameters(value = {@Parameter(name = "pageNo", required = true, example = "1"),
-            @Parameter(name = "pageSize", required = true, example = "100"),
+    @Parameters(value = {@Parameter(name = "pageNo", required = true, schema = @Schema(type = "integer"), example = "1"),
+            @Parameter(name = "pageSize", required = true, schema = @Schema(type = "integer"), example = "100"),
             @Parameter(name = "namespaceId", example = "public"), @Parameter(name = "agentName"),
             @Parameter(name = "search", example = "blur", description = "blur or accurate", required = true),
             @Parameter(name = "agentListForm", hidden = true), @Parameter(name = "pageForm", hidden = true)})

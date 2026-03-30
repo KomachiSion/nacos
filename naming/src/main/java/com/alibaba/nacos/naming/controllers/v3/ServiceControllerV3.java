@@ -115,7 +115,7 @@ public class ServiceControllerV3 {
     @Parameters(value = {@Parameter(name = "namespaceId", example = "public"),
             @Parameter(name = "groupName", example = "DEFAULT_GROUP"),
             @Parameter(name = "serviceName", required = true, example = "test"),
-            @Parameter(name = "protectThreshold", example = "0.5"), @Parameter(name = "ephemeral", example = "false"),
+            @Parameter(name = "protectThreshold", schema = @Schema(type = "number"), example = "0.5"), @Parameter(name = "ephemeral", schema = @Schema(type = "boolean"), example = "false"),
             @Parameter(name = "selector", example = "{\"type\":\"none\"}"),
             @Parameter(name = "metadata", example = "{\"version\":\"1.0\"}"),
             @Parameter(name = "serviceForm", hidden = true)})
@@ -203,13 +203,13 @@ public class ServiceControllerV3 {
             description = "nacos.admin.naming.service.api.list.description", security = @SecurityRequirement(name = "nacos"))
     @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
             schema = @Schema(implementation = Result.class, example = "nacos.admin.naming.service.api.list.example")))
-    @Parameters(value = {@Parameter(name = "pageNo", required = true, example = "1"),
-            @Parameter(name = "pageSize", required = true, example = "10"),
+    @Parameters(value = {@Parameter(name = "pageNo", required = true, schema = @Schema(type = "integer"), example = "1"),
+            @Parameter(name = "pageSize", required = true, schema = @Schema(type = "integer"), example = "10"),
             @Parameter(name = "namespaceId", example = "public"),
             @Parameter(name = "groupNameParam"),
             @Parameter(name = "serviceNameParam", example = "test"),
-            @Parameter(name = "ignoreEmptyService", example = "true"),
-            @Parameter(name = "withInstances", example = "false"), @Parameter(name = "serviceListForm", hidden = true),
+            @Parameter(name = "ignoreEmptyService", schema = @Schema(type = "boolean"), example = "true"),
+            @Parameter(name = "withInstances", schema = @Schema(type = "boolean"), example = "false"), @Parameter(name = "serviceListForm", hidden = true),
             @Parameter(name = "pageForm", hidden = true)})
     public Result<Object> list(ServiceListForm serviceListForm, PageForm pageForm) throws Exception {
         serviceListForm.validate();
@@ -243,7 +243,7 @@ public class ServiceControllerV3 {
     @Parameters(value = {@Parameter(name = "namespaceId", example = "public"),
             @Parameter(name = "groupName", example = "DEFAULT_GROUP"),
             @Parameter(name = "serviceName", required = true, example = "test"),
-            @Parameter(name = "protectThreshold", example = "0.5"), @Parameter(name = "ephemeral", example = "false"),
+            @Parameter(name = "protectThreshold", schema = @Schema(type = "number"), example = "0.5"), @Parameter(name = "ephemeral", schema = @Schema(type = "boolean"), example = "false"),
             @Parameter(name = "selector", example = "{\"type\":\"none\"}"),
             @Parameter(name = "metadata", example = "{\"version\":\"1.0\"}"),
             @Parameter(name = "serviceForm", hidden = true)})
@@ -293,12 +293,12 @@ public class ServiceControllerV3 {
             description = "nacos.admin.naming.service.api.subscribers.description", security = @SecurityRequirement(name = "nacos"))
     @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
             schema = @Schema(implementation = Result.class, example = "nacos.admin.naming.service.api.subscribers.example")))
-    @Parameters(value = {@Parameter(name = "pageNo", required = true, example = "1"),
-            @Parameter(name = "pageSize", required = true, example = "10"),
+    @Parameters(value = {@Parameter(name = "pageNo", required = true, schema = @Schema(type = "integer"), example = "1"),
+            @Parameter(name = "pageSize", required = true, schema = @Schema(type = "integer"), example = "10"),
             @Parameter(name = "namespaceId", example = "public"),
             @Parameter(name = "groupName", example = "DEFAULT_GROUP"),
             @Parameter(name = "serviceName", required = true, example = "test"),
-            @Parameter(name = "aggregation", example = "true"), @Parameter(name = "serviceForm", hidden = true),
+            @Parameter(name = "aggregation", schema = @Schema(type = "boolean"), example = "true"), @Parameter(name = "serviceForm", hidden = true),
             @Parameter(name = "pageForm", hidden = true), @Parameter(name = "aggregationForm", hidden = true)})
     public Result<Page<SubscriberInfo>> subscribers(ServiceForm serviceForm, PageForm pageForm,
             AggregationForm aggregationForm) throws Exception {

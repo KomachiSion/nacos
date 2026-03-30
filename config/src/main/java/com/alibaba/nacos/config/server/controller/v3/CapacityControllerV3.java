@@ -122,10 +122,10 @@ public class CapacityControllerV3 {
     @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
             schema = @Schema(implementation = Result.class, example = "nacos.admin.config.capacity.api.update.example")))
     @Parameters(value = {@Parameter(name = "namespaceId", example = "public"),
-            @Parameter(name = "groupName", required = true), @Parameter(name = "quota", example = "100"),
-            @Parameter(name = "maxSize", example = "102400"),
-            @Parameter(name = "maxAggrCount", example = "10"),
-            @Parameter(name = "maxAggrSize", example = "1024"),
+            @Parameter(name = "groupName", required = true), @Parameter(name = "quota", schema = @Schema(type = "integer"), example = "100"),
+            @Parameter(name = "maxSize", schema = @Schema(type = "integer"), example = "102400"),
+            @Parameter(name = "maxAggrCount", schema = @Schema(type = "integer"), example = "10"),
+            @Parameter(name = "maxAggrSize", schema = @Schema(type = "integer"), example = "1024"),
             @Parameter(name = "updateCapacityForm", hidden = true)})
     public Result<Boolean> updateCapacity(UpdateCapacityForm updateCapacityForm) throws NacosApiException {
         updateCapacityForm.checkNamespaceIdAndGroupName(capacityService);

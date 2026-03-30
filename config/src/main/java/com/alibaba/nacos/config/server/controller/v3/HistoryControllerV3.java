@@ -91,8 +91,8 @@ public class HistoryControllerV3 {
             security = @SecurityRequirement(name = "nacos"))
     @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
             schema = @Schema(implementation = Result.class, example = "nacos.admin.config.history.api.list.example")))
-    @Parameters(value = {@Parameter(name = "pageNo", required = true, example = "1"),
-            @Parameter(name = "pageSize", required = true, example = "100"),
+    @Parameters(value = {@Parameter(name = "pageNo", required = true, schema = @Schema(type = "integer"), example = "1"),
+            @Parameter(name = "pageSize", required = true, schema = @Schema(type = "integer"), example = "100"),
             @Parameter(name = "namespaceId", example = "public"), @Parameter(name = "groupName", required = true),
             @Parameter(name = "dataId", required = true), @Parameter(name = "configForm", hidden = true),
             @Parameter(name = "pageForm", hidden = true)})
@@ -129,7 +129,7 @@ public class HistoryControllerV3 {
     @Parameters(value = {@Parameter(name = "namespaceId", example = "public"),
             @Parameter(name = "groupName", required = true, example = "DEFAULT_GROUP"),
             @Parameter(name = "dataId", required = true, example = "test"),
-            @Parameter(name = "nid", required = true, example = "1"), @Parameter(name = "configForm", hidden = true)})
+            @Parameter(name = "nid", required = true, schema = @Schema(type = "integer"), example = "1"), @Parameter(name = "configForm", hidden = true)})
     public Result<ConfigHistoryDetailInfo> getConfigHistoryInfo(ConfigFormV3 configForm, @RequestParam("nid") Long nid)
             throws AccessException, NacosApiException {
         ConfigHistoryInfo configHistoryInfo;
@@ -160,7 +160,7 @@ public class HistoryControllerV3 {
     @Parameters(value = {@Parameter(name = "namespaceId", example = "public"),
             @Parameter(name = "groupName", required = true, example = "DEFAULT_GROUP"),
             @Parameter(name = "dataId", required = true, example = "test"),
-            @Parameter(name = "id", required = true, example = "1"), @Parameter(name = "configForm", hidden = true)})
+            @Parameter(name = "id", required = true, schema = @Schema(type = "integer"), example = "1"), @Parameter(name = "configForm", hidden = true)})
     public Result<ConfigHistoryDetailInfo> getPreviousConfigHistoryInfo(ConfigFormV3 configForm,
             @RequestParam("id") Long id) throws AccessException, NacosApiException {
         ConfigHistoryInfo configHistoryInfo;

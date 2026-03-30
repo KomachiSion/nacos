@@ -224,8 +224,8 @@ public class ConsolePromptController {
             security = @SecurityRequirement(name = "nacos"))
     @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
             schema = @Schema(implementation = Result.class, example = "nacos.console.ai.prompt.api.list.example")))
-    @Parameters(value = {@Parameter(name = "pageNo", required = true, example = "1"),
-            @Parameter(name = "pageSize", required = true, example = "10"),
+    @Parameters(value = {@Parameter(name = "pageNo", required = true, schema = @Schema(type = "integer"), example = "1"),
+            @Parameter(name = "pageSize", required = true, schema = @Schema(type = "integer"), example = "10"),
             @Parameter(name = "namespaceId", example = "public"),
             @Parameter(name = "promptKey"), @Parameter(name = "search", example = "blur", description = "blur or accurate"),
             @Parameter(name = "bizTags"), @Parameter(name = "form", hidden = true)})
@@ -250,8 +250,8 @@ public class ConsolePromptController {
             schema = @Schema(implementation = Result.class, example = "nacos.console.ai.prompt.api.versions.example")))
     @Parameters(value = {@Parameter(name = "namespaceId", example = "public"),
             @Parameter(name = "promptKey", required = true, example = "my-prompt"),
-            @Parameter(name = "pageNo", required = true, example = "1"),
-            @Parameter(name = "pageSize", required = true, example = "10"),
+            @Parameter(name = "pageNo", required = true, schema = @Schema(type = "integer"), example = "1"),
+            @Parameter(name = "pageSize", required = true, schema = @Schema(type = "integer"), example = "10"),
             @Parameter(name = "form", hidden = true)})
     public Result<Page<PromptVersionSummary>> listPromptVersions(PromptHistoryForm form) throws NacosException {
         form.validate();

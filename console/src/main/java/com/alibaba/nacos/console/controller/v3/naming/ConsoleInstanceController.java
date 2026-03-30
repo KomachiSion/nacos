@@ -91,8 +91,8 @@ public class ConsoleInstanceController {
     @GetMapping("/list")
     @Operation(summary = "nacos.console.naming.instance.api.list.summary", description = "nacos.console.naming.instance.api.list.description", security = @SecurityRequirement(name = "nacos"))
     @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE, schema = @Schema(implementation = Result.class, example = "nacos.console.naming.instance.api.list.example")))
-    @Parameters(value = {@Parameter(name = "pageNo", required = true, example = "1"),
-            @Parameter(name = "pageSize", required = true, example = "100"),
+    @Parameters(value = {@Parameter(name = "pageNo", required = true, schema = @Schema(type = "integer"), example = "1"),
+            @Parameter(name = "pageSize", required = true, schema = @Schema(type = "integer"), example = "100"),
             @Parameter(name = "namespaceId", example = "public"),
             @Parameter(name = "groupName", example = "DEFAULT_GROUP"),
             @Parameter(name = "serviceName", required = true, example = "test"),
@@ -122,9 +122,9 @@ public class ConsoleInstanceController {
             @Parameter(name = "serviceName", required = true, example = "test"),
             @Parameter(name = "clusterName", example = "DEFAULT"),
             @Parameter(name = "ip", required = true, example = "127.0.0.1"),
-            @Parameter(name = "port", required = true, example = "8080"), @Parameter(name = "weight", example = "1.0"),
-            @Parameter(name = "healthy", example = "true"), @Parameter(name = "ephemeral", example = "true"),
-            @Parameter(name = "enabled", example = "true"), @Parameter(name = "metadata", example = "{\"zone\":\"a\"}"),
+            @Parameter(name = "port", required = true, schema = @Schema(type = "integer"), example = "8080"), @Parameter(name = "weight", schema = @Schema(type = "number"), example = "1.0"),
+            @Parameter(name = "healthy", schema = @Schema(type = "boolean"), example = "true"), @Parameter(name = "ephemeral", schema = @Schema(type = "boolean"), example = "true"),
+            @Parameter(name = "enabled", schema = @Schema(type = "boolean"), example = "true"), @Parameter(name = "metadata", example = "{\"zone\":\"a\"}"),
             @Parameter(name = "instanceForm", hidden = true)})
     public Result<String> updateInstance(InstanceForm instanceForm) throws NacosException {
         // check param
