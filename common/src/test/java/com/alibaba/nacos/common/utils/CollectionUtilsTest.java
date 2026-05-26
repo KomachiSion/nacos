@@ -16,6 +16,7 @@
 
 package com.alibaba.nacos.common.utils;
 
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import java.util.ArrayList;
@@ -224,7 +225,8 @@ class CollectionUtilsTest {
         // collection
         assertEquals(0, CollectionUtils.size(Collections.emptyList()));
         assertEquals(1, CollectionUtils.size(Collections.singletonList("")));
-        assertEquals(10, CollectionUtils.size(IntStream.range(0, 10).boxed().collect(Collectors.toList())));
+        assertEquals(10,
+            CollectionUtils.size(IntStream.range(0, 10).boxed().collect(Collectors.toList())));
         
         // map
         Map<String, String> map = new HashMap<>();
@@ -297,7 +299,8 @@ class CollectionUtilsTest {
         
         // enumeration
         assertTrue(CollectionUtils.sizeIsEmpty(asEnumeration(Collections.emptyIterator())));
-        assertFalse(CollectionUtils.sizeIsEmpty(asEnumeration(Collections.singleton("").iterator())));
+        assertFalse(
+            CollectionUtils.sizeIsEmpty(asEnumeration(Collections.singleton("").iterator())));
     }
     
     @Test
@@ -336,8 +339,10 @@ class CollectionUtilsTest {
     
     @Test
     void testGetOrDefault() {
-        assertEquals("default", CollectionUtils.getOrDefault(Collections.emptyList(), 1, "default"));
-        assertEquals("element", CollectionUtils.getOrDefault(Collections.singletonList("element"), 0, "default"));
+        assertEquals("default",
+            CollectionUtils.getOrDefault(Collections.emptyList(), 1, "default"));
+        assertEquals("element",
+            CollectionUtils.getOrDefault(Collections.singletonList("element"), 0, "default"));
     }
     
     @Test
@@ -359,6 +364,7 @@ class CollectionUtilsTest {
             throw new IllegalArgumentException("iterator cannot be null ");
         }
         return new Enumeration<T>() {
+            
             public boolean hasMoreElements() {
                 return iterator.hasNext();
             }
@@ -374,7 +380,8 @@ class CollectionUtilsTest {
         Set<Object> set = new HashSet<>();
         set.add(null);
         assertEquals(set, CollectionUtils.set(null, null, null));
-        assertEquals(new LinkedHashSet(Arrays.asList("", "a", "b")), CollectionUtils.set("", "a", "b"));
+        assertEquals(new LinkedHashSet(Arrays.asList("", "a", "b")),
+            CollectionUtils.set("", "a", "b"));
         assertEquals(new HashSet(), CollectionUtils.set());
     }
     
@@ -419,5 +426,70 @@ class CollectionUtilsTest {
     void testIsMapEmpty() {
         assertTrue(CollectionUtils.isMapEmpty(null));
         assertTrue(CollectionUtils.isMapEmpty(Collections.emptyMap()));
+    }
+    
+    @Test
+    @DisplayName("getCardinalityMap should count element occurrences correctly")
+    void testGetCardinalityMapShouldCountElements() {
+        List<String> list = Arrays.asList("a", "b", "a", "c", "a", "b");
+        Map<?, ?> result = CollectionUtils.getCardinalityMap(list);
+        
+        assertEquals(3, result.get("a"));
+        assertEquals(2, result.get("b"));
+        assertEquals(1, result.get("c"));
+    }
+    
+    @Test
+    @DisplayName("getCardinalityMap with empty collection should return empty map")
+    void testGetCardinalityMapEmptyCollection() {
+        Map<?, ?> result = CollectionUtils.getCardinalityMap(Collections.emptyList());
+        assertTrue(result.isEmpty());
+    }
+    
+    @Test
+    @DisplayName("getCardinalityMap with single element should return count of 1")
+    void testGetCardinalityMapSingleElement() {
+        Map<?, ?> result = CollectionUtils.getCardinalityMap(Collections.singletonList("only"));
+        assertEquals(1, result.size());
+        assertEquals(1, result.get("only"));
+    }
+    
+    @Test
+    @DisplayName("isEqualCollection with equal collections should return true")
+    void testIsEqualCollectionEqualCollections() {
+        List<String> a = Arrays.asList("a", "b", "c");
+        List<String> b = Arrays.asList("c", "b", "a");
+        assertTrue(CollectionUtils.isEqualCollection(a, b));
+    }
+    
+    @Test
+    @DisplayName("isEqualCollection with different sizes should return false")
+    void testIsEqualCollectionDifferentSizes() {
+        List<String> a = Arrays.asList("a", "b");
+        List<String> b = Arrays.asList("a", "b", "c");
+        assertFalse(CollectionUtils.isEqualCollection(a, b));
+    }
+    
+    @Test
+    @DisplayName("isEqualCollection with same size different elements should return false")
+    void testIsEqualCollectionSameSizeDifferentElements() {
+        List<String> a = Arrays.asList("a", "b", "c");
+        List<String> b = Arrays.asList("a", "b", "d");
+        assertFalse(CollectionUtils.isEqualCollection(a, b));
+    }
+    
+    @Test
+    @DisplayName("isEqualCollection with different cardinalities should return false")
+    void testIsEqualCollectionDifferentCardinalities() {
+        List<String> a = Arrays.asList("a", "a", "b");
+        List<String> b = Arrays.asList("a", "b", "b");
+        assertFalse(CollectionUtils.isEqualCollection(a, b));
+    }
+    
+    @Test
+    @DisplayName("isEqualCollection with empty collections should return true")
+    void testIsEqualCollectionEmptyCollections() {
+        assertTrue(
+            CollectionUtils.isEqualCollection(Collections.emptyList(), Collections.emptyList()));
     }
 }

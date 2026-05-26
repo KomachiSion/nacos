@@ -21,7 +21,6 @@ import com.alibaba.nacos.api.exception.api.NacosApiException;
 import com.alibaba.nacos.api.model.v2.ErrorCode;
 import com.alibaba.nacos.common.utils.StringUtils;
 import com.alibaba.nacos.api.model.NacosForm;
-import com.alibaba.nacos.naming.misc.UtilsAndCommons;
 import org.springframework.http.HttpStatus;
 
 import java.util.Objects;
@@ -54,7 +53,7 @@ public class InstanceListForm implements NacosForm {
         fillDefaultValue();
         if (StringUtils.isBlank(serviceName)) {
             throw new NacosApiException(HttpStatus.BAD_REQUEST.value(), ErrorCode.PARAMETER_MISSING,
-                    "Required parameter 'serviceName' type String is not present");
+                "Required parameter 'serviceName' type String is not present");
         }
     }
     
@@ -69,7 +68,7 @@ public class InstanceListForm implements NacosForm {
             groupName = Constants.DEFAULT_GROUP;
         }
         if (StringUtils.isBlank(clusterName)) {
-            clusterName = UtilsAndCommons.DEFAULT_CLUSTER_NAME;
+            clusterName = StringUtils.EMPTY;
         }
         if (null == healthyOnly) {
             healthyOnly = false;
@@ -125,9 +124,11 @@ public class InstanceListForm implements NacosForm {
             return false;
         }
         InstanceListForm that = (InstanceListForm) o;
-        return Objects.equals(namespaceId, that.namespaceId) && Objects.equals(groupName, that.groupName)
-                && Objects.equals(serviceName, that.serviceName) && Objects.equals(clusterName, that.clusterName)
-                && Objects.equals(healthyOnly, that.healthyOnly);
+        return Objects.equals(namespaceId, that.namespaceId)
+            && Objects.equals(groupName, that.groupName)
+            && Objects.equals(serviceName, that.serviceName)
+            && Objects.equals(clusterName, that.clusterName)
+            && Objects.equals(healthyOnly, that.healthyOnly);
     }
     
     @Override

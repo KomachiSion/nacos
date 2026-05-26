@@ -119,13 +119,15 @@ public class ConsoleMcpController {
             @Parameter(name = "namespaceId", example = "public"), @Parameter(name = "mcpName"),
             @Parameter(name = "search", example = "blur", description = "blur or accurate"),
             @Parameter(name = "mcpListForm", hidden = true), @Parameter(name = "pageForm", hidden = true)})
-    public Result<Page<McpServerBasicInfo>> listMcpServers(McpListForm mcpListForm, PageForm pageForm)
-            throws NacosException {
+    public Result<Page<McpServerBasicInfo>> listMcpServers(McpListForm mcpListForm,
+        PageForm pageForm)
+        throws NacosException {
         mcpListForm.validate();
         pageForm.validate();
         return Result.success(
-                mcpProxy.listMcpServers(mcpListForm.getNamespaceId(), mcpListForm.getMcpName(), mcpListForm.getSearch(),
-                        pageForm.getPageNo(), pageForm.getPageSize()));
+            mcpProxy.listMcpServers(mcpListForm.getNamespaceId(), mcpListForm.getMcpName(),
+                mcpListForm.getSearch(),
+                pageForm.getPageNo(), pageForm.getPageSize()));
     }
     
     /**
@@ -147,34 +149,41 @@ public class ConsoleMcpController {
             @Parameter(name = "baseUrl", required = true), @Parameter(name = "endpoint", required = true),
             @Parameter(name = "authToken")})
     public Result<List<McpSchema.Tool>> importToolsFromMcp(@RequestParam String transportType,
-            @RequestParam String baseUrl, @RequestParam String endpoint,
-            @RequestParam(required = false) String authToken) throws NacosException {
+        @RequestParam String baseUrl, @RequestParam String endpoint,
+        @RequestParam(required = false) String authToken) throws NacosException {
         McpClientTransport transport = null;
         if (StringUtils.equals(transportType, MCP_PROTOCOL_SSE)) {
-            HttpClientSseClientTransport.Builder transportBuilder = HttpClientSseClientTransport.builder(baseUrl)
+            HttpClientSseClientTransport.Builder transportBuilder =
+                HttpClientSseClientTransport.builder(baseUrl)
                     .sseEndpoint(endpoint);
             if (!StringUtils.isBlank(authToken)) {
-                transportBuilder.customizeRequest(req -> req.header("Authorization", "Bearer " + authToken));
+                transportBuilder
+                    .customizeRequest(req -> req.header("Authorization", "Bearer " + authToken));
             }
             transport = transportBuilder.build();
         } else if (StringUtils.equals(transportType, MCP_PROTOCOL_STREAMABLE)) {
-            HttpClientStreamableHttpTransport.Builder transportBuilder = HttpClientStreamableHttpTransport.builder(
+            HttpClientStreamableHttpTransport.Builder transportBuilder =
+                HttpClientStreamableHttpTransport.builder(
                     baseUrl).endpoint(endpoint);
             if (!StringUtils.isBlank(authToken)) {
-                transportBuilder.customizeRequest(req -> req.header("Authorization", "Bearer " + authToken));
+                transportBuilder
+                    .customizeRequest(req -> req.header("Authorization", "Bearer " + authToken));
             }
             transport = transportBuilder.build();
         } else {
-            return Result.failure(ErrorCode.SERVER_ERROR.getCode(), "Unsupported transport type: " + transportType,
-                    null);
+            return Result.failure(ErrorCode.SERVER_ERROR.getCode(),
+                "Unsupported transport type: " + transportType,
+                null);
         }
-        try (McpSyncClient client = McpClient.sync(transport).requestTimeout(Duration.ofSeconds(10)).build()) {
+        try (McpSyncClient client =
+            McpClient.sync(transport).requestTimeout(Duration.ofSeconds(10)).build()) {
             client.initialize();
             McpSchema.ListToolsResult tools = client.listTools();
             return Result.success(tools.tools());
         } catch (Exception e) {
             // 可以记录日志或抛出 NacosException
-            throw new NacosException(NacosException.SERVER_ERROR, "Failed to import tools from MCP server", e);
+            throw new NacosException(NacosException.SERVER_ERROR,
+                "Failed to import tools from MCP server", e);
         }
     }
     
@@ -197,8 +206,9 @@ public class ConsoleMcpController {
             @Parameter(name = "mcpForm", hidden = true)})
     public Result<McpServerDetailInfo> getMcpServer(McpForm mcpForm) throws NacosException {
         mcpForm.validate();
-        return Result.success(mcpProxy.getMcpServer(mcpForm.getNamespaceId(), mcpForm.getMcpName(), mcpForm.getMcpId(),
-                mcpForm.getVersion()));
+        return Result.success(mcpProxy.getMcpServer(mcpForm.getNamespaceId(), mcpForm.getMcpName(),
+            mcpForm.getMcpId(),
+            mcpForm.getVersion()));
     }
     
     /**
@@ -223,7 +233,8 @@ public class ConsoleMcpController {
         McpServerBasicInfo basicInfo = McpRequestUtil.parseMcpServerBasicInfo(mcpForm);
         McpToolSpecification mcpTools = McpRequestUtil.parseMcpTools(mcpForm);
         McpEndpointSpec endpointSpec = McpRequestUtil.parseMcpEndpointSpec(basicInfo, mcpForm);
-        String mcpId = mcpProxy.createMcpServer(mcpForm.getNamespaceId(), basicInfo, mcpTools, endpointSpec);
+        String mcpId =
+            mcpProxy.createMcpServer(mcpForm.getNamespaceId(), basicInfo, mcpTools, endpointSpec);
         return Result.success(mcpId);
     }
     
@@ -255,8 +266,9 @@ public class ConsoleMcpController {
         McpServerBasicInfo basicInfo = McpRequestUtil.parseMcpServerBasicInfo(mcpForm);
         McpToolSpecification mcpTools = McpRequestUtil.parseMcpTools(mcpForm);
         McpEndpointSpec endpointSpec = McpRequestUtil.parseMcpEndpointSpec(basicInfo, mcpForm);
-        mcpProxy.updateMcpServer(mcpForm.getNamespaceId(), mcpForm.getLatest(), basicInfo, mcpTools, endpointSpec,
-                mcpForm.isOverrideExisting());
+        mcpProxy.updateMcpServer(mcpForm.getNamespaceId(), mcpForm.getLatest(), basicInfo, mcpTools,
+            endpointSpec,
+            mcpForm.isOverrideExisting());
         return Result.success("ok");
     }
     
@@ -279,7 +291,7 @@ public class ConsoleMcpController {
     public Result<String> deleteMcpServer(McpForm mcpForm) throws NacosException {
         mcpForm.validate();
         mcpProxy.deleteMcpServer(mcpForm.getNamespaceId(), mcpForm.getMcpName(), mcpForm.getMcpId(),
-                mcpForm.getVersion());
+            mcpForm.getVersion());
         return Result.success("ok");
     }
     
@@ -302,10 +314,12 @@ public class ConsoleMcpController {
             @Parameter(name = "cursor", description = "Optional start cursor for URL-based import pagination."),
             @Parameter(name = "search", description = "Optional fuzzy search keyword for registry import listing. Only used when importType is 'url'."),
             @Parameter(name = "mcpImportForm", hidden = true)})
-    public Result<McpServerImportValidationResult> validateImport(McpImportForm mcpImportForm) throws NacosException {
+    public Result<McpServerImportValidationResult> validateImport(McpImportForm mcpImportForm)
+        throws NacosException {
         mcpImportForm.validate();
         McpServerImportRequest request = convertToImportRequest(mcpImportForm);
-        McpServerImportValidationResult result = mcpProxy.validateImport(mcpImportForm.getNamespaceId(), request);
+        McpServerImportValidationResult result =
+            mcpProxy.validateImport(mcpImportForm.getNamespaceId(), request);
         return Result.success(result);
     }
     
@@ -330,10 +344,12 @@ public class ConsoleMcpController {
             @Parameter(name = "cursor", description = "Optional start cursor for URL-based import pagination."),
             @Parameter(name = "search", description = "Optional fuzzy search keyword for registry import listing. Only used when importType is 'url'."),
             @Parameter(name = "mcpImportForm", hidden = true)})
-    public Result<McpServerImportResponse> executeImport(McpImportForm mcpImportForm) throws NacosException {
+    public Result<McpServerImportResponse> executeImport(McpImportForm mcpImportForm)
+        throws NacosException {
         mcpImportForm.validate();
         McpServerImportRequest request = convertToImportRequest(mcpImportForm);
-        McpServerImportResponse response = mcpProxy.executeImport(mcpImportForm.getNamespaceId(), request);
+        McpServerImportResponse response =
+            mcpProxy.executeImport(mcpImportForm.getNamespaceId(), request);
         return Result.success(response);
     }
     

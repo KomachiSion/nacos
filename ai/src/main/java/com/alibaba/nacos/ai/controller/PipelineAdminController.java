@@ -17,6 +17,7 @@
 package com.alibaba.nacos.ai.controller;
 
 import com.alibaba.nacos.ai.constant.Constants;
+import com.alibaba.nacos.ai.form.pipeline.PipelineDetailForm;
 import com.alibaba.nacos.ai.form.pipeline.PipelineListForm;
 import com.alibaba.nacos.ai.pipeline.model.PipelineExecution;
 import com.alibaba.nacos.ai.service.pipeline.PipelineQueryService;
@@ -67,20 +68,53 @@ public class PipelineAdminController {
     }
     
     /**
-     * Get pipeline execution detail by ID.
+     * List pipeline executions with pagination.
      */
+    @GetMapping(Constants.Pipeline.LIST_SUBPATH)
+    @Secured(action = ActionTypes.READ, signType = SignType.AI, apiType = ApiType.ADMIN_API)
+    public Result<Page<PipelineExecution>> listPipelines(PipelineListForm form, PageForm pageForm)
+        throws NacosException {
+        form.validate();
+        pageForm.validate();
+        return Result.success(
+            pipelineQueryService.listPipelines(form.getResourceType(), form.getResourceName(),
+                form.getNamespaceId(), form.getVersion(), pageForm.getPageNo(),
+                pageForm.getPageSize()));
+    }
+    
+    /**
+     * Get pipeline execution detail by ID (query parameter {@code pipelineId}).
+     */
+    @GetMapping(Constants.Pipeline.DETAIL_SUBPATH)
+    @Secured(action = ActionTypes.READ, signType = SignType.AI, apiType = ApiType.ADMIN_API)
+    public Result<PipelineExecution> getPipelineDetail(PipelineDetailForm form)
+        throws NacosException {
+        form.validate();
+        return Result.success(pipelineQueryService.getPipeline(form.getPipelineId()));
+    }
+    
+    /**
+     * Get pipeline execution detail by ID in path.
+     *
+     * @deprecated since 3.2.1, for removal in a future release. Use {@code GET .../detail?pipelineId=}.
+     */
+    @Deprecated(since = "3.2.1", forRemoval = true)
     @GetMapping("/{pipelineId}")
     @Secured(action = ActionTypes.READ, signType = SignType.AI, apiType = ApiType.ADMIN_API)
     @Operation(summary = "nacos.admin.ai.pipeline.api.get.summary", description = "nacos.admin.ai.pipeline.api.get.description", security = @SecurityRequirement(name = "nacos"))
     @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE, schema = @Schema(implementation = Result.class, example = "nacos.admin.ai.pipeline.api.get.example")))
     @Parameter(name = "pipelineId", required = true, example = "pipeline-id-example")
-    public Result<PipelineExecution> getPipeline(@PathVariable String pipelineId) throws NacosException {
+    public Result<PipelineExecution> getPipeline(@PathVariable String pipelineId)
+        throws NacosException {
         return Result.success(pipelineQueryService.getPipeline(pipelineId));
     }
     
     /**
-     * List pipeline executions with pagination.
+     * List pipeline executions with pagination at the controller base path.
+     *
+     * @deprecated since 3.2.1, for removal in a future release. Use {@code GET .../list}.
      */
+    @Deprecated(since = "3.2.1", forRemoval = true)
     @GetMapping
     @Secured(action = ActionTypes.READ, signType = SignType.AI, apiType = ApiType.ADMIN_API)
     @Operation(summary = "nacos.admin.ai.pipeline.api.list.summary", description = "nacos.admin.ai.pipeline.api.list.description", security = @SecurityRequirement(name = "nacos"))
@@ -92,11 +126,14 @@ public class PipelineAdminController {
             @Parameter(name = "pageNo", required = true, schema = @Schema(type = "integer"), example = "1"),
             @Parameter(name = "pageSize", required = true, schema = @Schema(type = "integer"), example = "100"),
             @Parameter(name = "form", hidden = true), @Parameter(name = "pageForm", hidden = true)})
-    public Result<Page<PipelineExecution>> listPipelines(PipelineListForm form, PageForm pageForm)
-            throws NacosException {
+    public Result<Page<PipelineExecution>> listPipelinesLegacy(PipelineListForm form,
+        PageForm pageForm)
+        throws NacosException {
         form.validate();
         pageForm.validate();
-        return Result.success(pipelineQueryService.listPipelines(form.getResourceType(), form.getResourceName(),
-                form.getNamespaceId(), form.getVersion(), pageForm.getPageNo(), pageForm.getPageSize()));
+        return Result.success(
+            pipelineQueryService.listPipelines(form.getResourceType(), form.getResourceName(),
+                form.getNamespaceId(), form.getVersion(), pageForm.getPageNo(),
+                pageForm.getPageSize()));
     }
 }

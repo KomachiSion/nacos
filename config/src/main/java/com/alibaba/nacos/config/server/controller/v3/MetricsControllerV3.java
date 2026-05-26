@@ -71,6 +71,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.TimeUnit;
 
 import static com.alibaba.nacos.api.config.remote.request.ClientConfigMetricRequest.MetricsKey.CACHE_DATA;
@@ -94,7 +95,8 @@ public class MetricsControllerV3 {
     
     private final ConnectionManager connectionManager;
     
-    public MetricsControllerV3(ServerMemberManager serverMemberManager, ConnectionManager connectionManager) {
+    public MetricsControllerV3(ServerMemberManager serverMemberManager,
+        ConnectionManager connectionManager) {
         this.serverMemberManager = serverMemberManager;
         this.connectionManager = connectionManager;
     }
@@ -104,7 +106,7 @@ public class MetricsControllerV3 {
      */
     @GetMapping("/cluster")
     @Secured(resource = Constants.METRICS_CONTROLLER_V3_ADMIN_PATH, action = ActionTypes.READ,
-            signType = SignType.CONFIG, apiType = ApiType.ADMIN_API)
+        signType = SignType.CONFIG, apiType = ApiType.ADMIN_API)
     @Operation(summary = "nacos.admin.config.metrics.api.cluster.summary", description = "nacos.admin.config.metrics.api.cluster.description",
             security = @SecurityRequirement(name = "nacos"))
     @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
@@ -114,37 +116,51 @@ public class MetricsControllerV3 {
             @Parameter(name = "groupName", example = "DEFAULT_GROUP"),
             @Parameter(name = "namespaceId", example = "public")})
     public Result<Map<String, Object>> metric(@RequestParam("ip") String ip,
-            @RequestParam(value = "dataId", required = false) String dataId,
-            @RequestParam(value = "groupName", required = false) String groupName,
-            @RequestParam(value = "namespaceId", required = false) String namespaceId) throws NacosException {
+        @RequestParam(value = "dataId", required = false) String dataId,
+        @RequestParam(value = "groupName", required = false) String groupName,
+        @RequestParam(value = "namespaceId", required = false) String namespaceId)
+        throws NacosException {
         
         ParamUtils.checkTenant(namespaceId);
         namespaceId = NamespaceUtil.processNamespaceParameter(namespaceId);
         ParamUtils.checkParam(dataId, groupName, "default", "default");
         
-        Loggers.CORE.info("Get cluster config metrics received, ip={},dataId={},groupName={},namespaceId={}", ip,
-                dataId, groupName, namespaceId);
+        Loggers.CORE.info(
+            "Get cluster config metrics received, ip={},dataId={},groupName={},namespaceId={}", ip,
+            dataId, groupName, namespaceId);
         Map<String, Object> responseMap = new HashMap<>(3);
+        AtomicBoolean complete = new AtomicBoolean(true);
         Collection<Member> members = serverMemberManager.allMembers();
-        final NacosAsyncRestTemplate nacosAsyncRestTemplate = HttpClientBeanHolder.getNacosAsyncRestTemplate(
+        final NacosAsyncRestTemplate nacosAsyncRestTemplate =
+            HttpClientBeanHolder.getNacosAsyncRestTemplate(
                 Loggers.CLUSTER);
         CountDownLatch latch = new CountDownLatch(members.size());
         for (Member member : members) {
             String url = HttpUtils.buildUrl(false, member.getAddress(), EnvUtil.getContextPath(),
-                    Constants.METRICS_CONTROLLER_V3_ADMIN_PATH, "ip");
+                Constants.METRICS_CONTROLLER_V3_ADMIN_PATH, "ip");
             Query query = Query.newInstance().addParam("ip", ip).addParam("dataId", dataId)
-                    .addParam("groupName", groupName).addParam("namespaceId", namespaceId);
+                .addParam("groupName", groupName).addParam("namespaceId", namespaceId);
             Header header = Header.newInstance();
             AuthHeaderUtil.addIdentityToHeader(header, NacosAuthConfigHolder.getInstance()
-                    .getNacosAuthConfigByScope(NacosServerAuthConfig.NACOS_SERVER_AUTH_SCOPE));
+                .getNacosAuthConfigByScope(NacosServerAuthConfig.NACOS_SERVER_AUTH_SCOPE));
             nacosAsyncRestTemplate.get(url, header, query, new GenericType<Map>() {
-            }.getType(), new ClusterMetricsCallBack(responseMap, latch, dataId, groupName, namespaceId, ip, member));
+            }.getType(),
+                new ClusterMetricsCallBack(responseMap, latch, complete, dataId, groupName,
+                    namespaceId, ip, member));
         }
         try {
-            latch.await(3L, TimeUnit.SECONDS);
+            boolean completed = latch.await(3L, TimeUnit.SECONDS);
+            if (!completed) {
+                complete.set(false);
+            }
         } catch (InterruptedException e) {
-            e.printStackTrace();
+            Thread.currentThread().interrupt();
+            Loggers.CORE.warn(
+                "Interrupted while waiting cluster config metrics, ip={},dataId={},groupName={},namespaceId={}",
+                ip, dataId, groupName, namespaceId, e);
+            complete.set(false);
         }
+        responseMap.put("complete", complete.get());
         
         return Result.success(responseMap);
     }
@@ -154,6 +170,8 @@ public class MetricsControllerV3 {
         Map<String, Object> responseMap;
         
         CountDownLatch latch;
+        
+        AtomicBoolean complete;
         
         String dataId;
         
@@ -165,10 +183,13 @@ public class MetricsControllerV3 {
         
         Member member;
         
-        public ClusterMetricsCallBack(Map<String, Object> responseMap, CountDownLatch latch, String dataId,
-                String group, String namespaceId, String ip, Member member) {
+        public ClusterMetricsCallBack(Map<String, Object> responseMap, CountDownLatch latch,
+            AtomicBoolean complete,
+            String dataId,
+            String group, String namespaceId, String ip, Member member) {
             this.responseMap = responseMap;
             this.latch = latch;
+            this.complete = complete;
             this.dataId = dataId;
             this.group = group;
             this.namespaceId = namespaceId;
@@ -178,22 +199,26 @@ public class MetricsControllerV3 {
         
         @Override
         public void onReceive(RestResult<Map> result) {
-            if (result.ok()) {
+            if (result != null && result.ok() && result.getData() != null) {
                 responseMap.putAll(result.getData());
+            } else {
+                complete.set(false);
             }
             latch.countDown();
         }
         
         @Override
         public void onError(Throwable throwable) {
+            complete.set(false);
             Loggers.CORE.error(
-                    "Get config metrics error from member address={}, ip={},dataId={},group={},namespaceId={},error={}",
-                    member.getAddress(), ip, dataId, group, namespaceId, throwable);
+                "Get config metrics error from member address={}, ip={},dataId={},group={},namespaceId={},error={}",
+                member.getAddress(), ip, dataId, group, namespaceId, throwable);
             latch.countDown();
         }
         
         @Override
         public void onCancel() {
+            complete.set(false);
             latch.countDown();
         }
     }
@@ -203,7 +228,7 @@ public class MetricsControllerV3 {
      */
     @GetMapping("/ip")
     @Secured(resource = Constants.METRICS_CONTROLLER_V3_ADMIN_PATH, action = ActionTypes.READ,
-            signType = SignType.CONFIG, apiType = ApiType.ADMIN_API)
+        signType = SignType.CONFIG, apiType = ApiType.ADMIN_API)
     @Operation(summary = "nacos.admin.config.metrics.api.ip.summary", description = "nacos.admin.config.metrics.api.ip.description",
             security = @SecurityRequirement(name = "nacos"))
     @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
@@ -213,9 +238,10 @@ public class MetricsControllerV3 {
             @Parameter(name = "groupName", example = "DEFAULT_GROUP"),
             @Parameter(name = "namespaceId", example = "public")})
     public Result<Map<String, Object>> getClientMetrics(@RequestParam("ip") String ip,
-            @RequestParam(value = "dataId", required = false) String dataId,
-            @RequestParam(value = "groupName", required = false) String groupName,
-            @RequestParam(value = "namespaceId", required = false) String namespaceId) throws NacosException {
+        @RequestParam(value = "dataId", required = false) String dataId,
+        @RequestParam(value = "groupName", required = false) String groupName,
+        @RequestParam(value = "namespaceId", required = false) String namespaceId)
+        throws NacosException {
         
         ParamUtils.checkTenant(namespaceId);
         namespaceId = NamespaceUtil.processNamespaceParameter(namespaceId);
@@ -227,19 +253,23 @@ public class MetricsControllerV3 {
             try {
                 ClientConfigMetricRequest clientMetrics = new ClientConfigMetricRequest();
                 if (StringUtils.isNotBlank(dataId)) {
-                    clientMetrics.getMetricsKeys().add(ClientConfigMetricRequest.MetricsKey.build(CACHE_DATA,
+                    clientMetrics.getMetricsKeys()
+                        .add(ClientConfigMetricRequest.MetricsKey.build(CACHE_DATA,
                             GroupKey2.getKey(dataId, groupName, namespaceId)));
-                    clientMetrics.getMetricsKeys().add(ClientConfigMetricRequest.MetricsKey.build(SNAPSHOT_DATA,
+                    clientMetrics.getMetricsKeys()
+                        .add(ClientConfigMetricRequest.MetricsKey.build(SNAPSHOT_DATA,
                             GroupKey2.getKey(dataId, groupName, namespaceId)));
                 }
                 
-                ClientConfigMetricResponse request1 = (ClientConfigMetricResponse) connectionByIp.request(clientMetrics,
+                ClientConfigMetricResponse request1 =
+                    (ClientConfigMetricResponse) connectionByIp.request(clientMetrics,
                         1000L);
                 metrics.putAll(request1.getMetrics());
             } catch (Exception e) {
                 Loggers.CORE.error(
-                        "Get config metrics error from client ip={},dataId={},groupName={},namespaceId={},error={}", ip,
-                        dataId, groupName, namespaceId, e);
+                    "Get config metrics error from client ip={},dataId={},groupName={},namespaceId={},error={}",
+                    ip,
+                    dataId, groupName, namespaceId, e);
                 throw new NacosException(NacosException.SERVER_ERROR, e);
             }
         }

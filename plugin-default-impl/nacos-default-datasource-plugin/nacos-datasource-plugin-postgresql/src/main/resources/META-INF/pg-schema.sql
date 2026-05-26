@@ -24,12 +24,12 @@ CREATE TABLE "config_info" (
   "group_id" varchar(255) ,
   "content" text  NOT NULL,
   "md5" varchar(32) ,
-  "gmt_create" timestamp(6) NOT NULL,
-  "gmt_modified" timestamp(6) NOT NULL,
+  "gmt_create" timestamp(6) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  "gmt_modified" timestamp(6) NOT NULL DEFAULT CURRENT_TIMESTAMP,
   "src_user" text ,
   "src_ip" varchar(20) ,
   "app_name" varchar(128) ,
-  "tenant_id" varchar(128) ,
+  "tenant_id" varchar(128) NOT NULL DEFAULT '',
   "c_desc" varchar(256) ,
   "c_use" varchar(64) ,
   "effect" varchar(64) ,
@@ -66,7 +66,7 @@ CREATE TABLE "config_info_gray" (
   "gmt_create" timestamp(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
   "gmt_modified" timestamp(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
   "app_name" varchar(128),
-  "tenant_id" varchar(128) DEFAULT '',
+  "tenant_id" varchar(128) NOT NULL DEFAULT '',
   "gray_name" varchar(128) NOT NULL,
   "gray_rule" text NOT NULL,
   "encrypted_data_key" varchar(256) NOT NULL DEFAULT ''
@@ -112,7 +112,7 @@ CREATE TABLE "config_tags_relation" (
   "tag_type" varchar(64) ,
   "data_id" varchar(255)  NOT NULL,
   "group_id" varchar(128)  NOT NULL,
-  "tenant_id" varchar(128) ,
+  "tenant_id" varchar(128) NOT NULL DEFAULT '',
   "nid" bigserial NOT NULL
 )
 ;
@@ -142,9 +142,9 @@ CREATE TABLE "group_capacity" (
   "max_size" int4 NOT NULL,
   "max_aggr_count" int4 NOT NULL,
   "max_aggr_size" int4 NOT NULL,
-  "max_history_count" int4 NOT NULL,
-  "gmt_create" timestamp(6) NOT NULL,
-  "gmt_modified" timestamp(6) NOT NULL
+  "max_history_count" int4 NOT NULL DEFAULT 0,
+  "gmt_create" timestamp(6) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  "gmt_modified" timestamp(6) NOT NULL DEFAULT CURRENT_TIMESTAMP
 )
 ;
 COMMENT ON COLUMN "group_capacity"."id" IS '主键ID';
@@ -177,12 +177,12 @@ CREATE TABLE "his_config_info" (
   "app_name" varchar(128) ,
   "content" text  NOT NULL,
   "md5" varchar(32) ,
-  "gmt_create" timestamp(6) NOT NULL  DEFAULT '2010-05-05 00:00:00',
-  "gmt_modified" timestamp(6) NOT NULL,
+  "gmt_create" timestamp(6) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  "gmt_modified" timestamp(6) NOT NULL DEFAULT CURRENT_TIMESTAMP,
   "src_user" text ,
   "src_ip" varchar(20) ,
   "op_type" char(10) ,
-  "tenant_id" varchar(128) ,
+  "tenant_id" varchar(128) NOT NULL DEFAULT '',
   "encrypted_data_key" text  NOT NULL,
   "publish_type" varchar(50) DEFAULT 'formal',
   "gray_name" varchar(50),
@@ -228,8 +228,9 @@ CREATE TABLE "roles" (
 -- ----------------------------
 -- Records of roles
 -- ----------------------------
+-- No seed rows: MySQL schema also leaves `roles` empty so the console can run first-time admin setup.
+-- A row like ('nacos', 'ROLE_ADMIN') blocks that flow when the DB account name is `nacos` (common JDBC user).
 BEGIN;
-INSERT INTO "roles" VALUES ('nacos', 'ROLE_ADMIN');
 COMMIT;
 
 -- ----------------------------
@@ -244,9 +245,9 @@ CREATE TABLE "tenant_capacity" (
   "max_size" int4 NOT NULL,
   "max_aggr_count" int4 NOT NULL,
   "max_aggr_size" int4 NOT NULL,
-  "max_history_count" int4 NOT NULL,
-  "gmt_create" timestamp(6) NOT NULL,
-  "gmt_modified" timestamp(6) NOT NULL
+  "max_history_count" int4 NOT NULL DEFAULT 0,
+  "gmt_create" timestamp(6) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  "gmt_modified" timestamp(6) NOT NULL DEFAULT CURRENT_TIMESTAMP
 )
 ;
 COMMENT ON COLUMN "tenant_capacity"."id" IS '主键ID';
@@ -278,8 +279,8 @@ CREATE TABLE "tenant_info" (
   "tenant_name" varchar(128) ,
   "tenant_desc" varchar(256) ,
   "create_source" varchar(32) ,
-  "gmt_create" int8 NOT NULL,
-  "gmt_modified" int8 NOT NULL
+  "gmt_create" timestamp(6) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  "gmt_modified" timestamp(6) NOT NULL DEFAULT CURRENT_TIMESTAMP
 )
 ;
 COMMENT ON COLUMN "tenant_info"."id" IS 'id';
@@ -410,6 +411,37 @@ CREATE UNIQUE INDEX "uk_tenant_info_kptenantid" ON "tenant_info" USING btree (
 );
 
 -- ----------------------------
+-- Table structure for pipeline_execution
+-- ----------------------------
+DROP TABLE IF EXISTS "pipeline_execution";
+CREATE TABLE "pipeline_execution" (
+  "execution_id"  varchar(64)  NOT NULL,
+  "resource_type" varchar(32)  NOT NULL,
+  "resource_name" varchar(256) NOT NULL,
+  "namespace_id"  varchar(128) DEFAULT NULL,
+  "version"       varchar(64)  DEFAULT NULL,
+  "status"        varchar(32)  NOT NULL,
+  "pipeline"      text         NOT NULL,
+  "create_time"   bigint       NOT NULL,
+  "update_time"   bigint       NOT NULL
+);
+COMMENT ON COLUMN "pipeline_execution"."execution_id" IS '执行ID';
+COMMENT ON COLUMN "pipeline_execution"."resource_type" IS '资源类型';
+COMMENT ON COLUMN "pipeline_execution"."resource_name" IS '资源名称';
+COMMENT ON COLUMN "pipeline_execution"."namespace_id" IS '命名空间ID';
+COMMENT ON COLUMN "pipeline_execution"."version" IS '版本';
+COMMENT ON COLUMN "pipeline_execution"."status" IS '执行状态';
+COMMENT ON COLUMN "pipeline_execution"."pipeline" IS 'pipeline节点结果JSON';
+COMMENT ON COLUMN "pipeline_execution"."create_time" IS '创建时间';
+COMMENT ON COLUMN "pipeline_execution"."update_time" IS '修改时间';
+COMMENT ON TABLE "pipeline_execution" IS 'AI资源发布审核Pipeline执行记录';
+
+-- ----------------------------
+-- Primary Key structure for table pipeline_execution
+-- ----------------------------
+ALTER TABLE "pipeline_execution" ADD CONSTRAINT "pipeline_execution_pkey" PRIMARY KEY ("execution_id");
+
+-- ----------------------------
 -- Table structure for ai_resource
 -- ----------------------------
 DROP TABLE IF EXISTS "ai_resource";
@@ -419,7 +451,7 @@ CREATE TABLE "ai_resource" (
   "gmt_modified" timestamp(6) NOT NULL DEFAULT CURRENT_TIMESTAMP,
   "name" varchar(256) NOT NULL,
   "type" varchar(32) NOT NULL,
-  "c_desc" varchar(512),
+  "c_desc" varchar(1024),
   "status" varchar(32),
   "namespace_id" varchar(128) NOT NULL DEFAULT '',
   "biz_tags" varchar(1024),
@@ -480,7 +512,7 @@ CREATE TABLE "ai_resource_version" (
   "type" varchar(32) NOT NULL,
   "author" varchar(128),
   "name" varchar(256) NOT NULL,
-  "c_desc" varchar(512),
+  "c_desc" varchar(1024),
   "status" varchar(32) NOT NULL,
   "version" varchar(64) NOT NULL,
   "namespace_id" varchar(128) NOT NULL DEFAULT '',

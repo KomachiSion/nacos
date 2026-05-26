@@ -51,6 +51,7 @@ import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -91,7 +92,8 @@ public class ConsoleInstanceController {
     @GetMapping("/list")
     @Operation(summary = "nacos.console.naming.instance.api.list.summary", description = "nacos.console.naming.instance.api.list.description", security = @SecurityRequirement(name = "nacos"))
     @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE, schema = @Schema(implementation = Result.class, example = "nacos.console.naming.instance.api.list.example")))
-    @Parameters(value = {@Parameter(name = "pageNo", required = true, schema = @Schema(type = "integer"), example = "1"),
+    @Parameters(value = {
+            @Parameter(name = "pageNo", required = true, schema = @Schema(type = "integer"), example = "1"),
             @Parameter(name = "pageSize", required = true, schema = @Schema(type = "integer"), example = "100"),
             @Parameter(name = "namespaceId", example = "public"),
             @Parameter(name = "groupName", example = "DEFAULT_GROUP"),
@@ -122,9 +124,12 @@ public class ConsoleInstanceController {
             @Parameter(name = "serviceName", required = true, example = "test"),
             @Parameter(name = "clusterName", example = "DEFAULT"),
             @Parameter(name = "ip", required = true, example = "127.0.0.1"),
-            @Parameter(name = "port", required = true, schema = @Schema(type = "integer"), example = "8080"), @Parameter(name = "weight", schema = @Schema(type = "number"), example = "1.0"),
-            @Parameter(name = "healthy", schema = @Schema(type = "boolean"), example = "true"), @Parameter(name = "ephemeral", schema = @Schema(type = "boolean"), example = "true"),
-            @Parameter(name = "enabled", schema = @Schema(type = "boolean"), example = "true"), @Parameter(name = "metadata", example = "{\"zone\":\"a\"}"),
+            @Parameter(name = "port", required = true, schema = @Schema(type = "integer"), example = "8080"),
+            @Parameter(name = "weight", schema = @Schema(type = "number"), example = "1.0"),
+            @Parameter(name = "healthy", schema = @Schema(type = "boolean"), example = "true"),
+            @Parameter(name = "ephemeral", schema = @Schema(type = "boolean"), example = "true"),
+            @Parameter(name = "enabled", schema = @Schema(type = "boolean"), example = "true"),
+            @Parameter(name = "metadata", example = "{\"zone\":\"a\"}"),
             @Parameter(name = "instanceForm", hidden = true)})
     public Result<String> updateInstance(InstanceForm instanceForm) throws NacosException {
         // check param
@@ -136,6 +141,23 @@ public class ConsoleInstanceController {
         return Result.success("ok");
     }
     
+    /**
+     * Remove instance.
+     */
+    @CanDistro
+    @DeleteMapping
+    @TpsControl(pointName = "NamingInstanceDeregister", name = "HttpNamingInstanceDeregister")
+    @Secured(action = ActionTypes.WRITE, apiType = ApiType.CONSOLE_API)
+    public Result<String> removeInstance(InstanceForm instanceForm) throws NacosException {
+        // check param
+        instanceForm.validate();
+        checkDeleteInstanceEphemeral(instanceForm.getEphemeral());
+        // build instance
+        Instance instance = buildInstance(instanceForm);
+        instanceProxy.removeInstance(instanceForm, instance);
+        return Result.success("ok");
+    }
+    
     private void checkWeight(Double weight) throws NacosException {
         if (weight > com.alibaba.nacos.naming.constants.Constants.MAX_WEIGHT_VALUE
                 || weight < com.alibaba.nacos.naming.constants.Constants.MIN_WEIGHT_VALUE) {
@@ -143,6 +165,13 @@ public class ConsoleInstanceController {
                     "instance format invalid: The weights range from "
                             + com.alibaba.nacos.naming.constants.Constants.MIN_WEIGHT_VALUE + " to "
                             + com.alibaba.nacos.naming.constants.Constants.MAX_WEIGHT_VALUE);
+        }
+    }
+    
+    private void checkDeleteInstanceEphemeral(Boolean ephemeral) throws NacosApiException {
+        if (Boolean.TRUE.equals(ephemeral)) {
+            throw new NacosApiException(HttpStatus.BAD_REQUEST.value(), ErrorCode.PARAMETER_VALIDATE_ERROR,
+                    "Console only supports deregistering persistent instances");
         }
     }
     

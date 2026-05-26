@@ -1,6 +1,6 @@
 // ===== AgentSpec Types =====
 
-export type AgentSpecVersionStatus = 'draft' | 'reviewing' | 'online' | 'offline';
+export type AgentSpecVersionStatus = 'draft' | 'reviewing' | 'reviewed' | 'online' | 'offline';
 
 /** 列表项 */
 export interface AgentSpecListItem {
@@ -73,6 +73,12 @@ export interface AgentSpecListParams {
   namespaceId?: string;
   agentSpecName?: string;
   search?: string;
+  /** Sort field (e.g. "download_count"). Empty = default sort by gmt_modified. */
+  orderBy?: string;
+  /** Filter by resource owner. Admin: any value; non-admin: own username only. */
+  owner?: string;
+  /** Filter by visibility scope: "PUBLIC" or "PRIVATE". Empty = no filter. */
+  scope?: string;
   pageNo?: number;
   pageSize?: number;
 }
@@ -105,6 +111,7 @@ export interface PublishPipelineInfo {
   executionId: string;
   status: PipelineExecutionStatus;
   pipeline: PipelineNode[];
+  historical?: boolean;
 }
 
 /** Safely parse publishPipelineInfo JSON string */

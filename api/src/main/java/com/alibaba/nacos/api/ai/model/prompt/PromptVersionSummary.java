@@ -31,11 +31,17 @@ public class PromptVersionSummary implements Serializable {
     
     private String version;
     
+    private String status;
+    
     private String commitMsg;
     
     private String srcUser;
     
     private Long gmtModified;
+    
+    private String publishPipelineInfo;
+    
+    private Long downloadCount;
     
     public String getPromptKey() {
         return promptKey;
@@ -51,6 +57,14 @@ public class PromptVersionSummary implements Serializable {
     
     public void setVersion(String version) {
         this.version = version;
+    }
+    
+    public String getStatus() {
+        return status;
+    }
+    
+    public void setStatus(String status) {
+        this.status = status;
     }
     
     public String getCommitMsg() {
@@ -75,5 +89,21 @@ public class PromptVersionSummary implements Serializable {
     
     public void setGmtModified(Long gmtModified) {
         this.gmtModified = gmtModified;
+    }
+    
+    public String getPublishPipelineInfo() {
+        return publishPipelineInfo;
+    }
+    
+    public void setPublishPipelineInfo(String publishPipelineInfo) {
+        this.publishPipelineInfo = publishPipelineInfo;
+    }
+    
+    public Long getDownloadCount() {
+        return downloadCount;
+    }
+    
+    public void setDownloadCount(Long downloadCount) {
+        this.downloadCount = downloadCount;
     }
 }

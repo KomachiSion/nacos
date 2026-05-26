@@ -60,7 +60,7 @@ export function Sidebar() {
   const navigate = useNavigate();
   const { sidebarCollapsed, toggleSidebar } = useAppStore();
   const { globalAdmin } = useAuthStore();
-  const { version, startupMode, functionMode } = useServerStore();
+  const { version, startupMode, functionMode, copilotEnabled, aiEnabled } = useServerStore();
   const { currentNamespace, namespaceShowName } = useNamespaceStore();
   const [platformOpen, setPlatformOpen] = useState(false);
 
@@ -74,8 +74,8 @@ export function Sidebar() {
 
   const coreItems: NavItem[] = [];
 
-  // AI Registry - show in mixed mode (top priority)
-  if (functionMode !== 'naming' && functionMode !== 'config') {
+  // AI Registry - show when AI is enabled and not in naming/config/microservice mode
+  if (aiEnabled && functionMode !== 'naming' && functionMode !== 'config' && functionMode !== 'microservice') {
     coreItems.push({
       key: 'ai',
       label: t('menu.aiRegistry'),
@@ -92,8 +92,8 @@ export function Sidebar() {
     });
   }
 
-  // Config Management - show unless mode is 'naming'
-  if (functionMode !== 'naming') {
+  // Config Management - show unless mode is 'naming' or 'ai'
+  if (functionMode !== 'naming' && functionMode !== 'ai') {
     coreItems.push({
       key: 'config',
       label: t('menu.configManagement'),
@@ -106,8 +106,8 @@ export function Sidebar() {
     });
   }
 
-  // Service Management - show unless mode is 'config'
-  if (functionMode !== 'config') {
+  // Service Management - show unless mode is 'config' or 'ai'
+  if (functionMode !== 'config' && functionMode !== 'ai') {
     coreItems.push({
       key: 'service',
       label: t('menu.serviceManagement'),
@@ -129,7 +129,7 @@ export function Sidebar() {
     );
   }
 
-  if (globalAdmin && functionMode !== 'naming' && functionMode !== 'config') {
+  if (globalAdmin && functionMode !== 'naming' && functionMode !== 'config' && functionMode !== 'ai') {
     platformItems.push({
       key: 'plugin',
       label: t('menu.pluginManagement'),
@@ -317,17 +317,19 @@ export function Sidebar() {
             {startupMode && ` · ${startupMode}`}
           </div>
         )}
-        <NavLink
-          item={{
-            key: 'settings',
-            label: t('menu.settingCenter'),
-            icon: <Settings size={18} />,
-            path: '/settingCenter',
-          }}
-          collapsed={sidebarCollapsed}
-          active={isActive('/settingCenter')}
-          onClick={() => navTo('/settingCenter')}
-        />
+        {copilotEnabled && (
+          <NavLink
+            item={{
+              key: 'settings',
+              label: t('menu.settingCenter'),
+              icon: <Settings size={18} />,
+              path: '/settingCenter',
+            }}
+            collapsed={sidebarCollapsed}
+            active={isActive('/settingCenter')}
+            onClick={() => navTo('/settingCenter')}
+          />
+        )}
         <button
           onClick={toggleSidebar}
           className="flex w-full items-center justify-center gap-2 rounded-md px-2 py-2 text-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors"

@@ -102,7 +102,7 @@ public class ClientControllerV3 {
             schema = @Schema(implementation = Result.class, example = "nacos.admin.naming.client.api.get.example")))
     @Parameters(value = {@Parameter(name = "clientId", required = true, example = "public")})
     public Result<ClientSummaryInfo> getClientDetail(@RequestParam("clientId") String clientId)
-            throws NacosApiException {
+        throws NacosApiException {
         checkClientId(clientId);
         return Result.success(clientServiceV2Impl.getClientDetail(clientId));
     }
@@ -117,8 +117,9 @@ public class ClientControllerV3 {
     @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
             schema = @Schema(implementation = Result.class, example = "nacos.admin.naming.client.api.publish.list.example")))
     @Parameters(value = {@Parameter(name = "clientId", required = true, example = "public")})
-    public Result<List<ClientServiceInfo>> getPublishedServiceList(@RequestParam("clientId") String clientId)
-            throws NacosApiException {
+    public Result<List<ClientServiceInfo>> getPublishedServiceList(
+        @RequestParam("clientId") String clientId)
+        throws NacosApiException {
         checkClientId(clientId);
         return Result.success(clientServiceV2Impl.getPublishedServiceList(clientId));
     }
@@ -133,8 +134,9 @@ public class ClientControllerV3 {
     @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
             schema = @Schema(implementation = Result.class, example = "nacos.admin.naming.client.api.subscribe.list.example")))
     @Parameters(value = {@Parameter(name = "clientId", required = true, example = "public")})
-    public Result<List<ClientServiceInfo>> getSubscribeServiceList(@RequestParam("clientId") String clientId)
-            throws NacosApiException {
+    public Result<List<ClientServiceInfo>> getSubscribeServiceList(
+        @RequestParam("clientId") String clientId)
+        throws NacosApiException {
         checkClientId(clientId);
         return Result.success(clientServiceV2Impl.getSubscribeServiceList(clientId));
     }
@@ -152,11 +154,14 @@ public class ClientControllerV3 {
             @Parameter(name = "groupName", example = "DEFAULT_GROUP"),
             @Parameter(name = "serviceName", required = true, example = "nacos.test.1"), @Parameter(name = "ip"),
             @Parameter(name = "port"), @Parameter(name = "clientServiceForm", hidden = true)})
-    public Result<List<ClientPublisherInfo>> getPublishedClientList(ClientServiceForm clientServiceForm)
-            throws NacosApiException {
+    public Result<List<ClientPublisherInfo>> getPublishedClientList(
+        ClientServiceForm clientServiceForm)
+        throws NacosApiException {
         clientServiceForm.validate();
-        return Result.success(clientServiceV2Impl.getPublishedClientList(clientServiceForm.getNamespaceId(),
-                clientServiceForm.getGroupName(), clientServiceForm.getServiceName(), clientServiceForm.getIp(),
+        return Result
+            .success(clientServiceV2Impl.getPublishedClientList(clientServiceForm.getNamespaceId(),
+                clientServiceForm.getGroupName(), clientServiceForm.getServiceName(),
+                clientServiceForm.getIp(),
                 clientServiceForm.getPort()));
     }
     
@@ -173,11 +178,14 @@ public class ClientControllerV3 {
             @Parameter(name = "groupName", example = "DEFAULT_GROUP"),
             @Parameter(name = "serviceName", required = true, example = "nacos.test.1"), @Parameter(name = "ip"),
             @Parameter(name = "port"), @Parameter(name = "clientServiceForm", hidden = true)})
-    public Result<List<ClientSubscriberInfo>> getSubscribeClientList(ClientServiceForm clientServiceForm)
-            throws NacosApiException {
+    public Result<List<ClientSubscriberInfo>> getSubscribeClientList(
+        ClientServiceForm clientServiceForm)
+        throws NacosApiException {
         clientServiceForm.validate();
-        return Result.success(clientServiceV2Impl.getSubscribeClientList(clientServiceForm.getNamespaceId(),
-                clientServiceForm.getGroupName(), clientServiceForm.getServiceName(), clientServiceForm.getIp(),
+        return Result
+            .success(clientServiceV2Impl.getSubscribeClientList(clientServiceForm.getNamespaceId(),
+                clientServiceForm.getGroupName(), clientServiceForm.getServiceName(),
+                clientServiceForm.getIp(),
                 clientServiceForm.getPort()));
     }
     
@@ -185,21 +193,23 @@ public class ClientControllerV3 {
      * Query the responsible server for a given client based on its IP and port.
      */
     @GetMapping("/distro")
-    @Secured(resource = UtilsAndCommons.CLIENT_CONTROLLER_V3_ADMIN_PATH, action = ActionTypes.READ, apiType = ApiType.ADMIN_API)
+    @Secured(resource = UtilsAndCommons.CLIENT_CONTROLLER_V3_ADMIN_PATH, action = ActionTypes.READ,
+        apiType = ApiType.ADMIN_API)
     @Operation(summary = "nacos.admin.naming.client.api.distro.summary", description = "nacos.admin.naming.client.api.distro.description",
             security = @SecurityRequirement(name = "nacos"))
     @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
             schema = @Schema(implementation = Result.class, example = "nacos.admin.naming.client.api.distro.example")))
     @Parameters(value = {@Parameter(name = "ip", required = true, example = "127.0.0.1"),
             @Parameter(name = "port", required = true, example = "8080")})
-    public Result<ObjectNode> getResponsibleServer4Client(@RequestParam String ip, @RequestParam String port) {
+    public Result<ObjectNode> getResponsibleServer4Client(@RequestParam String ip,
+        @RequestParam String port) {
         return Result.success(clientServiceV2Impl.getResponsibleServer4Client(ip, port));
     }
     
     private void checkClientId(String clientId) throws NacosApiException {
         if (!clientManager.contains(clientId)) {
             throw new NacosApiException(HttpStatus.NOT_FOUND.value(), ErrorCode.RESOURCE_NOT_FOUND,
-                    "clientId [ " + clientId + " ] not exist");
+                "clientId [ " + clientId + " ] not exist");
         }
     }
 }

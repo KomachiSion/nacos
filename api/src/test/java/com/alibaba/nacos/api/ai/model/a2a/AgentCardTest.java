@@ -25,6 +25,7 @@ import java.util.HashMap;
 import java.util.ArrayList;
 import java.util.Map;
 import java.util.List;
+import java.util.Collections;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
@@ -46,7 +47,9 @@ class AgentCardTest extends BasicRequestTest {
         assertTrue(json.contains("\"iconUrl\":\"http://test.com/icon.png\""));
         assertTrue(json.contains("\"url\":\"http://test.com/agent\""));
         assertTrue(json.contains("\"preferredTransport\":\"JSONRPC\""));
+        assertTrue(json.contains("\"supportedInterfaces\":[{\"url\":\"http://test.com/v1\""));
         assertTrue(json.contains("\"documentationUrl\":\"http://test.com/docs\""));
+        assertTrue(json.contains("\"signatures\":[{\"alg\":\"EdDSA\"}]"));
         assertTrue(json.contains("\"defaultInputModes\":[\"text\",\"voice\"]"));
         assertTrue(json.contains("\"defaultOutputModes\":[\"text\",\"image\"]"));
         assertTrue(json.contains("\"supportsAuthenticatedExtendedCard\":true"));
@@ -56,10 +59,14 @@ class AgentCardTest extends BasicRequestTest {
     
     @Test
     void testDeserialize() throws JsonProcessingException {
-        String json = "{\"protocolVersion\":\"1.0\",\"name\":\"test agent\",\"description\":\"test description\","
+        String json =
+            "{\"protocolVersion\":\"1.0\",\"name\":\"test agent\",\"description\":\"test description\","
                 + "\"version\":\"1.0.0\",\"iconUrl\":\"http://test.com/icon.png\","
                 + "\"url\":\"http://test.com/agent\",\"preferredTransport\":\"JSONRPC\","
+                + "\"supportedInterfaces\":[{\"url\":\"http://test.com/v1\",\"protocolBinding\":\"JSONRPC\","
+                + "\"protocolVersion\":\"1.0\",\"tenant\":\"public\"}],"
                 + "\"documentationUrl\":\"http://test.com/docs\","
+                + "\"signatures\":[{\"alg\":\"EdDSA\"}],"
                 + "\"defaultInputModes\":[\"text\",\"voice\"],"
                 + "\"defaultOutputModes\":[\"text\",\"image\"],"
                 + "\"supportsAuthenticatedExtendedCard\":true,"
@@ -76,7 +83,14 @@ class AgentCardTest extends BasicRequestTest {
         assertEquals("http://test.com/icon.png", agentCard.getIconUrl());
         assertEquals("http://test.com/agent", agentCard.getUrl());
         assertEquals("JSONRPC", agentCard.getPreferredTransport());
+        assertEquals(1, agentCard.getSupportedInterfaces().size());
+        assertEquals("http://test.com/v1", agentCard.getSupportedInterfaces().get(0).getUrl());
+        assertEquals("JSONRPC", agentCard.getSupportedInterfaces().get(0).getProtocolBinding());
+        assertEquals("1.0", agentCard.getSupportedInterfaces().get(0).getProtocolVersion());
+        assertEquals("public", agentCard.getSupportedInterfaces().get(0).getTenant());
         assertEquals("http://test.com/docs", agentCard.getDocumentationUrl());
+        assertEquals(1, agentCard.getSignatures().size());
+        assertEquals("EdDSA", agentCard.getSignatures().get(0).get("alg"));
         assertEquals(2, agentCard.getDefaultInputModes().size());
         assertEquals("text", agentCard.getDefaultInputModes().get(0));
         assertEquals("voice", agentCard.getDefaultInputModes().get(1));
@@ -86,6 +100,7 @@ class AgentCardTest extends BasicRequestTest {
         assertEquals(true, agentCard.getSupportsAuthenticatedExtendedCard());
         assertNotNull(agentCard.getCapabilities());
         assertEquals(true, agentCard.getCapabilities().getStreaming());
+        assertNotNull(agentCard.getCapabilities());
         assertNotNull(agentCard.getProvider());
         assertEquals("test-org", agentCard.getProvider().getOrganization());
         assertEquals("http://test.org", agentCard.getProvider().getUrl());
@@ -105,6 +120,7 @@ class AgentCardTest extends BasicRequestTest {
         card1.setIconUrl("http://test.com/icon.png");
         card1.setUrl("http://test.com/agent");
         card1.setPreferredTransport("JSONRPC");
+        card1.setSupportedInterfaces(Collections.emptyList());
         
         AgentCard card2 = new AgentCard();
         card2.setProtocolVersion("1.0");
@@ -114,14 +130,30 @@ class AgentCardTest extends BasicRequestTest {
         card2.setIconUrl("http://test.com/icon.png");
         card2.setUrl("http://test.com/agent");
         card2.setPreferredTransport("JSONRPC");
+        card2.setSupportedInterfaces(Collections.emptyList());
         
         AgentCard card3 = new AgentCard();
         card3.setProtocolVersion("2.0");
+        
+        AgentCard card4 = new AgentCard();
+        card4.setProtocolVersion("1.0");
+        card4.setName("test agent");
+        card4.setDescription("test description");
+        card4.setVersion("1.0.0");
+        card4.setIconUrl("http://test.com/icon.png");
+        card4.setUrl("http://test.com/agent");
+        card4.setPreferredTransport("JSONRPC");
+        AgentInterface changedInterface = new AgentInterface();
+        changedInterface.setUrl("http://test.com/changed");
+        changedInterface.setProtocolBinding("JSONRPC");
+        changedInterface.setProtocolVersion("1.0");
+        card4.setSupportedInterfaces(Collections.singletonList(changedInterface));
         
         assertEquals(card1, card1);
         assertEquals(card1, card2);
         assertEquals(card1.hashCode(), card2.hashCode());
         assertNotEquals(card1, card3);
+        assertNotEquals(card1, card4);
         assertNotEquals(card1.hashCode(), card3.hashCode());
         assertNotEquals(card1, null);
         assertNotEquals(card1, new Object());
@@ -141,7 +173,8 @@ class AgentCardTest extends BasicRequestTest {
         
         assertNotNull(agentCard.getAdditionalInterfaces());
         assertEquals(1, agentCard.getAdditionalInterfaces().size());
-        assertEquals("http://test.com/interface", agentCard.getAdditionalInterfaces().get(0).getUrl());
+        assertEquals("http://test.com/interface",
+            agentCard.getAdditionalInterfaces().get(0).getUrl());
         assertEquals("JSONRPC", agentCard.getAdditionalInterfaces().get(0).getTransport());
     }
     
@@ -181,11 +214,21 @@ class AgentCardTest extends BasicRequestTest {
         agentCard.setDefaultInputModes(Arrays.asList("text", "voice"));
         agentCard.setDefaultOutputModes(Arrays.asList("text", "image"));
         agentCard.setSupportsAuthenticatedExtendedCard(true);
+        agentCard.setSignatures(
+            Collections.singletonList(Collections.<String, Object>singletonMap("alg", "EdDSA")));
         
         // Create capabilities
         AgentCapabilities capabilities = new AgentCapabilities();
         capabilities.setStreaming(true);
+        capabilities.setExtendedAgentCard(true);
         agentCard.setCapabilities(capabilities);
+        
+        AgentInterface supportedInterface = new AgentInterface();
+        supportedInterface.setUrl("http://test.com/v1");
+        supportedInterface.setProtocolBinding("JSONRPC");
+        supportedInterface.setProtocolVersion("1.0");
+        supportedInterface.setTenant("public");
+        agentCard.setSupportedInterfaces(Collections.singletonList(supportedInterface));
         
         // Create provider
         AgentProvider provider = new AgentProvider();

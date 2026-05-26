@@ -13,10 +13,19 @@ import {
   Tag,
   ShieldOff,
   AlertCircle,
+  ShieldAlert,
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { cn } from '@/lib/utils';
 import dayjs from 'dayjs';
 import type { SkillVersionSummary } from '@/types/skill';
@@ -35,6 +44,7 @@ interface SkillVersionTimelineProps {
   onDeleteDraft: (version: string) => void;
   onSubmit: (version: string) => void;
   onPublish: (version: string) => void;
+  onForcePublish?: (version: string) => void;
   onOnline: (version: string) => void;
   onOffline: (version: string) => void;
   onDownload?: (version: string) => void;
@@ -42,6 +52,7 @@ interface SkillVersionTimelineProps {
   allLabels?: Record<string, string>;
   onSaveLabels?: (labels: Record<string, string>) => Promise<void>;
   skillEnabled?: boolean;
+  isGlobalAdmin?: boolean;
 }
 
 const STATUS_STYLES: Record<string, string> = {
@@ -51,6 +62,8 @@ const STATUS_STYLES: Record<string, string> = {
     'bg-blue-50 text-blue-700 dark:bg-blue-950/40 dark:text-blue-300',
   pendingPublish:
     'bg-teal-50 text-teal-700 dark:bg-teal-950/40 dark:text-teal-300',
+  rejected:
+    'bg-red-50 text-red-700 dark:bg-red-950/40 dark:text-red-300',
   online:
     'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300',
   offline:
@@ -61,6 +74,7 @@ const DOT_STYLES: Record<string, string> = {
   draft: 'bg-amber-400',
   reviewing: 'bg-blue-400',
   pendingPublish: 'bg-teal-400',
+  rejected: 'bg-red-400',
   online: 'bg-emerald-400',
   offline: 'bg-gray-400',
 };
@@ -75,6 +89,7 @@ export function SkillVersionTimeline({
   onDeleteDraft,
   onSubmit,
   onPublish,
+  onForcePublish,
   onOnline,
   onOffline,
   onDownload,
@@ -82,9 +97,11 @@ export function SkillVersionTimeline({
   allLabels,
   onSaveLabels,
   skillEnabled = true,
+  isGlobalAdmin = false,
 }: SkillVersionTimelineProps) {
   const { t } = useTranslation();
   const [labelEditVersion, setLabelEditVersion] = useState<string | null>(null);
+  const [forcePublishConfirmVersion, setForcePublishConfirmVersion] = useState<string | null>(null);
 
   const sorted = sortVersionsDescending(versions);
 
@@ -103,6 +120,7 @@ export function SkillVersionTimeline({
   const actionHandlers: Record<string, (version: string) => void> = {
     submit: onSubmit,
     publish: onPublish,
+    forcePublish: (version: string) => setForcePublishConfirmVersion(version),
     online: onOnline,
     offline: onOffline,
     createDraftFrom: (version: string) => onCreateDraft(version),
@@ -111,6 +129,7 @@ export function SkillVersionTimeline({
   const actionMeta: Record<string, { icon: React.ReactNode; labelKey: string; variant?: 'default' | 'outline' | 'destructive' | 'ghost' }> = {
     submit: { icon: <Send className="h-3 w-3" />, labelKey: 'skill.submit' },
     publish: { icon: <Rocket className="h-3 w-3" />, labelKey: 'skill.publish' },
+    forcePublish: { icon: <ShieldAlert className="h-3 w-3" />, labelKey: 'skill.forcePublish', variant: 'outline' },
     online: { icon: <Globe className="h-3 w-3" />, labelKey: 'skill.online' },
     offline: { icon: <PowerOff className="h-3 w-3" />, labelKey: 'skill.offline', variant: 'outline' },
     deleteDraft: { icon: <Trash2 className="h-3 w-3" />, labelKey: 'common.delete', variant: 'destructive' },
@@ -166,10 +185,13 @@ export function SkillVersionTimeline({
             v.status,
             hasEditingVersion || hasReviewingVersion,
             pipelineInfo?.status,
+            isGlobalAdmin,
+            pipelineInfo?.historical,
           );
 
-          const isPendingPublish = v.status === 'reviewing' && pipelineInfo?.status === 'APPROVED';
-          const displayStatus = isPendingPublish ? 'pendingPublish' : v.status;
+          const isPendingPublish = (v.status === 'reviewed' && pipelineInfo?.status !== 'REJECTED') || (v.status === 'reviewing' && pipelineInfo?.status === 'APPROVED');
+          const isRejected = v.status === 'reviewed' && pipelineInfo?.status === 'REJECTED';
+          const displayStatus = isRejected ? 'rejected' : isPendingPublish ? 'pendingPublish' : v.status;
 
           return (
             <div key={v.version} className="relative flex gap-3 pb-4">
@@ -249,9 +271,9 @@ export function SkillVersionTimeline({
                   </span>
                 </div>
 
-                {v.description && (
+                {v.commitMsg && (
                   <p className="mt-1 text-xs text-muted-foreground line-clamp-2">
-                    {v.description}
+                    {v.commitMsg}
                   </p>
                 )}
 
@@ -348,6 +370,41 @@ export function SkillVersionTimeline({
           onSave={onSaveLabels}
         />
       )}
+
+      {/* Force-publish confirmation dialog */}
+      <Dialog
+        open={!!forcePublishConfirmVersion}
+        onOpenChange={(open) => !open && setForcePublishConfirmVersion(null)}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <ShieldAlert className="h-5 w-5 text-destructive" />
+              {t('skill.forcePublishConfirmTitle')}
+            </DialogTitle>
+            <DialogDescription>
+              {t('skill.forcePublishConfirmDesc', { version: forcePublishConfirmVersion ?? '' })}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setForcePublishConfirmVersion(null)}>
+              {t('common.cancel')}
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={() => {
+                if (forcePublishConfirmVersion) {
+                  onForcePublish?.(forcePublishConfirmVersion);
+                }
+                setForcePublishConfirmVersion(null);
+              }}
+            >
+              <ShieldAlert className="h-4 w-4 mr-1" />
+              {t('skill.forcePublishConfirm')}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -98,8 +98,9 @@ public class ConsoleCopilotController {
     
     @Autowired
     public ConsoleCopilotController(SkillOptimizationService skillOptimizationService,
-            SkillGenerationService skillGenerationService, PromptOptimizationService promptOptimizationService,
-            PromptDebugService promptDebugService) {
+        SkillGenerationService skillGenerationService,
+        PromptOptimizationService promptOptimizationService,
+        PromptDebugService promptDebugService) {
         this.skillOptimizationService = skillOptimizationService;
         this.skillGenerationService = skillGenerationService;
         this.promptOptimizationService = promptOptimizationService;
@@ -113,13 +114,15 @@ public class ConsoleCopilotController {
      * @return SSE emitter for stream response
      * @throws NacosException if validation fails
      */
-    @PostMapping(value = CopilotConstants.SKILL_OPTIMIZE_PATH, produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+    @PostMapping(value = CopilotConstants.SKILL_OPTIMIZE_PATH,
+        produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     @Secured(action = ActionTypes.WRITE, signType = SignType.AI, apiType = ApiType.CONSOLE_API)
     @Operation(summary = "nacos.console.ai.copilot.api.skill.optimize.summary", description = "nacos.console.ai.copilot.api.skill.optimize.description", security = @SecurityRequirement(name = "nacos"))
     @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.TEXT_EVENT_STREAM_VALUE))
     @io.swagger.v3.oas.annotations.parameters.RequestBody(description = "nacos.console.ai.copilot.api.skill.optimize.body.description", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE, schema = @io.swagger.v3.oas.annotations.media.Schema(implementation = SkillOptimizationForm.class)))
     @SuppressWarnings("PMD.MethodTooLongRule")
-    public SseEmitter optimizeSkillStream(@RequestBody(required = false) SkillOptimizationForm form) {
+    public SseEmitter optimizeSkillStream(
+        @RequestBody(required = false) SkillOptimizationForm form) {
         // Create SSE emitter with 5 minutes timeout
         SseEmitter emitter = new SseEmitter(300000L);
         
@@ -129,7 +132,8 @@ public class ConsoleCopilotController {
                 SkillOptimizationResponse errorResponse = new SkillOptimizationResponse();
                 errorResponse.setDone(true);
                 errorResponse.setExplanation("请求体不能为空");
-                emitter.send(SseEmitter.event().data(JacksonUtils.toJson(errorResponse)).name("error"));
+                emitter.send(
+                    SseEmitter.event().data(JacksonUtils.toJson(errorResponse)).name("error"));
                 emitter.complete();
             } catch (IOException ioException) {
                 LOGGER.error("Failed to send error SSE event", ioException);
@@ -146,7 +150,8 @@ public class ConsoleCopilotController {
                 SkillOptimizationResponse errorResponse = new SkillOptimizationResponse();
                 errorResponse.setDone(true);
                 errorResponse.setExplanation("请求验证失败：" + e.getMessage());
-                emitter.send(SseEmitter.event().data(JacksonUtils.toJson(errorResponse)).name("error"));
+                emitter.send(
+                    SseEmitter.event().data(JacksonUtils.toJson(errorResponse)).name("error"));
                 emitter.complete();
             } catch (IOException ioException) {
                 LOGGER.error("Failed to send validation error SSE event", ioException);
@@ -170,86 +175,99 @@ public class ConsoleCopilotController {
         }
         
         // Call optimization service with stream callback
-        skillOptimizationService.optimizeSkillStream(request, new StreamResponseCallback<SkillOptimizationResponse>() {
-            @Override
-            public void onNext(SkillOptimizationResponse response) {
-                try {
-                    // Filter out SKILL.md from resources before sending to frontend
-                    if (response != null && response.getOptimizedSkill() != null) {
-                        Skill optimizedSkill = response.getOptimizedSkill();
-                        if (optimizedSkill.getResource() != null && !optimizedSkill.getResource().isEmpty()) {
-                            Map<String, SkillResource> filteredResources = new HashMap<>(
+        skillOptimizationService.optimizeSkillStream(request,
+            new StreamResponseCallback<SkillOptimizationResponse>() {
+                
+                @Override
+                public void onNext(SkillOptimizationResponse response) {
+                    try {
+                        // Filter out SKILL.md from resources before sending to frontend
+                        if (response != null && response.getOptimizedSkill() != null) {
+                            Skill optimizedSkill = response.getOptimizedSkill();
+                            if (optimizedSkill.getResource() != null
+                                && !optimizedSkill.getResource().isEmpty()) {
+                                Map<String, SkillResource> filteredResources = new HashMap<>(
                                     optimizedSkill.getResource().size());
-                            boolean hasFiltered = false;
-                            
-                            for (Map.Entry<String, SkillResource> entry : optimizedSkill.getResource().entrySet()) {
-                                String key = entry.getKey();
-                                SkillResource resource = entry.getValue();
+                                boolean hasFiltered = false;
                                 
-                                // Check if resource name or key is SKILL.md (case-insensitive)
-                                String resourceName =
-                                        resource != null && resource.getName() != null ? resource.getName() : "";
-                                String resourceKey = key != null ? key : "";
-                                
-                                boolean isSkillMd =
-                                        "SKILL.MD".equalsIgnoreCase(resourceName) || "SKILL.MD".equalsIgnoreCase(
-                                                resourceKey) || resourceName.toUpperCase().contains("SKILL.MD")
-                                                || resourceKey.toUpperCase().contains("SKILL.MD");
-                                
-                                if (isSkillMd) {
-                                    hasFiltered = true;
-                                    LOGGER.warn("Filtered out SKILL.md resource: key={}, name={}", key, resourceName);
-                                    continue;
+                                for (Map.Entry<String, SkillResource> entry : optimizedSkill
+                                    .getResource().entrySet()) {
+                                    String key = entry.getKey();
+                                    SkillResource resource = entry.getValue();
+                                    
+                                    // Check if resource name or key is SKILL.md (case-insensitive)
+                                    String resourceName =
+                                        resource != null && resource.getName() != null
+                                            ? resource.getName() : "";
+                                    String resourceKey = key != null ? key : "";
+                                    
+                                    boolean isSkillMd =
+                                        "SKILL.MD".equalsIgnoreCase(resourceName)
+                                            || "SKILL.MD".equalsIgnoreCase(
+                                                resourceKey)
+                                            || resourceName.toUpperCase().contains("SKILL.MD")
+                                            || resourceKey.toUpperCase().contains("SKILL.MD");
+                                    
+                                    if (isSkillMd) {
+                                        hasFiltered = true;
+                                        LOGGER.warn(
+                                            "Filtered out SKILL.md resource: key={}, name={}", key,
+                                            resourceName);
+                                        continue;
+                                    }
+                                    
+                                    filteredResources.put(key, resource);
                                 }
                                 
-                                filteredResources.put(key, resource);
-                            }
-                            
-                            if (hasFiltered) {
-                                optimizedSkill.setResource(filteredResources);
-                                response.setOptimizedSkill(optimizedSkill);
+                                if (hasFiltered) {
+                                    optimizedSkill.setResource(filteredResources);
+                                    response.setOptimizedSkill(optimizedSkill);
+                                }
                             }
                         }
+                        
+                        // Send SSE event
+                        emitter.send(
+                            SseEmitter.event().data(JacksonUtils.toJson(response)).name("message"));
+                    } catch (IOException e) {
+                        LOGGER.error("Failed to send SSE event", e);
+                        try {
+                            SkillOptimizationResponse errorResponse =
+                                new SkillOptimizationResponse();
+                            errorResponse.setDone(true);
+                            errorResponse.setExplanation("流式响应发送失败：" + e.getMessage());
+                            emitter.send(SseEmitter.event().data(JacksonUtils.toJson(errorResponse))
+                                .name("error"));
+                            emitter.complete();
+                        } catch (IOException ioException) {
+                            LOGGER.error("Failed to send error SSE event", ioException);
+                            emitter.complete();
+                        }
                     }
-                    
-                    // Send SSE event
-                    emitter.send(SseEmitter.event().data(JacksonUtils.toJson(response)).name("message"));
-                } catch (IOException e) {
-                    LOGGER.error("Failed to send SSE event", e);
+                }
+                
+                @Override
+                public void onError(Throwable t) {
+                    LOGGER.error("Error in skill optimization stream", t);
                     try {
+                        // Send error response
                         SkillOptimizationResponse errorResponse = new SkillOptimizationResponse();
                         errorResponse.setDone(true);
-                        errorResponse.setExplanation("流式响应发送失败：" + e.getMessage());
-                        emitter.send(SseEmitter.event().data(JacksonUtils.toJson(errorResponse)).name("error"));
+                        errorResponse.setExplanation("优化失败：" + t.getMessage());
+                        emitter.send(SseEmitter.event().data(JacksonUtils.toJson(errorResponse))
+                            .name("error"));
                         emitter.complete();
-                    } catch (IOException ioException) {
-                        LOGGER.error("Failed to send error SSE event", ioException);
+                    } catch (IOException e) {
+                        LOGGER.error("Failed to send error SSE event", e);
                         emitter.complete();
                     }
                 }
-            }
-            
-            @Override
-            public void onError(Throwable t) {
-                LOGGER.error("Error in skill optimization stream", t);
-                try {
-                    // Send error response
-                    SkillOptimizationResponse errorResponse = new SkillOptimizationResponse();
-                    errorResponse.setDone(true);
-                    errorResponse.setExplanation("优化失败：" + t.getMessage());
-                    emitter.send(SseEmitter.event().data(JacksonUtils.toJson(errorResponse)).name("error"));
-                    emitter.complete();
-                } catch (IOException e) {
-                    LOGGER.error("Failed to send error SSE event", e);
+                
+                @Override
+                public void onComplete() {
                     emitter.complete();
                 }
-            }
-            
-            @Override
-            public void onComplete() {
-                emitter.complete();
-            }
-        });
+            });
         
         return emitter;
     }
@@ -261,7 +279,8 @@ public class ConsoleCopilotController {
      * @return SSE emitter for stream response
      * @throws NacosException if validation fails
      */
-    @PostMapping(value = CopilotConstants.SKILL_GENERATE_PATH, produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+    @PostMapping(value = CopilotConstants.SKILL_GENERATE_PATH,
+        produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     @Secured(action = ActionTypes.WRITE, signType = SignType.AI, apiType = ApiType.CONSOLE_API)
     @Operation(summary = "nacos.console.ai.copilot.api.skill.generate.summary", description = "nacos.console.ai.copilot.api.skill.generate.description", security = @SecurityRequirement(name = "nacos"))
     @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.TEXT_EVENT_STREAM_VALUE))
@@ -277,7 +296,8 @@ public class ConsoleCopilotController {
                 SkillGenerationResponse errorResponse = new SkillGenerationResponse();
                 errorResponse.setDone(true);
                 errorResponse.setExplanation("请求体不能为空");
-                emitter.send(SseEmitter.event().data(JacksonUtils.toJson(errorResponse)).name("error"));
+                emitter.send(
+                    SseEmitter.event().data(JacksonUtils.toJson(errorResponse)).name("error"));
                 emitter.complete();
             } catch (IOException ioException) {
                 LOGGER.error("Failed to send error SSE event", ioException);
@@ -294,7 +314,8 @@ public class ConsoleCopilotController {
                 SkillGenerationResponse errorResponse = new SkillGenerationResponse();
                 errorResponse.setDone(true);
                 errorResponse.setExplanation("请求验证失败：" + e.getMessage());
-                emitter.send(SseEmitter.event().data(JacksonUtils.toJson(errorResponse)).name("error"));
+                emitter.send(
+                    SseEmitter.event().data(JacksonUtils.toJson(errorResponse)).name("error"));
                 emitter.complete();
             } catch (IOException ioException) {
                 LOGGER.error("Failed to send validation error SSE event", ioException);
@@ -310,48 +331,53 @@ public class ConsoleCopilotController {
         request.setConversationHistory(form.getConversationHistory());
         
         // Call generation service with stream callback
-        skillGenerationService.generateSkillStream(request, new StreamResponseCallback<SkillGenerationResponse>() {
-            @Override
-            public void onNext(SkillGenerationResponse response) {
-                try {
-                    // Send SSE event
-                    emitter.send(SseEmitter.event().data(JacksonUtils.toJson(response)).name("message"));
-                } catch (IOException e) {
-                    LOGGER.error("Failed to send SSE event", e);
+        skillGenerationService.generateSkillStream(request,
+            new StreamResponseCallback<SkillGenerationResponse>() {
+                
+                @Override
+                public void onNext(SkillGenerationResponse response) {
                     try {
+                        // Send SSE event
+                        emitter.send(
+                            SseEmitter.event().data(JacksonUtils.toJson(response)).name("message"));
+                    } catch (IOException e) {
+                        LOGGER.error("Failed to send SSE event", e);
+                        try {
+                            SkillGenerationResponse errorResponse = new SkillGenerationResponse();
+                            errorResponse.setDone(true);
+                            errorResponse.setExplanation("流式响应发送失败：" + e.getMessage());
+                            emitter.send(SseEmitter.event().data(JacksonUtils.toJson(errorResponse))
+                                .name("error"));
+                            emitter.complete();
+                        } catch (IOException ioException) {
+                            LOGGER.error("Failed to send error SSE event", ioException);
+                            emitter.complete();
+                        }
+                    }
+                }
+                
+                @Override
+                public void onError(Throwable t) {
+                    LOGGER.error("Error in skill generation stream", t);
+                    try {
+                        // Send error response
                         SkillGenerationResponse errorResponse = new SkillGenerationResponse();
                         errorResponse.setDone(true);
-                        errorResponse.setExplanation("流式响应发送失败：" + e.getMessage());
-                        emitter.send(SseEmitter.event().data(JacksonUtils.toJson(errorResponse)).name("error"));
+                        errorResponse.setExplanation("生成失败：" + t.getMessage());
+                        emitter.send(SseEmitter.event().data(JacksonUtils.toJson(errorResponse))
+                            .name("error"));
                         emitter.complete();
-                    } catch (IOException ioException) {
-                        LOGGER.error("Failed to send error SSE event", ioException);
+                    } catch (IOException e) {
+                        LOGGER.error("Failed to send error SSE event", e);
                         emitter.complete();
                     }
                 }
-            }
-            
-            @Override
-            public void onError(Throwable t) {
-                LOGGER.error("Error in skill generation stream", t);
-                try {
-                    // Send error response
-                    SkillGenerationResponse errorResponse = new SkillGenerationResponse();
-                    errorResponse.setDone(true);
-                    errorResponse.setExplanation("生成失败：" + t.getMessage());
-                    emitter.send(SseEmitter.event().data(JacksonUtils.toJson(errorResponse)).name("error"));
-                    emitter.complete();
-                } catch (IOException e) {
-                    LOGGER.error("Failed to send error SSE event", e);
+                
+                @Override
+                public void onComplete() {
                     emitter.complete();
                 }
-            }
-            
-            @Override
-            public void onComplete() {
-                emitter.complete();
-            }
-        });
+            });
         
         return emitter;
     }
@@ -363,13 +389,15 @@ public class ConsoleCopilotController {
      * @return SSE emitter for stream response
      * @throws NacosException if validation fails
      */
-    @PostMapping(value = CopilotConstants.PROMPT_OPTIMIZE_PATH, produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+    @PostMapping(value = CopilotConstants.PROMPT_OPTIMIZE_PATH,
+        produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     @Secured(action = ActionTypes.WRITE, signType = SignType.AI, apiType = ApiType.CONSOLE_API)
     @Operation(summary = "nacos.console.ai.copilot.api.prompt.optimize.summary", description = "nacos.console.ai.copilot.api.prompt.optimize.description", security = @SecurityRequirement(name = "nacos"))
     @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.TEXT_EVENT_STREAM_VALUE))
     @io.swagger.v3.oas.annotations.parameters.RequestBody(description = "nacos.console.ai.copilot.api.prompt.optimize.body.description", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE, schema = @io.swagger.v3.oas.annotations.media.Schema(implementation = PromptOptimizationForm.class)))
     @SuppressWarnings("PMD.MethodTooLongRule")
-    public SseEmitter optimizePromptStream(@RequestBody(required = false) PromptOptimizationForm form) {
+    public SseEmitter optimizePromptStream(
+        @RequestBody(required = false) PromptOptimizationForm form) {
         // Create SSE emitter with 5 minutes timeout
         SseEmitter emitter = new SseEmitter(300000L);
         
@@ -379,7 +407,8 @@ public class ConsoleCopilotController {
                 PromptOptimizationResponse errorResponse = new PromptOptimizationResponse();
                 errorResponse.setDone(true);
                 errorResponse.setExplanation("请求体不能为空");
-                emitter.send(SseEmitter.event().data(JacksonUtils.toJson(errorResponse)).name("error"));
+                emitter.send(
+                    SseEmitter.event().data(JacksonUtils.toJson(errorResponse)).name("error"));
                 emitter.complete();
             } catch (IOException ioException) {
                 LOGGER.error("Failed to send error SSE event", ioException);
@@ -396,7 +425,8 @@ public class ConsoleCopilotController {
                 PromptOptimizationResponse errorResponse = new PromptOptimizationResponse();
                 errorResponse.setDone(true);
                 errorResponse.setExplanation("请求验证失败：" + e.getMessage());
-                emitter.send(SseEmitter.event().data(JacksonUtils.toJson(errorResponse)).name("error"));
+                emitter.send(
+                    SseEmitter.event().data(JacksonUtils.toJson(errorResponse)).name("error"));
                 emitter.complete();
             } catch (IOException ioException) {
                 LOGGER.error("Failed to send validation error SSE event", ioException);
@@ -412,48 +442,53 @@ public class ConsoleCopilotController {
         
         // Call optimization service with stream callback
         promptOptimizationService.optimizePromptStream(request,
-                new StreamResponseCallback<PromptOptimizationResponse>() {
-                    @Override
-                    public void onNext(PromptOptimizationResponse response) {
+            new StreamResponseCallback<PromptOptimizationResponse>() {
+                
+                @Override
+                public void onNext(PromptOptimizationResponse response) {
+                    try {
+                        // Send SSE event
+                        emitter.send(
+                            SseEmitter.event().data(JacksonUtils.toJson(response)).name("message"));
+                    } catch (IOException e) {
+                        LOGGER.error("Failed to send SSE event", e);
                         try {
-                            // Send SSE event
-                            emitter.send(SseEmitter.event().data(JacksonUtils.toJson(response)).name("message"));
-                        } catch (IOException e) {
-                            LOGGER.error("Failed to send SSE event", e);
-                            try {
-                                PromptOptimizationResponse errorResponse = new PromptOptimizationResponse();
-                                errorResponse.setDone(true);
-                                errorResponse.setExplanation("流式响应发送失败：" + e.getMessage());
-                                emitter.send(SseEmitter.event().data(JacksonUtils.toJson(errorResponse)).name("error"));
-                                emitter.complete();
-                            } catch (IOException ioException) {
-                                LOGGER.error("Failed to send error SSE event", ioException);
-                                emitter.complete();
-                            }
-                        }
-                    }
-                    
-                    @Override
-                    public void onError(Throwable t) {
-                        LOGGER.error("Error in prompt optimization stream", t);
-                        try {
-                            // Send error response
-                            PromptOptimizationResponse errorResponse = new PromptOptimizationResponse();
+                            PromptOptimizationResponse errorResponse =
+                                new PromptOptimizationResponse();
                             errorResponse.setDone(true);
-                            errorResponse.setExplanation("优化失败：" + t.getMessage());
-                            emitter.send(SseEmitter.event().data(JacksonUtils.toJson(errorResponse)).name("error"));
+                            errorResponse.setExplanation("流式响应发送失败：" + e.getMessage());
+                            emitter.send(SseEmitter.event().data(JacksonUtils.toJson(errorResponse))
+                                .name("error"));
                             emitter.complete();
-                        } catch (IOException e) {
-                            LOGGER.error("Failed to send error SSE event", e);
+                        } catch (IOException ioException) {
+                            LOGGER.error("Failed to send error SSE event", ioException);
                             emitter.complete();
                         }
                     }
-                    
-                    @Override
-                    public void onComplete() {
+                }
+                
+                @Override
+                public void onError(Throwable t) {
+                    LOGGER.error("Error in prompt optimization stream", t);
+                    try {
+                        // Send error response
+                        PromptOptimizationResponse errorResponse = new PromptOptimizationResponse();
+                        errorResponse.setDone(true);
+                        errorResponse.setExplanation("优化失败：" + t.getMessage());
+                        emitter.send(SseEmitter.event().data(JacksonUtils.toJson(errorResponse))
+                            .name("error"));
+                        emitter.complete();
+                    } catch (IOException e) {
+                        LOGGER.error("Failed to send error SSE event", e);
                         emitter.complete();
                     }
-                });
+                }
+                
+                @Override
+                public void onComplete() {
+                    emitter.complete();
+                }
+            });
         
         return emitter;
     }
@@ -466,7 +501,8 @@ public class ConsoleCopilotController {
      * @return SSE emitter for stream response
      * @throws NacosException if validation fails
      */
-    @PostMapping(value = CopilotConstants.PROMPT_DEBUG_PATH, produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+    @PostMapping(value = CopilotConstants.PROMPT_DEBUG_PATH,
+        produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     @Secured(action = ActionTypes.WRITE, signType = SignType.AI, apiType = ApiType.CONSOLE_API)
     @Operation(summary = "nacos.console.ai.copilot.api.prompt.debug.summary", description = "nacos.console.ai.copilot.api.prompt.debug.description", security = @SecurityRequirement(name = "nacos"))
     @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.TEXT_EVENT_STREAM_VALUE))
@@ -481,7 +517,8 @@ public class ConsoleCopilotController {
             try {
                 PromptDebugResponse errorResponse = new PromptDebugResponse();
                 errorResponse.setDone(true);
-                emitter.send(SseEmitter.event().data(JacksonUtils.toJson(errorResponse)).name("error"));
+                emitter.send(
+                    SseEmitter.event().data(JacksonUtils.toJson(errorResponse)).name("error"));
                 emitter.complete();
             } catch (IOException ioException) {
                 LOGGER.error("Failed to send error SSE event", ioException);
@@ -497,7 +534,8 @@ public class ConsoleCopilotController {
             try {
                 PromptDebugResponse errorResponse = new PromptDebugResponse();
                 errorResponse.setDone(true);
-                emitter.send(SseEmitter.event().data(JacksonUtils.toJson(errorResponse)).name("error"));
+                emitter.send(
+                    SseEmitter.event().data(JacksonUtils.toJson(errorResponse)).name("error"));
                 emitter.complete();
             } catch (IOException ioException) {
                 LOGGER.error("Failed to send validation error SSE event", ioException);
@@ -512,46 +550,51 @@ public class ConsoleCopilotController {
         request.setUserInput(form.getUserInput());
         
         // Call debug service with stream callback
-        promptDebugService.debugPromptStream(request, new StreamResponseCallback<PromptDebugResponse>() {
-            @Override
-            public void onNext(PromptDebugResponse response) {
-                try {
-                    // Send SSE event
-                    emitter.send(SseEmitter.event().data(JacksonUtils.toJson(response)).name("message"));
-                } catch (IOException e) {
-                    LOGGER.error("Failed to send SSE event", e);
+        promptDebugService.debugPromptStream(request,
+            new StreamResponseCallback<PromptDebugResponse>() {
+                
+                @Override
+                public void onNext(PromptDebugResponse response) {
                     try {
+                        // Send SSE event
+                        emitter.send(
+                            SseEmitter.event().data(JacksonUtils.toJson(response)).name("message"));
+                    } catch (IOException e) {
+                        LOGGER.error("Failed to send SSE event", e);
+                        try {
+                            PromptDebugResponse errorResponse = new PromptDebugResponse();
+                            errorResponse.setDone(true);
+                            emitter.send(SseEmitter.event().data(JacksonUtils.toJson(errorResponse))
+                                .name("error"));
+                            emitter.complete();
+                        } catch (IOException ioException) {
+                            LOGGER.error("Failed to send error SSE event", ioException);
+                            emitter.complete();
+                        }
+                    }
+                }
+                
+                @Override
+                public void onError(Throwable t) {
+                    LOGGER.error("Error in prompt debug stream", t);
+                    try {
+                        // Send error response
                         PromptDebugResponse errorResponse = new PromptDebugResponse();
                         errorResponse.setDone(true);
-                        emitter.send(SseEmitter.event().data(JacksonUtils.toJson(errorResponse)).name("error"));
+                        emitter.send(SseEmitter.event().data(JacksonUtils.toJson(errorResponse))
+                            .name("error"));
                         emitter.complete();
-                    } catch (IOException ioException) {
-                        LOGGER.error("Failed to send error SSE event", ioException);
+                    } catch (IOException e) {
+                        LOGGER.error("Failed to send error SSE event", e);
                         emitter.complete();
                     }
                 }
-            }
-            
-            @Override
-            public void onError(Throwable t) {
-                LOGGER.error("Error in prompt debug stream", t);
-                try {
-                    // Send error response
-                    PromptDebugResponse errorResponse = new PromptDebugResponse();
-                    errorResponse.setDone(true);
-                    emitter.send(SseEmitter.event().data(JacksonUtils.toJson(errorResponse)).name("error"));
-                    emitter.complete();
-                } catch (IOException e) {
-                    LOGGER.error("Failed to send error SSE event", e);
+                
+                @Override
+                public void onComplete() {
                     emitter.complete();
                 }
-            }
-            
-            @Override
-            public void onComplete() {
-                emitter.complete();
-            }
-        });
+            });
         
         return emitter;
     }

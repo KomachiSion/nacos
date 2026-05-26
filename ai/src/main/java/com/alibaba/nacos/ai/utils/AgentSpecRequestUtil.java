@@ -16,7 +16,6 @@
 
 package com.alibaba.nacos.ai.utils;
 
-import com.alibaba.nacos.ai.constant.Constants;
 import com.alibaba.nacos.ai.form.agentspecs.admin.AgentSpecDetailForm;
 import com.alibaba.nacos.api.ai.model.agentspecs.AgentSpec;
 import com.alibaba.nacos.api.exception.NacosException;
@@ -48,17 +47,22 @@ public class AgentSpecRequestUtil {
      * @return agentSpec
      * @throws NacosApiException if parse failed or request parameter is conflicted.
      */
-    public static AgentSpec parseAgentSpec(AgentSpecDetailForm detailForm) throws NacosApiException {
+    public static AgentSpec parseAgentSpec(AgentSpecDetailForm detailForm)
+        throws NacosApiException {
         try {
-            AgentSpec result = JacksonUtils.toObj(detailForm.getAgentSpecCard(), new TypeReference<>() {
-            });
+            AgentSpec result =
+                JacksonUtils.toObj(detailForm.getAgentSpecCard(), new TypeReference<>() {
+                });
             validateAgentSpec(result);
             return result;
         } catch (NacosDeserializationException e) {
-            LOGGER.error(String.format("Deserialize %s from %s failed, ", AgentSpec.class.getSimpleName(),
-                    detailForm.getAgentSpecCard()), e);
-            throw new NacosApiException(NacosApiException.INVALID_PARAM, ErrorCode.PARAMETER_VALIDATE_ERROR,
-                    "agentSpecCard is invalid. Can't be parsed.");
+            LOGGER.error(
+                String.format("Deserialize %s from %s failed, ", AgentSpec.class.getSimpleName(),
+                    detailForm.getAgentSpecCard()),
+                e);
+            throw new NacosApiException(NacosApiException.INVALID_PARAM,
+                ErrorCode.PARAMETER_VALIDATE_ERROR,
+                "agentSpecCard is invalid. Can't be parsed.");
         }
     }
     
@@ -72,10 +76,12 @@ public class AgentSpecRequestUtil {
         validateAgentSpecField("name", agentSpec.getName());
     }
     
-    private static void validateAgentSpecField(String fieldName, String fieldValue) throws NacosApiException {
+    private static void validateAgentSpecField(String fieldName, String fieldValue)
+        throws NacosApiException {
         if (StringUtils.isEmpty(fieldValue)) {
-            throw new NacosApiException(NacosApiException.INVALID_PARAM, ErrorCode.PARAMETER_MISSING,
-                    "Required parameter `agentSpecCard." + fieldName + "` not present");
+            throw new NacosApiException(NacosApiException.INVALID_PARAM,
+                ErrorCode.PARAMETER_MISSING,
+                "Required parameter `agentSpecCard." + fieldName + "` not present");
         }
     }
     
@@ -88,18 +94,22 @@ public class AgentSpecRequestUtil {
      */
     public static byte[] validateAndExtractZipBytes(MultipartFile file) throws NacosException {
         if (file == null || file.isEmpty()) {
-            throw new NacosApiException(NacosException.INVALID_PARAM, ErrorCode.DATA_EMPTY, "File is required");
+            throw new NacosApiException(NacosException.INVALID_PARAM, ErrorCode.DATA_EMPTY,
+                "File is required");
         }
-        if (file.getSize() > Constants.AgentSpecs.MAX_UPLOAD_ZIP_BYTES) {
-            throw new NacosApiException(NacosException.INVALID_PARAM, ErrorCode.PARAMETER_VALIDATE_ERROR,
-                    "AgentSpec zip size must not exceed " + (Constants.AgentSpecs.MAX_UPLOAD_ZIP_BYTES / 1024 / 1024)
-                            + "MB, current: " + (file.getSize() / 1024 / 1024) + "MB");
+        long maxUploadBytes = AgentSpecZipParser.resolveMaxUploadBytes();
+        if (file.getSize() > maxUploadBytes) {
+            throw new NacosApiException(NacosException.INVALID_PARAM,
+                ErrorCode.PARAMETER_VALIDATE_ERROR,
+                "AgentSpec zip size must not exceed "
+                    + (maxUploadBytes / 1024 / 1024)
+                    + "MB, current: " + (file.getSize() / 1024 / 1024) + "MB");
         }
         try {
             return file.getBytes();
         } catch (IOException e) {
             throw new NacosApiException(NacosException.SERVER_ERROR, ErrorCode.PARSING_DATA_FAILED,
-                    "Failed to read file: " + e.getMessage());
+                "Failed to read file: " + e.getMessage());
         }
     }
 }

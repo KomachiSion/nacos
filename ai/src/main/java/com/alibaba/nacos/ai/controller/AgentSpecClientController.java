@@ -82,10 +82,12 @@ public class AgentSpecClientController {
             @Parameter(name = "pageNo", required = true, schema = @Schema(type = "integer"), example = "1"),
             @Parameter(name = "pageSize", required = true, schema = @Schema(type = "integer"), example = "100"),
             @Parameter(name = "form", hidden = true), @Parameter(name = "pageForm", hidden = true)})
-    public Result<Page<AgentSpecBasicInfo>> search(AgentSpecSearchForm form, PageForm pageForm) throws NacosException {
+    public Result<Page<AgentSpecBasicInfo>> search(AgentSpecSearchForm form, PageForm pageForm)
+        throws NacosException {
         form.validate();
         pageForm.validate();
-        return Result.success(agentSpecOperationService.searchAgentSpecs(form.getNamespaceId(), form.getKeyword(),
+        return Result.success(
+            agentSpecOperationService.searchAgentSpecs(form.getNamespaceId(), form.getKeyword(),
                 pageForm.getPageNo(), pageForm.getPageSize()));
     }
     
@@ -93,7 +95,8 @@ public class AgentSpecClientController {
      * Get an online agentspec version by label/version/latest.
      */
     @GetMapping
-    @Secured(action = ActionTypes.READ, signType = SignType.AI, apiType = ApiType.OPEN_API, tags = {ALLOW_ANONYMOUS})
+    @Secured(action = ActionTypes.READ, signType = SignType.AI, apiType = ApiType.OPEN_API,
+        tags = {ALLOW_ANONYMOUS})
     @Operation(summary = "nacos.admin.ai.agentspec.client.api.get.summary", description = "nacos.admin.ai.agentspec.client.api.get.description", security = @SecurityRequirement(name = "nacos"))
     @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE, schema = @Schema(implementation = Result.class, example = "nacos.admin.ai.agentspec.client.api.get.example")))
     @Parameters(value = {@Parameter(name = "namespaceId", example = "public"),
@@ -104,7 +107,8 @@ public class AgentSpecClientController {
     public Result<AgentSpec> get(AgentSpecQueryForm form) throws NacosException {
         form.validate();
         return Result.success(
-                agentSpecOperationService.queryAgentSpec(form.getNamespaceId(), form.getName(), form.getVersion(),
-                        form.getLabel()));
+            agentSpecOperationService.queryAgentSpec(form.getNamespaceId(), form.getName(),
+                form.getVersion(),
+                form.getLabel()));
     }
 }

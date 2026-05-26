@@ -36,7 +36,6 @@ import PageTitle from 'components/PageTitle';
 import { getParams, goLogin, request, setParams } from '@/globalLib';
 import { GLOBAL_PAGE_SIZE_LIST, LOGINPAGE_ENABLED } from '../../../constants';
 import TotalRender from '../../../components/Page/TotalRender';
-import SkillOptimizeDialog from './SkillOptimizeDialog';
 import './SkillManagement.scss';
 
 @ConfigProvider.config
@@ -61,12 +60,13 @@ class SkillManagement extends React.Component {
       selectedRowKeys: [],
       selectedRows: [],
       searchName: getParams('searchName') || '',
+      searchBizTag: getParams('searchBizTag') || '',
       nownamespace_name: '',
       nownamespace_id: '',
       nownamespace_desc: '',
-      optimizeDialogVisible: false,
-      currentOptimizeSkill: null,
       orderBy: '',
+      isDragOver: false,
+      uploading: false,
     };
   }
 
@@ -106,6 +106,7 @@ class SkillManagement extends React.Component {
     if (needclean) {
       this.setState({
         searchName: '',
+        searchBizTag: '',
         selectedRowKeys: [],
         selectedRows: [],
       });
@@ -115,13 +116,14 @@ class SkillManagement extends React.Component {
         namespace,
         namespaceShowName,
         searchName: '',
+        searchBizTag: '',
       });
     }
     this.getData();
   };
 
   getData = (pageNo = this.state.currentPage) => {
-    const { pageSize, searchName, orderBy } = this.state;
+    const { pageSize, searchName, searchBizTag, orderBy } = this.state;
     const { locale = {} } = this.props;
     const namespaceId = getParams('namespace') || '';
 
@@ -136,6 +138,9 @@ class SkillManagement extends React.Component {
     };
     if (orderBy) {
       data.orderBy = orderBy;
+    }
+    if (searchBizTag) {
+      data.bizTag = searchBizTag;
     }
 
     request({
@@ -164,8 +169,10 @@ class SkillManagement extends React.Component {
 
   handleSearch = () => {
     const searchName = this.field.getValue('searchName') || '';
-    this.setState({ searchName, currentPage: 1 }, () => {
+    const searchBizTag = this.field.getValue('searchBizTag') || '';
+    this.setState({ searchName, searchBizTag, currentPage: 1 }, () => {
       setParams('searchName', searchName);
+      setParams('searchBizTag', searchBizTag);
       setParams('pageNo', '1');
       this.getData(1);
     });
@@ -371,37 +378,6 @@ class SkillManagement extends React.Component {
     });
   };
 
-  handleOptimizeSkill = record => {
-    // Load full skill data first
-    const namespaceId = getParams('namespace') || '';
-    const params = new URLSearchParams();
-    params.append('skillName', record.name);
-    if (namespaceId) {
-      params.append('namespaceId', namespaceId);
-    }
-
-    request({
-      url: `v3/console/ai/skills?${params.toString()}`,
-      success: data => {
-        if (data && (data.code === 0 || data.code === 200) && data.data) {
-          this.setState({
-            currentOptimizeSkill: data.data,
-            optimizeDialogVisible: true,
-          });
-        } else {
-          const { locale = {} } = this.props;
-          Message.error(
-            data?.message || locale.getSkillInfoFailed || 'Failed to get Skill information'
-          );
-        }
-      },
-      error: () => {
-        const { locale = {} } = this.props;
-        Message.error(locale.getSkillInfoFailed || 'Failed to get Skill information');
-      },
-    });
-  };
-
   getTokenInfo = () => {
     const _LOGINPAGE_ENABLED = localStorage.getItem(LOGINPAGE_ENABLED);
     let token = {};
@@ -421,6 +397,13 @@ class SkillManagement extends React.Component {
     const { accessToken = '', username = '' } = this.getTokenInfo();
     const basePath = window.location.pathname.replace(/\/(next|legacy)(\/.*)?$/, '/') || '/';
     return `${basePath}v3/console/ai/skills/upload?namespaceId=${getParams('namespace') ||
+      ''}&accessToken=${accessToken}&username=${username}`;
+  };
+
+  getBatchUploadAction = () => {
+    const { accessToken = '', username = '' } = this.getTokenInfo();
+    const basePath = window.location.pathname.replace(/\/(next|legacy)(\/.*)?$/, '/') || '/';
+    return `${basePath}v3/console/ai/skills/upload/batch?namespaceId=${getParams('namespace') ||
       ''}&accessToken=${accessToken}&username=${username}`;
   };
 
@@ -501,17 +484,111 @@ class SkillManagement extends React.Component {
     Message.error(errorMessage);
   };
 
-  handleOptimizeSuccess = optimizedSkill => {
-    const { locale = {} } = this.props;
-    Message.success(locale.optimizeSuccess || 'Optimization applied successfully');
-    this.getData();
+  handleDragEnter = e => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (e.dataTransfer) {
+      e.dataTransfer.dropEffect = 'copy';
+    }
+    this.setState({ isDragOver: true });
   };
 
-  handleOptimizeDialogClose = () => {
-    this.setState({
-      optimizeDialogVisible: false,
-      currentOptimizeSkill: null,
+  handleDragOver = e => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (e.dataTransfer) {
+      e.dataTransfer.dropEffect = 'copy';
+    }
+    this.setState({ isDragOver: true });
+  };
+
+  handleDragLeave = e => {
+    e.preventDefault();
+    e.stopPropagation();
+    // Only set isDragOver to false if leaving the drop zone (not entering a child)
+    if (e.currentTarget && !e.currentTarget.contains(e.relatedTarget)) {
+      this.setState({ isDragOver: false });
+    }
+  };
+
+  handleDrop = e => {
+    e.preventDefault();
+    e.stopPropagation();
+    this.setState({ isDragOver: false });
+
+    const { locale = {} } = this.props;
+    const files = e.dataTransfer.files;
+
+    if (!files || files.length === 0) {
+      return;
+    }
+
+    // Support multiple zip files in one drop
+    const zipFiles = Array.from(files).filter(f => f.name.toLowerCase().endsWith('.zip'));
+    if (zipFiles.length === 0) {
+      Message.error(locale.uploadSkillFormatError || 'Please upload a zip file');
+      return;
+    }
+
+    zipFiles.forEach(file => this.uploadFile(file));
+  };
+
+  uploadFile = file => {
+    const { locale = {} } = this.props;
+    this.setState({ uploading: true });
+
+    const formData = new FormData();
+    formData.append('file', file);
+
+    const uploadUrl = this.getBatchUploadAction();
+    const headers = this.getUploadHeaders();
+
+    const xhr = new XMLHttpRequest();
+    xhr.open('POST', uploadUrl, true);
+    Object.keys(headers).forEach(key => {
+      xhr.setRequestHeader(key, headers[key]);
     });
+
+    xhr.onload = () => {
+      this.setState({ uploading: false });
+      try {
+        const res = JSON.parse(xhr.responseText);
+        if (res && (res.code === 0 || res.code === 200)) {
+          const data = res.data || {};
+          const succeeded = data.succeeded || [];
+          const failed = data.failed || [];
+          if (succeeded.length > 0) {
+            Message.success(
+              `${file.name}: ${succeeded.length} ${locale.skillsUploadedSuccessfully ||
+                'skill(s) uploaded successfully'}${
+                succeeded.length <= 5 ? ' (' + succeeded.join(', ') + ')' : ''
+              }`
+            );
+          }
+          if (failed.length > 0) {
+            failed.forEach(item => {
+              Message.error(`${item.name}: ${item.reason}`);
+            });
+          }
+          if (succeeded.length > 0) {
+            this.getData();
+          }
+        } else {
+          Message.error(
+            `${file.name}: ${res?.message || locale.uploadSkillFailed || 'Upload failed'}`
+          );
+        }
+      } catch (err) {
+        Message.error(`${file.name}: ${locale.uploadSkillFailed || 'Upload failed'}`);
+      }
+    };
+
+    xhr.onerror = () => {
+      this.setState({ uploading: false });
+      Message.error(`${file.name}: ${locale.uploadSkillFailed || 'Upload failed'}`);
+    };
+
+    xhr.send(formData);
   };
 
   renderOperationColumn = (value, index, record) => {
@@ -552,11 +629,34 @@ class SkillManagement extends React.Component {
 
   render() {
     const { locale = {} } = this.props;
-    const { loading, dataSource, total, pageSize, currentPage, selectedRowKeys } = this.state;
+    const {
+      loading,
+      dataSource,
+      total,
+      pageSize,
+      currentPage,
+      selectedRowKeys,
+      isDragOver,
+      uploading,
+    } = this.state;
 
     return (
       <>
-        <div>
+        <div
+          className="skill-management-wrapper"
+          onDragEnter={this.handleDragEnter}
+          onDragOver={this.handleDragOver}
+          onDragLeave={this.handleDragLeave}
+          onDrop={this.handleDrop}
+        >
+          {isDragOver && (
+            <div className="drag-overlay">
+              <div className="drag-overlay-content">
+                <Icon type="upload" size="xl" />
+                <p>{locale.dropZipHere || 'Drop .zip file here to upload Skill'}</p>
+              </div>
+            </div>
+          )}
           <div style={{ position: 'relative' }}>
             <PageTitle
               title={locale.skillManagement || 'Skill Management'}
@@ -587,29 +687,40 @@ class SkillManagement extends React.Component {
                     onPressEnter={this.handleSearch}
                   />
                 </Form.Item>
+                <Form.Item label={`${locale.bizTag || 'BizTag'}：`}>
+                  <Input
+                    name="searchBizTag"
+                    placeholder={locale.bizTagPlaceholder || 'Please enter business tag'}
+                    style={{ width: 200 }}
+                    onPressEnter={this.handleSearch}
+                  />
+                </Form.Item>
                 <Form.Item>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-                    <Button type="primary" onClick={this.handleSearch}>
-                      {locale.search || 'Search'}
-                    </Button>
-                    <Button type="primary" onClick={this.handleCreateSkill}>
-                      {locale.createSkill || 'Create Skill'}
-                    </Button>
-                    <Upload
-                      accept=".zip"
-                      action={this.getUploadAction()}
-                      headers={this.getUploadHeaders()}
-                      beforeUpload={this.beforeUpload}
-                      formatter={this.uploadFormatter}
-                      onSuccess={this.handleUploadSuccess}
-                      onError={this.handleUploadError}
-                      showUploadList={false}
-                    >
-                      <Button type="normal">{locale.uploadSkill || 'Upload Skill'}</Button>
-                    </Upload>
-                  </div>
+                  <Button type="primary" onClick={this.handleSearch}>
+                    {locale.search || 'Search'}
+                  </Button>
                 </Form.Item>
               </Form>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginTop: 10 }}>
+                <Button type="primary" onClick={this.handleCreateSkill}>
+                  {locale.createSkill || 'Create Skill'}
+                </Button>
+                <Upload
+                  accept=".zip"
+                  action={this.getUploadAction()}
+                  headers={this.getUploadHeaders()}
+                  beforeUpload={this.beforeUpload}
+                  formatter={this.uploadFormatter}
+                  onSuccess={this.handleUploadSuccess}
+                  onError={this.handleUploadError}
+                  showUploadList={false}
+                >
+                  <Button type="normal">{locale.uploadSkill || 'Upload Skill'}</Button>
+                </Upload>
+                <span style={{ color: '#999', fontSize: 12 }}>
+                  {locale.dragDropHint || 'Supports drag-and-drop .zip file to this page'}
+                </span>
+              </div>
             </div>
 
             <Table
@@ -778,15 +889,6 @@ class SkillManagement extends React.Component {
                 />
               </>
             )}
-
-            <SkillOptimizeDialog
-              visible={this.state.optimizeDialogVisible}
-              skill={this.state.currentOptimizeSkill}
-              onClose={this.handleOptimizeDialogClose}
-              onSuccess={this.handleOptimizeSuccess}
-              locale={this.props.locale}
-              history={this.props.history}
-            />
           </div>
         </div>
       </>

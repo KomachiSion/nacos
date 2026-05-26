@@ -72,7 +72,8 @@ public class SkillClientController {
      * Download an online skill version as ZIP file by label/version/latest.
      */
     @GetMapping
-    @Secured(action = ActionTypes.READ, signType = SignType.AI, apiType = ApiType.OPEN_API, tags = {ALLOW_ANONYMOUS})
+    @Secured(action = ActionTypes.READ, signType = SignType.AI, apiType = ApiType.OPEN_API,
+        tags = {ALLOW_ANONYMOUS})
     @Operation(summary = "nacos.admin.ai.skill.client.api.get.summary", description = "nacos.admin.ai.skill.client.api.get.description", security = @SecurityRequirement(name = "nacos"))
     @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_OCTET_STREAM_VALUE,
             schema = @Schema(type = "string", format = "binary", description = "ZIP file containing the skill package")))
@@ -83,8 +84,9 @@ public class SkillClientController {
             @Parameter(name = "form", hidden = true)})
     public ResponseEntity<byte[]> get(SkillQueryForm form) throws NacosException {
         form.validate();
-        Skill skill = skillOperationService.querySkill(form.getNamespaceId(), form.getName(), form.getVersion(),
-                form.getLabel());
+        Skill skill = skillOperationService.querySkill(form.getNamespaceId(), form.getName(),
+            form.getVersion(),
+            form.getLabel());
         return SkillRequestUtil.buildSkillZipResponse(skill);
     }
 }

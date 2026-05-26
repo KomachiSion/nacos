@@ -17,16 +17,25 @@
 package com.alibaba.nacos.ai.controller;
 
 import com.alibaba.nacos.ai.constant.Constants;
+import com.alibaba.nacos.ai.form.prompt.PromptBizTagsUpdateForm;
+import com.alibaba.nacos.ai.form.prompt.PromptDescriptionUpdateForm;
+import com.alibaba.nacos.ai.form.prompt.PromptDraftCreateForm;
+import com.alibaba.nacos.ai.form.prompt.PromptDraftUpdateForm;
 import com.alibaba.nacos.ai.form.prompt.PromptForm;
 import com.alibaba.nacos.ai.form.prompt.PromptHistoryForm;
 import com.alibaba.nacos.ai.form.prompt.PromptLabelBindForm;
 import com.alibaba.nacos.ai.form.prompt.PromptLabelForm;
+import com.alibaba.nacos.ai.form.prompt.PromptLabelsUpdateForm;
 import com.alibaba.nacos.ai.form.prompt.PromptListForm;
 import com.alibaba.nacos.ai.form.prompt.PromptMetadataForm;
+import com.alibaba.nacos.ai.form.prompt.PromptOnlineForm;
 import com.alibaba.nacos.ai.form.prompt.PromptPublishForm;
 import com.alibaba.nacos.ai.form.prompt.PromptQueryForm;
+import com.alibaba.nacos.ai.form.prompt.PromptSubmitForm;
+import com.alibaba.nacos.ai.form.prompt.PromptVersionPublishForm;
 import com.alibaba.nacos.ai.param.PromptHttpParamExtractor;
-import com.alibaba.nacos.ai.service.prompt.PromptAdminOperationService;
+import com.alibaba.nacos.ai.service.prompt.PromptOperationService;
+import com.alibaba.nacos.ai.utils.PromptMarkdownBuilder;
 import com.alibaba.nacos.api.ai.model.prompt.PromptMetaInfo;
 import com.alibaba.nacos.api.ai.model.prompt.PromptMetaSummary;
 import com.alibaba.nacos.api.ai.model.prompt.PromptVariable;
@@ -57,6 +66,7 @@ import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -64,13 +74,14 @@ import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Prompt admin controller.
  *
- * <p>Provides REST APIs for prompt management operations.</p>
+ * <p>Provides REST APIs for prompt management operations including lifecycle governance
+ * (draft/submit/publish/online/offline) and legacy one-shot publish.</p>
  *
  * @author nacos
  */
@@ -82,63 +93,16 @@ import java.util.List;
         @Extension(name = RemoteConstants.LABEL_MODULE, properties = @ExtensionProperty(name = RemoteConstants.LABEL_MODULE, value = "ai"))})
 public class PromptAdminController {
     
-    private final PromptAdminOperationService promptOperationService;
+    private final PromptOperationService promptOperationService;
     
-    public PromptAdminController(PromptAdminOperationService promptOperationService) {
+    public PromptAdminController(PromptOperationService promptOperationService) {
         this.promptOperationService = promptOperationService;
     }
     
-    /**
-     * Publish a new version of prompt.
-     *
-     * @param form    the prompt publish form
-     * @param request HTTP request for getting client info
-     * @return result of the publish operation
-     * @throws NacosException if the prompt publish fails
-     */
-    @PostMapping
-    @Secured(action = ActionTypes.WRITE, signType = SignType.AI, apiType = ApiType.ADMIN_API)
-    @Operation(summary = "nacos.admin.ai.prompt.api.publish.summary", description = "nacos.admin.ai.prompt.api.publish.description", security = @SecurityRequirement(name = "nacos"))
-    @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE, schema = @Schema(implementation = Result.class, example = "nacos.admin.ai.prompt.api.publish.example")))
-    @Parameters(value = {@Parameter(name = "namespaceId", example = "public"),
-            @Parameter(name = "promptKey", required = true, example = "my-prompt"),
-            @Parameter(name = "version", required = true, example = "1.0.0"),
-            @Parameter(name = "template", required = true), @Parameter(name = "commitMsg"),
-            @Parameter(name = "description"), @Parameter(name = "bizTags"),
-            @Parameter(name = "variables"), @Parameter(name = "form", hidden = true)})
-    public Result<Boolean> publishPrompt(PromptPublishForm form, HttpServletRequest request) throws NacosException {
-        form.validate();
-        String srcUser = request.getRemoteUser();
-        String srcIp = request.getRemoteAddr();
-        boolean success = promptOperationService.publishPromptVersion(form.getNamespaceId(), form.getPromptKey(),
-                form.getVersion(), form.getTemplate(), form.getCommitMsg(), form.getDescription(),
-                parseBizTags(form.getBizTags()), parseVariables(form.getVariables()), srcUser, srcIp);
-        return Result.success(success);
-    }
-    
-    /**
-     * Get prompt metadata.
-     */
-    @GetMapping("/metadata")
-    @Secured(action = ActionTypes.READ, signType = SignType.AI, apiType = ApiType.ADMIN_API)
-    @Operation(summary = "nacos.admin.ai.prompt.api.metadata.summary", description = "nacos.admin.ai.prompt.api.metadata.description", security = @SecurityRequirement(name = "nacos"))
-    @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE, schema = @Schema(implementation = Result.class, example = "nacos.admin.ai.prompt.api.metadata.example")))
-    @Parameters(value = {@Parameter(name = "namespaceId", example = "public"),
-            @Parameter(name = "promptKey", required = true, example = "my-prompt"),
-            @Parameter(name = "form", hidden = true)})
-    public Result<PromptMetaInfo> getPromptMetadata(PromptForm form) throws NacosException {
-        form.validate();
-        PromptMetaInfo detail = promptOperationService.getPromptMeta(form.getNamespaceId(), form.getPromptKey());
-        return Result.success(detail);
-    }
+    // ========== Common endpoints ==========
     
     /**
      * Delete prompt.
-     *
-     * @param form    the prompt form
-     * @param request HTTP request for getting client info
-     * @return result of the deletion operation
-     * @throws NacosException if the prompt deletion fails
      */
     @DeleteMapping
     @Secured(action = ActionTypes.WRITE, signType = SignType.AI, apiType = ApiType.ADMIN_API)
@@ -149,25 +113,19 @@ public class PromptAdminController {
             @Parameter(name = "form", hidden = true)})
     public Result<Boolean> deletePrompt(PromptForm form, HttpServletRequest request) throws NacosException {
         form.validate();
-        String srcUser = request.getRemoteUser();
-        String srcIp = request.getRemoteAddr();
-        boolean success = promptOperationService.deletePrompt(form.getNamespaceId(), form.getPromptKey(), srcUser,
-                srcIp);
-        return Result.success(success);
+        promptOperationService.deletePrompt(form.getNamespaceId(), form.getPromptKey());
+        return Result.success(true);
     }
     
     /**
      * List prompts with pagination.
-     *
-     * @param form the prompt list form
-     * @return result of the list operation
-     * @throws NacosException if the prompt list fails
      */
     @GetMapping("/list")
     @Secured(action = ActionTypes.READ, signType = SignType.AI, apiType = ApiType.ADMIN_API)
     @Operation(summary = "nacos.admin.ai.prompt.api.list.summary", description = "nacos.admin.ai.prompt.api.list.description", security = @SecurityRequirement(name = "nacos"))
     @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE, schema = @Schema(implementation = Result.class, example = "nacos.admin.ai.prompt.api.list.example")))
-    @Parameters(value = {@Parameter(name = "pageNo", required = true, schema = @Schema(type = "integer"), example = "1"),
+    @Parameters(value = {
+            @Parameter(name = "pageNo", required = true, schema = @Schema(type = "integer"), example = "1"),
             @Parameter(name = "pageSize", required = true, schema = @Schema(type = "integer"), example = "10"),
             @Parameter(name = "namespaceId", example = "public"), @Parameter(name = "promptKey"),
             @Parameter(name = "search", example = "blur", description = "blur or accurate"),
@@ -189,7 +147,8 @@ public class PromptAdminController {
     @Parameters(value = {@Parameter(name = "namespaceId", example = "public"),
             @Parameter(name = "promptKey", required = true, example = "my-prompt"),
             @Parameter(name = "pageNo", required = true, schema = @Schema(type = "integer"), example = "1"),
-            @Parameter(name = "pageSize", required = true, schema = @Schema(type = "integer"), example = "10"), @Parameter(name = "form", hidden = true)})
+            @Parameter(name = "pageSize", required = true, schema = @Schema(type = "integer"), example = "10"),
+            @Parameter(name = "form", hidden = true)})
     public Result<Page<PromptVersionSummary>> listPromptVersions(PromptHistoryForm form) throws NacosException {
         form.validate();
         Page<PromptVersionSummary> result = promptOperationService.listPromptVersions(form.getNamespaceId(),
@@ -197,9 +156,240 @@ public class PromptAdminController {
         return Result.success(result);
     }
     
+    // ========== Lifecycle endpoints ==========
+    
     /**
-     * Get prompt detail by specified version, null for latest.
+     * Get prompt governance detail (includes version governance info and all version summaries).
      */
+    @GetMapping("/governance")
+    @Secured(action = ActionTypes.READ, signType = SignType.AI, apiType = ApiType.ADMIN_API)
+    public Result<PromptMetaInfo> getPromptGovernanceDetail(PromptForm form) throws NacosException {
+        form.validate();
+        return Result.success(promptOperationService.getPromptDetail(form.getNamespaceId(), form.getPromptKey()));
+    }
+    
+    /**
+     * Get specific version detail for viewing or editing.
+     */
+    @GetMapping("/version")
+    @Secured(action = ActionTypes.READ, signType = SignType.AI, apiType = ApiType.ADMIN_API)
+    public Result<PromptVersionInfo> getVersionDetail(PromptQueryForm form) throws NacosException {
+        form.validate();
+        return Result.success(promptOperationService.getPromptVersionDetail(form.getNamespaceId(), form.getPromptKey(),
+                form.getVersion()));
+    }
+    
+    /**
+     * Download a specific prompt version as a Markdown document.
+     *
+     * <p>This endpoint publishes a download event so the download count is incremented.</p>
+     *
+     * @param form the prompt query form containing promptKey and version
+     * @return Markdown file as ResponseEntity
+     * @throws NacosException if the prompt or version is not found
+     */
+    @GetMapping("/version/download")
+    @Secured(action = ActionTypes.READ, signType = SignType.AI, apiType = ApiType.ADMIN_API)
+    public ResponseEntity<byte[]> downloadPromptVersion(PromptQueryForm form) throws NacosException {
+        form.validate();
+        PromptVersionInfo info = promptOperationService.downloadPromptVersion(form.getNamespaceId(),
+                form.getPromptKey(), form.getVersion());
+        return PromptMarkdownBuilder.buildMarkdownResponse(info);
+    }
+    
+    /**
+     * Create draft: {@code template} required unless {@code basedOnVersion} is set (fork from existing version).
+     */
+    @PostMapping("/draft")
+    @Secured(action = ActionTypes.WRITE, signType = SignType.AI, apiType = ApiType.ADMIN_API)
+    public Result<String> createDraft(PromptDraftCreateForm form) throws NacosException {
+        form.validate();
+        String version = promptOperationService.createDraft(form.getNamespaceId(), form.getPromptKey(),
+                form.getBasedOnVersion(), form.getTargetVersion(), form.getTemplate(),
+                parseVariables(form.getVariables()), form.getCommitMsg(), form.getDescription(), form.getBizTags());
+        return Result.success(version);
+    }
+    
+    /**
+     * Update current draft content.
+     */
+    @PutMapping("/draft")
+    @Secured(action = ActionTypes.WRITE, signType = SignType.AI, apiType = ApiType.ADMIN_API)
+    public Result<String> updateDraft(PromptDraftUpdateForm form) throws NacosException {
+        form.validate();
+        promptOperationService.updateDraft(form.getNamespaceId(), form.getPromptKey(), form.getTemplate(),
+                parseVariables(form.getVariables()), form.getCommitMsg());
+        return Result.success("ok");
+    }
+    
+    /**
+     * Delete current draft version.
+     */
+    @DeleteMapping("/draft")
+    @Secured(action = ActionTypes.WRITE, signType = SignType.AI, apiType = ApiType.ADMIN_API)
+    public Result<String> deleteDraft(PromptForm form) throws NacosException {
+        form.validate();
+        promptOperationService.deleteDraft(form.getNamespaceId(), form.getPromptKey());
+        return Result.success("ok");
+    }
+    
+    /**
+     * Submit a version for pipeline review.
+     */
+    @PostMapping("/submit")
+    @Secured(action = ActionTypes.WRITE, signType = SignType.AI, apiType = ApiType.ADMIN_API)
+    public Result<String> submit(PromptSubmitForm form) throws NacosException {
+        form.validate();
+        String result = promptOperationService.submit(form.getNamespaceId(), form.getPromptKey(), form.getVersion());
+        return Result.success(result);
+    }
+    
+    /**
+     * Publish an approved reviewing version.
+     */
+    @PostMapping("/publish")
+    @Secured(action = ActionTypes.WRITE, signType = SignType.AI, apiType = ApiType.ADMIN_API)
+    public Result<String> publish(PromptVersionPublishForm form) throws NacosException {
+        form.validate();
+        boolean updateLatest = form.getUpdateLatestLabel() == null || form.getUpdateLatestLabel();
+        promptOperationService.publish(form.getNamespaceId(), form.getPromptKey(), form.getVersion(), updateLatest);
+        return Result.success("ok");
+    }
+    
+    /**
+     * Force-publish a prompt version, bypassing pipeline validation.
+     */
+    @PostMapping("/force-publish")
+    @Secured(resource = Constants.Prompt.ADMIN_PATH
+            + "/force-publish", action = ActionTypes.WRITE, signType = SignType.CONSOLE, apiType = ApiType.ADMIN_API)
+    public Result<String> forcePublish(PromptVersionPublishForm form) throws NacosException {
+        form.validate();
+        boolean updateLatest = form.getUpdateLatestLabel() == null || form.getUpdateLatestLabel();
+        promptOperationService.forcePublish(form.getNamespaceId(), form.getPromptKey(), form.getVersion(),
+                updateLatest);
+        return Result.success("ok");
+    }
+    
+    /**
+     * Re-edit a reviewed prompt version, transitioning it back to draft for modification.
+     */
+    @PostMapping("/redraft")
+    @Secured(action = ActionTypes.WRITE, signType = SignType.AI, apiType = ApiType.ADMIN_API)
+    public Result<String> redraft(PromptVersionPublishForm form) throws NacosException {
+        form.validate();
+        promptOperationService.redraft(form.getNamespaceId(), form.getPromptKey(), form.getVersion());
+        return Result.success("ok");
+    }
+    
+    /**
+     * Online a prompt version.
+     */
+    @PostMapping("/online")
+    @Secured(action = ActionTypes.WRITE, signType = SignType.AI, apiType = ApiType.ADMIN_API)
+    public Result<String> online(PromptOnlineForm form) throws NacosException {
+        form.validate();
+        promptOperationService.changeOnlineStatus(form.getNamespaceId(), form.getPromptKey(), form.getVersion(), true);
+        return Result.success("ok");
+    }
+    
+    /**
+     * Offline a prompt version.
+     */
+    @PostMapping("/offline")
+    @Secured(action = ActionTypes.WRITE, signType = SignType.AI, apiType = ApiType.ADMIN_API)
+    public Result<String> offline(PromptOnlineForm form) throws NacosException {
+        form.validate();
+        promptOperationService.changeOnlineStatus(form.getNamespaceId(), form.getPromptKey(), form.getVersion(), false);
+        return Result.success("ok");
+    }
+    
+    /**
+     * Update runtime route labels without changing version status.
+     */
+    @PutMapping("/labels")
+    @Secured(action = ActionTypes.WRITE, signType = SignType.AI, apiType = ApiType.ADMIN_API)
+    public Result<String> updateLabels(PromptLabelsUpdateForm form) throws NacosException {
+        form.validate();
+        Map<String, String> labels = JacksonUtils.toObj(form.getLabels(), Map.class);
+        promptOperationService.updateLabels(form.getNamespaceId(), form.getPromptKey(), labels);
+        return Result.success("ok");
+    }
+    
+    /**
+     * Update prompt description without changing version status.
+     */
+    @PutMapping("/description")
+    @Secured(action = ActionTypes.WRITE, signType = SignType.AI, apiType = ApiType.ADMIN_API)
+    public Result<String> updateDescription(PromptDescriptionUpdateForm form) throws NacosException {
+        form.validate();
+        promptOperationService.updateDescription(form.getNamespaceId(), form.getPromptKey(), form.getDescription());
+        return Result.success("ok");
+    }
+    
+    /**
+     * Update prompt biz tags without changing version status.
+     */
+    @PutMapping("/biz-tags")
+    @Secured(action = ActionTypes.WRITE, signType = SignType.AI, apiType = ApiType.ADMIN_API)
+    public Result<String> updateBizTags(PromptBizTagsUpdateForm form) throws NacosException {
+        form.validate();
+        promptOperationService.updateBizTags(form.getNamespaceId(), form.getPromptKey(), form.getBizTags());
+        return Result.success("ok");
+    }
+    
+    // ========== Private helpers ==========
+    
+    private List<PromptVariable> parseVariables(String variables) {
+        if (StringUtils.isBlank(variables)) {
+            return null;
+        }
+        return JacksonUtils.toObj(variables, new TypeReference<List<PromptVariable>>() {
+        });
+    }
+    
+    // ========== Legacy compatibility endpoints (deprecated) ==========
+    
+    /**
+     * Legacy one-shot publish a new version of prompt.
+     *
+     * @deprecated Use POST /draft + POST /submit instead.
+     */
+    @Deprecated
+    @PostMapping
+    @Secured(action = ActionTypes.WRITE, signType = SignType.AI, apiType = ApiType.ADMIN_API)
+    public Result<Boolean> publishPrompt(PromptPublishForm form, HttpServletRequest request) throws NacosException {
+        form.validate();
+        boolean success = promptOperationService.publishPromptVersion(form.getNamespaceId(), form.getPromptKey(),
+                form.getVersion(), form.getTemplate(), form.getCommitMsg(), form.getDescription(), form.getBizTags(),
+                parseVariables(form.getVariables()));
+        return Result.success(success);
+    }
+    
+    /**
+     * Legacy get prompt metadata.
+     *
+     * @deprecated Use GET /governance instead.
+     */
+    @Deprecated
+    @GetMapping("/metadata")
+    @Secured(action = ActionTypes.READ, signType = SignType.AI, apiType = ApiType.ADMIN_API)
+    @Operation(summary = "nacos.admin.ai.prompt.api.metadata.summary", description = "nacos.admin.ai.prompt.api.metadata.description", security = @SecurityRequirement(name = "nacos"))
+    @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE, schema = @Schema(implementation = Result.class, example = "nacos.admin.ai.prompt.api.metadata.example")))
+    @Parameters(value = {@Parameter(name = "namespaceId", example = "public"),
+            @Parameter(name = "promptKey", required = true, example = "my-prompt"),
+            @Parameter(name = "form", hidden = true)})
+    public Result<PromptMetaInfo> getPromptMetadata(PromptForm form) throws NacosException {
+        form.validate();
+        PromptMetaInfo detail = promptOperationService.getPromptMeta(form.getNamespaceId(), form.getPromptKey());
+        return Result.success(detail);
+    }
+    
+    /**
+     * Legacy get prompt detail by version/label/latest.
+     *
+     * @deprecated Use GET /version instead.
+     */
+    @Deprecated
     @GetMapping("/detail")
     @Secured(action = ActionTypes.READ, signType = SignType.AI, apiType = ApiType.ADMIN_API)
     @Operation(summary = "nacos.admin.ai.prompt.api.detail.summary", description = "nacos.admin.ai.prompt.api.detail.description", security = @SecurityRequirement(name = "nacos"))
@@ -216,8 +406,11 @@ public class PromptAdminController {
     }
     
     /**
-     * Bind label to a specified prompt version.
+     * Legacy bind label to a specified prompt version.
+     *
+     * @deprecated Use PUT /labels instead.
      */
+    @Deprecated
     @PutMapping("/label")
     @Secured(action = ActionTypes.WRITE, signType = SignType.AI, apiType = ApiType.ADMIN_API)
     @Operation(summary = "nacos.admin.ai.prompt.api.label.bind.summary", description = "nacos.admin.ai.prompt.api.label.bind.description", security = @SecurityRequirement(name = "nacos"))
@@ -228,16 +421,17 @@ public class PromptAdminController {
             @Parameter(name = "version", required = true, example = "1.0.0"), @Parameter(name = "form", hidden = true)})
     public Result<Boolean> bindLabel(PromptLabelBindForm form, HttpServletRequest request) throws NacosException {
         form.validate();
-        String srcUser = request.getRemoteUser();
-        String srcIp = request.getRemoteAddr();
         boolean success = promptOperationService.bindLabel(form.getNamespaceId(), form.getPromptKey(), form.getLabel(),
-                form.getVersion(), srcUser, srcIp);
+                form.getVersion());
         return Result.success(success);
     }
     
     /**
-     * Unbind label from prompt.
+     * Legacy unbind label from prompt.
+     *
+     * @deprecated Use PUT /labels instead.
      */
+    @Deprecated
     @DeleteMapping("/label")
     @Secured(action = ActionTypes.WRITE, signType = SignType.AI, apiType = ApiType.ADMIN_API)
     @Operation(summary = "nacos.admin.ai.prompt.api.label.unbind.summary", description = "nacos.admin.ai.prompt.api.label.unbind.description", security = @SecurityRequirement(name = "nacos"))
@@ -247,21 +441,17 @@ public class PromptAdminController {
             @Parameter(name = "label", required = true, example = "stable"), @Parameter(name = "form", hidden = true)})
     public Result<Boolean> unbindLabel(PromptLabelForm form, HttpServletRequest request) throws NacosException {
         form.validate();
-        String srcUser = request.getRemoteUser();
-        String srcIp = request.getRemoteAddr();
         boolean success = promptOperationService.unbindLabel(form.getNamespaceId(), form.getPromptKey(),
-                form.getLabel(), srcUser, srcIp);
+                form.getLabel());
         return Result.success(success);
     }
     
     /**
-     * Update prompt metadata (description only).
+     * Legacy update prompt metadata (description and bizTags).
      *
-     * @param form    the prompt metadata form
-     * @param request HTTP request for getting client info
-     * @return result of the update operation
-     * @throws NacosException if the update fails
+     * @deprecated Use PUT /description and PUT /biz-tags instead.
      */
+    @Deprecated
     @PutMapping("/metadata")
     @Secured(action = ActionTypes.WRITE, signType = SignType.AI, apiType = ApiType.ADMIN_API)
     @Operation(summary = "nacos.admin.ai.prompt.api.metadata.update.summary", description = "nacos.admin.ai.prompt.api.metadata.update.description", security = @SecurityRequirement(name = "nacos"))
@@ -272,35 +462,8 @@ public class PromptAdminController {
     public Result<Boolean> updatePromptMetadata(PromptMetadataForm form, HttpServletRequest request)
             throws NacosException {
         form.validate();
-        String srcUser = request.getRemoteUser();
-        String srcIp = request.getRemoteAddr();
         boolean success = promptOperationService.updatePromptMetadata(form.getNamespaceId(), form.getPromptKey(),
-                form.getDescription(), parseBizTags(form.getBizTags()), srcUser, srcIp);
+                form.getDescription(), form.getBizTags());
         return Result.success(success);
-    }
-    
-    private List<String> parseBizTags(String bizTags) {
-        if (bizTags == null) {
-            return null;
-        }
-        if (bizTags.trim().isEmpty()) {
-            return new ArrayList<>(0);
-        }
-        String[] split = bizTags.split(",");
-        List<String> result = new ArrayList<>(split.length);
-        for (String each : split) {
-            if (each != null && !each.trim().isEmpty()) {
-                result.add(each.trim());
-            }
-        }
-        return result;
-    }
-    
-    private List<PromptVariable> parseVariables(String variables) {
-        if (StringUtils.isBlank(variables)) {
-            return null;
-        }
-        return JacksonUtils.toObj(variables, new TypeReference<List<PromptVariable>>() {
-        });
     }
 }

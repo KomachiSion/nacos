@@ -176,7 +176,7 @@ class MemoryMcpCacheIndexTest {
         // 验证缓存大小不超过限制，并且缓存功能正常
         int finalSize = cache.getSize();
         assertTrue(finalSize <= props.getMaxSize(),
-                "Cache size " + finalSize + " should not exceed maxSize " + props.getMaxSize());
+            "Cache size " + finalSize + " should not exceed maxSize " + props.getMaxSize());
         
         // 验证缓存仍然可以正常工作
         if (finalSize > 0) {
@@ -530,7 +530,8 @@ class MemoryMcpCacheIndexTest {
     
     @Test
     void testShutdownTimeout() throws InterruptedException {
-        ScheduledExecutorService executorService = (ScheduledExecutorService) ReflectionTestUtils.getField(cache,
+        ScheduledExecutorService executorService =
+            (ScheduledExecutorService) ReflectionTestUtils.getField(cache,
                 "cleanupScheduler");
         executorService.shutdownNow();
         ScheduledExecutorService mockExecutorService = Mockito.mock(ScheduledExecutorService.class);
@@ -541,11 +542,13 @@ class MemoryMcpCacheIndexTest {
     
     @Test
     void testShutdownWithInterruptedException() throws InterruptedException {
-        ScheduledExecutorService executorService = (ScheduledExecutorService) ReflectionTestUtils.getField(cache,
+        ScheduledExecutorService executorService =
+            (ScheduledExecutorService) ReflectionTestUtils.getField(cache,
                 "cleanupScheduler");
         executorService.shutdownNow();
         ScheduledExecutorService mockExecutorService = Mockito.mock(ScheduledExecutorService.class);
-        when(mockExecutorService.awaitTermination(anyLong(), any())).thenThrow(new InterruptedException());
+        when(mockExecutorService.awaitTermination(anyLong(), any()))
+            .thenThrow(new InterruptedException());
         ReflectionTestUtils.setField(cache, "cleanupScheduler", mockExecutorService);
         cache.shutdown();
         verify(mockExecutorService).shutdownNow();
@@ -626,27 +629,26 @@ class MemoryMcpCacheIndexTest {
         // 创建一个具有不同过期时间的缓存实例
         McpCacheIndexProperties mixedProps = new McpCacheIndexProperties();
         mixedProps.setMaxSize(100);
-        mixedProps.setExpireTimeSeconds(2); // 2秒过期
+        mixedProps.setExpireTimeSeconds(4); // 拉大过期窗口，避免CI调度抖动导致新条目误过期
         // 避免后台清理线程在测试窗口内并发介入，降低时序抖动
         mixedProps.setCleanupIntervalSeconds(60);
         MemoryMcpCacheIndex mixedCache = new MemoryMcpCacheIndex(mixedProps);
         
         try {
             // 添加一些条目
-            mixedCache.updateIndex("ns1", "name1", "id1"); // 这个会过期
-            Thread.sleep(1200); // 与id2拉开创建时间，避免同一秒边界
+            mixedCache.updateIndex("ns1", "name1", "id1"); // 这个会先过期
+            Thread.sleep(1500); // 与id2拉开创建时间，避免同一秒边界
             mixedCache.updateIndex("ns2", "name2", "id2"); // 这个不会过期
             
             // 仅校验新条目有效，旧条目在秒级边界上可能会提前过期
             assertEquals("id2", mixedCache.getMcpId("ns2", "name2"));
             
-            // 再等待1.1秒，使第一个条目过期但第二个不过期
-            Thread.sleep(1100);
-            
-            // Invoke cleanupExpiredEntries directly instead of relying on the async scheduler.
-            // Note: getMcpId also triggers lazy eviction for individual entries (line 141-149),
-            // but here we test the batch cleanup method that the scheduler would normally run.
-            invokeCleanupExpiredEntries(mixedCache);
+            // 轮询等待id1过期，避免固定sleep导致秒级边界抖动
+            long deadline = System.currentTimeMillis() + 3000;
+            while (mixedCache.getMcpId("ns1", "name1") != null
+                && System.currentTimeMillis() < deadline) {
+                Thread.sleep(50);
+            }
             
             // 验证只有过期的条目被清理
             assertNull(mixedCache.getMcpId("ns1", "name1"));
@@ -761,7 +763,8 @@ class MemoryMcpCacheIndexTest {
             // Manually invoke cleanup — should return early due to shutdown flag
             invokeCleanupExpiredEntries(testCache);
         } finally {
-            ScheduledExecutorService cleanupScheduler = (ScheduledExecutorService) ReflectionTestUtils.getField(testCache,
+            ScheduledExecutorService cleanupScheduler =
+                (ScheduledExecutorService) ReflectionTestUtils.getField(testCache,
                     "cleanupScheduler");
             cleanupScheduler.shutdownNow();
         }

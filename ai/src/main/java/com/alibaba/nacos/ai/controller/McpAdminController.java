@@ -25,6 +25,7 @@ import com.alibaba.nacos.ai.param.McpHttpParamExtractor;
 import com.alibaba.nacos.ai.service.McpServerOperationService;
 import com.alibaba.nacos.ai.utils.McpRequestUtil;
 import com.alibaba.nacos.api.ai.model.mcp.McpEndpointSpec;
+import com.alibaba.nacos.api.ai.model.mcp.McpResourceSpecification;
 import com.alibaba.nacos.api.ai.model.mcp.McpServerBasicInfo;
 import com.alibaba.nacos.api.ai.model.mcp.McpServerDetailInfo;
 import com.alibaba.nacos.api.ai.model.mcp.McpToolSpecification;
@@ -101,13 +102,15 @@ public class McpAdminController {
             @Parameter(name = "namespaceId", example = "public"), @Parameter(name = "mcpName"),
             @Parameter(name = "search", example = "blur", description = "blur or accurate"),
             @Parameter(name = "mcpListForm", hidden = true), @Parameter(name = "pageForm", hidden = true)})
-    public Result<Page<McpServerBasicInfo>> listMcpServers(McpListForm mcpListForm, PageForm pageForm)
-            throws NacosException {
+    public Result<Page<McpServerBasicInfo>> listMcpServers(McpListForm mcpListForm,
+        PageForm pageForm)
+        throws NacosException {
         mcpListForm.validate();
         pageForm.validate();
         return Result.success(
-                mcpServerOperationService.listMcpServerWithPage(mcpListForm.getNamespaceId(), mcpListForm.getMcpName(),
-                        mcpListForm.getSearch(), pageForm.getPageNo(), pageForm.getPageSize()));
+            mcpServerOperationService.listMcpServerWithPage(mcpListForm.getNamespaceId(),
+                mcpListForm.getMcpName(),
+                mcpListForm.getSearch(), pageForm.getPageNo(), pageForm.getPageSize()));
     }
     
     /**
@@ -128,8 +131,9 @@ public class McpAdminController {
             @Parameter(name = "version", example = "1.0.0"), @Parameter(name = "mcpForm", hidden = true)})
     public Result<McpServerDetailInfo> getMcpServer(McpForm mcpForm) throws NacosException {
         mcpForm.validate();
-        return Result.success(mcpServerOperationService.getMcpServerDetail(mcpForm.getNamespaceId(), mcpForm.getMcpId(),
-                mcpForm.getMcpName(), mcpForm.getVersion()));
+        return Result.success(mcpServerOperationService.getMcpServerDetail(mcpForm.getNamespaceId(),
+            mcpForm.getMcpId(),
+            mcpForm.getMcpName(), mcpForm.getVersion()));
     }
     
     /**
@@ -154,9 +158,11 @@ public class McpAdminController {
         mcpForm.validate();
         McpServerBasicInfo basicInfo = McpRequestUtil.parseMcpServerBasicInfo(mcpForm);
         McpToolSpecification mcpTools = McpRequestUtil.parseMcpTools(mcpForm);
+        McpResourceSpecification mcpResources = McpRequestUtil.parseMcpResources(mcpForm);
         McpEndpointSpec endpointSpec = McpRequestUtil.parseMcpEndpointSpec(basicInfo, mcpForm);
-        String mcpId = mcpServerOperationService.createMcpServer(mcpForm.getNamespaceId(), basicInfo, mcpTools,
-                endpointSpec);
+        String mcpId =
+            mcpServerOperationService.createMcpServer(mcpForm.getNamespaceId(), basicInfo, mcpTools,
+                mcpResources, endpointSpec);
         return Result.success(mcpId);
     }
     
@@ -188,9 +194,11 @@ public class McpAdminController {
         mcpForm.validate();
         McpServerBasicInfo basicInfo = McpRequestUtil.parseMcpServerBasicInfo(mcpForm);
         McpToolSpecification mcpTools = McpRequestUtil.parseMcpTools(mcpForm);
+        McpResourceSpecification mcpResources = McpRequestUtil.parseMcpResources(mcpForm);
         McpEndpointSpec endpointSpec = McpRequestUtil.parseMcpEndpointSpec(basicInfo, mcpForm);
-        mcpServerOperationService.updateMcpServer(mcpForm.getNamespaceId(), mcpForm.getLatest(), basicInfo, mcpTools,
-                endpointSpec, mcpForm.isOverrideExisting());
+        mcpServerOperationService.updateMcpServer(mcpForm.getNamespaceId(), mcpForm.getLatest(),
+            basicInfo, mcpTools,
+            mcpResources, endpointSpec, mcpForm.isOverrideExisting());
         return Result.success("ok");
     }
     
@@ -211,8 +219,9 @@ public class McpAdminController {
             @Parameter(name = "mcpId", example = "d7a64724-a556-4fe4-82fa-e806d43e00dc"), @Parameter(name = "version", example = "1.0.0")})
     public Result<String> deleteMcpServer(McpForm mcpForm) throws NacosException {
         mcpForm.validate();
-        mcpServerOperationService.deleteMcpServer(mcpForm.getNamespaceId(), mcpForm.getMcpName(), mcpForm.getMcpId(),
-                mcpForm.getVersion());
+        mcpServerOperationService.deleteMcpServer(mcpForm.getNamespaceId(), mcpForm.getMcpName(),
+            mcpForm.getMcpId(),
+            mcpForm.getVersion());
         return Result.success("ok");
     }
 }

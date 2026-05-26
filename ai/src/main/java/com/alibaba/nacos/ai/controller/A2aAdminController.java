@@ -104,7 +104,8 @@ public class A2aAdminController {
     public Result<String> registerAgent(AgentCardForm form) throws NacosException {
         form.validate();
         AgentCard agentCard = AgentRequestUtil.parseAgentCard(form);
-        a2aServerOperationService.registerAgent(agentCard, form.getNamespaceId(), form.getRegistrationType());
+        a2aServerOperationService.registerAgent(agentCard, form.getNamespaceId(),
+            form.getRegistrationType());
         return Result.success("ok");
     }
     
@@ -128,8 +129,9 @@ public class A2aAdminController {
     public Result<AgentCardDetailInfo> getAgentCard(AgentForm form) throws NacosApiException {
         form.validate();
         return Result.success(
-                a2aServerOperationService.getAgentCard(form.getNamespaceId(), form.getAgentName(), form.getVersion(),
-                        form.getRegistrationType()));
+            a2aServerOperationService.getAgentCard(form.getNamespaceId(), form.getAgentName(),
+                form.getVersion(),
+                form.getRegistrationType()));
     }
     
     /**
@@ -154,8 +156,9 @@ public class A2aAdminController {
     public Result<String> updateAgentCard(AgentCardUpdateForm form) throws NacosException {
         form.validate();
         AgentCard agentCard = AgentRequestUtil.parseAgentCard(form);
-        a2aServerOperationService.updateAgentCard(agentCard, form.getNamespaceId(), form.getRegistrationType(),
-                form.getSetAsLatest());
+        a2aServerOperationService.updateAgentCard(agentCard, form.getNamespaceId(),
+            form.getRegistrationType(),
+            form.getSetAsLatest());
         return Result.success("ok");
     }
     
@@ -177,7 +180,8 @@ public class A2aAdminController {
             @Parameter(name = "version", example = "1.0.0"), @Parameter(name = "form", hidden = true)})
     public Result<String> deleteAgent(AgentForm form) throws NacosException {
         form.validate();
-        a2aServerOperationService.deleteAgent(form.getNamespaceId(), form.getAgentName(), form.getVersion());
+        a2aServerOperationService.deleteAgent(form.getNamespaceId(), form.getAgentName(),
+            form.getVersion());
         return Result.success("ok");
     }
     
@@ -200,13 +204,15 @@ public class A2aAdminController {
             @Parameter(name = "namespaceId", example = "public"), @Parameter(name = "agentName"),
             @Parameter(name = "search", example = "blur", description = "blur or accurate"),
             @Parameter(name = "agentListForm", hidden = true), @Parameter(name = "pageForm", hidden = true)})
-    public Result<Page<AgentCardVersionInfo>> listAgents(AgentListForm agentListForm, PageForm pageForm)
-            throws NacosException {
+    public Result<Page<AgentCardVersionInfo>> listAgents(AgentListForm agentListForm,
+        PageForm pageForm)
+        throws NacosException {
         agentListForm.validate();
         pageForm.validate();
         return Result.success(
-                a2aServerOperationService.listAgents(agentListForm.getNamespaceId(), agentListForm.getAgentName(),
-                        agentListForm.getSearch(), pageForm.getPageNo(), pageForm.getPageSize()));
+            a2aServerOperationService.listAgents(agentListForm.getNamespaceId(),
+                agentListForm.getAgentName(),
+                agentListForm.getSearch(), pageForm.getPageNo(), pageForm.getPageSize()));
     }
     
     /**
@@ -225,9 +231,11 @@ public class A2aAdminController {
     @Parameters(value = {@Parameter(name = "namespaceId", example = "public"),
             @Parameter(name = "agentName", example = "GeoSpatial Route Planner Agent", required = true),
             @Parameter(name = "agentForm", hidden = true)})
-    public Result<List<AgentVersionDetail>> listAgentVersions(AgentForm agentForm) throws NacosException {
+    public Result<List<AgentVersionDetail>> listAgentVersions(AgentForm agentForm)
+        throws NacosException {
         agentForm.validate();
         return Result.success(
-                a2aServerOperationService.listAgentVersions(agentForm.getNamespaceId(), agentForm.getAgentName()));
+            a2aServerOperationService.listAgentVersions(agentForm.getNamespaceId(),
+                agentForm.getAgentName()));
     }
 }

@@ -100,22 +100,26 @@ public class ConfigOpenApiController {
             @Parameter(name = "groupName", required = true, example = "DEFAULT_GROUP"),
             @Parameter(name = "dataId", required = true, example = "test"), @Parameter(name = "configForm", hidden = true)})
     public Result<ConfigQueryResponse> getConfig(ConfigFormV3 configForm)
-            throws NacosApiException, UnsupportedEncodingException {
+        throws NacosApiException, UnsupportedEncodingException {
         configForm.validate();
-        configForm.setNamespaceId(NamespaceUtil.processNamespaceParameter(configForm.getNamespaceId()));
+        configForm
+            .setNamespaceId(NamespaceUtil.processNamespaceParameter(configForm.getNamespaceId()));
         RequestContext requestContext = RequestContextHolder.getContext();
         String sourceIp = requestContext.getBasicContext().getAddressContext().getSourceIp();
         ConfigQueryChainRequest chainRequest = buildQueryChainRequest(configForm, sourceIp);
         ConfigQueryChainResponse chainResponse = configQueryChainService.handle(chainRequest);
         if (Objects.isNull(chainResponse.getContent())) {
-            traceQuery(configForm, chainResponse, requestContext, sourceIp, ConfigTraceService.PULL_TYPE_NOTFOUND);
+            traceQuery(configForm, chainResponse, requestContext, sourceIp,
+                ConfigTraceService.PULL_TYPE_NOTFOUND);
             return Result.failure(ErrorCode.RESOURCE_NOT_FOUND);
         }
-        traceQuery(configForm, chainResponse, requestContext, sourceIp, ConfigTraceService.PULL_TYPE_OK);
+        traceQuery(configForm, chainResponse, requestContext, sourceIp,
+            ConfigTraceService.PULL_TYPE_OK);
         return Result.success(transferToResult(chainResponse));
     }
     
-    private ConfigQueryChainRequest buildQueryChainRequest(ConfigFormV3 configForm, String sourceIp) {
+    private ConfigQueryChainRequest buildQueryChainRequest(ConfigFormV3 configForm,
+        String sourceIp) {
         ConfigQueryChainRequest request = new ConfigQueryChainRequest();
         request.setTenant(configForm.getNamespaceId());
         request.setGroup(configForm.getGroup());
@@ -127,7 +131,7 @@ public class ConfigOpenApiController {
     }
     
     private ConfigQueryResponse transferToResult(ConfigQueryChainResponse chainResponse)
-            throws UnsupportedEncodingException {
+        throws UnsupportedEncodingException {
         ConfigQueryResponse result = new ConfigQueryResponse();
         result.setMd5(chainResponse.getMd5());
         result.setEncryptedDataKey(chainResponse.getEncryptedDataKey());
@@ -135,27 +139,32 @@ public class ConfigOpenApiController {
         result.setContentType(chainResponse.getConfigType());
         result.setLastModified(chainResponse.getLastModified());
         // Check if there is a matched gray rule
-        if (chainResponse.getStatus() == ConfigQueryChainResponse.ConfigQueryStatus.CONFIG_FOUND_GRAY) {
-            if (BetaGrayRule.TYPE_BETA.equals(chainResponse.getMatchedGray().getGrayRule().getType())) {
+        if (chainResponse
+            .getStatus() == ConfigQueryChainResponse.ConfigQueryStatus.CONFIG_FOUND_GRAY) {
+            if (BetaGrayRule.TYPE_BETA
+                .equals(chainResponse.getMatchedGray().getGrayRule().getType())) {
                 result.setBeta(true);
-            } else if (TagGrayRule.TYPE_TAG.equals(chainResponse.getMatchedGray().getGrayRule().getType())) {
-                result.setTag(URLEncoder.encode(chainResponse.getMatchedGray().getRawGrayRule(), ENCODE_UTF8));
+            } else if (TagGrayRule.TYPE_TAG
+                .equals(chainResponse.getMatchedGray().getGrayRule().getType())) {
+                result.setTag(URLEncoder.encode(chainResponse.getMatchedGray().getRawGrayRule(),
+                    ENCODE_UTF8));
             }
         }
         return result;
     }
     
     private void traceQuery(ConfigFormV3 configForm, ConfigQueryChainResponse chainResponse,
-            RequestContext requestContext, String sourceIp, String pullType) {
+        RequestContext requestContext, String sourceIp, String pullType) {
         final long delayed = System.currentTimeMillis() - chainResponse.getLastModified();
-        ConfigTraceService.logPullEvent(configForm.getDataId(), configForm.getGroup(), configForm.getNamespaceId(),
-                requestContext.getBasicContext().getApp(), chainResponse.getLastModified(),
-                resolvePullEventType(chainResponse), pullType, delayed, sourceIp, false, "http");
+        ConfigTraceService.logPullEvent(configForm.getDataId(), configForm.getGroup(),
+            configForm.getNamespaceId(),
+            requestContext.getBasicContext().getApp(), chainResponse.getLastModified(),
+            resolvePullEventType(chainResponse), pullType, delayed, sourceIp, false, "http");
     }
     
     private String resolvePullEventType(ConfigQueryChainResponse chainResponse) {
-        if (Objects.requireNonNull(chainResponse.getStatus())
-                == ConfigQueryChainResponse.ConfigQueryStatus.CONFIG_FOUND_GRAY) {
+        if (Objects.requireNonNull(chainResponse
+            .getStatus()) == ConfigQueryChainResponse.ConfigQueryStatus.CONFIG_FOUND_GRAY) {
             ConfigCacheGray matchedGray = chainResponse.getMatchedGray();
             if (matchedGray != null) {
                 return ConfigTraceService.PULL_EVENT + "-" + matchedGray.getGrayName();

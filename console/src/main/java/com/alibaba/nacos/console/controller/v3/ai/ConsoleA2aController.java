@@ -197,8 +197,9 @@ public class ConsoleA2aController {
             @Parameter(name = "namespaceId", example = "public"), @Parameter(name = "agentName"),
             @Parameter(name = "search", example = "blur", description = "blur or accurate", required = true),
             @Parameter(name = "agentListForm", hidden = true), @Parameter(name = "pageForm", hidden = true)})
-    public Result<Page<AgentCardVersionInfo>> listAgents(AgentListForm agentListForm, PageForm pageForm)
-            throws NacosException {
+    public Result<Page<AgentCardVersionInfo>> listAgents(AgentListForm agentListForm,
+        PageForm pageForm)
+        throws NacosException {
         agentListForm.validate();
         pageForm.validate();
         return Result.success(a2aProxy.listAgents(agentListForm, pageForm));
@@ -220,9 +221,10 @@ public class ConsoleA2aController {
     @Parameters(value = {@Parameter(name = "namespaceId", example = "public"),
             @Parameter(name = "agentName", example = "GeoSpatial Route Planner Agent", required = true),
             @Parameter(name = "agentForm", hidden = true)})
-    public Result<List<AgentVersionDetail>> listAgentVersions(AgentForm agentForm) throws NacosException {
+    public Result<List<AgentVersionDetail>> listAgentVersions(AgentForm agentForm)
+        throws NacosException {
         agentForm.validate();
-        return Result.success(a2aProxy.listAgentVersions(agentForm.getNamespaceId(), agentForm.getAgentName()));
+        return Result.success(
+            a2aProxy.listAgentVersions(agentForm.getNamespaceId(), agentForm.getAgentName()));
     }
 }
-

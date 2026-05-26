@@ -83,16 +83,18 @@ public class PluginControllerV3 {
      */
     @GetMapping("/list")
     @Secured(resource = Commons.NACOS_ADMIN_CORE_CONTEXT_V3
-            + "/plugin", action = ActionTypes.READ, signType = SignType.CONSOLE, apiType = ApiType.ADMIN_API)
+        + "/plugin", action = ActionTypes.READ, signType = SignType.CONSOLE,
+        apiType = ApiType.ADMIN_API)
     @Operation(summary = "nacos.admin.core.plugin.api.list.summary", description = "nacos.admin.core.plugin.api.list.description", security = @SecurityRequirement(name = "nacos"))
     @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE, schema = @Schema(implementation = Result.class, example = "nacos.admin.core.plugin.api.list.example")))
     @Parameters(value = @Parameter(name = "pluginType", example = "auth"))
     public Result<List<PluginInfoVO>> getPluginList(
-            @RequestParam(value = "pluginType", required = false) String pluginType) {
+        @RequestParam(value = "pluginType", required = false) String pluginType) {
         List<PluginInfo> plugins = unifiedPluginManager.listAllPlugins();
         
         if (StringUtils.isNotBlank(pluginType)) {
-            plugins = plugins.stream().filter(p -> pluginType.equals(p.getPluginType().getType())).toList();
+            plugins = plugins.stream().filter(p -> pluginType.equals(p.getPluginType().getType()))
+                .toList();
         }
         
         List<PluginInfoVO> vos = plugins.stream().map(this::convertToVO).toList();
@@ -109,18 +111,19 @@ public class PluginControllerV3 {
      */
     @GetMapping("/detail")
     @Secured(resource = Commons.NACOS_ADMIN_CORE_CONTEXT_V3
-            + "/plugin", action = ActionTypes.READ, signType = SignType.CONSOLE, apiType = ApiType.ADMIN_API)
+        + "/plugin", action = ActionTypes.READ, signType = SignType.CONSOLE,
+        apiType = ApiType.ADMIN_API)
     @Operation(summary = "nacos.admin.core.plugin.api.detail.summary", description = "nacos.admin.core.plugin.api.detail.description", security = @SecurityRequirement(name = "nacos"))
     @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE, schema = @Schema(implementation = Result.class, example = "nacos.admin.core.plugin.api.detail.example")))
     @Parameters(value = {@Parameter(name = "pluginType", required = true, example = "auth"),
             @Parameter(name = "pluginName", required = true, example = "nacos-default-auth-plugin")})
     public Result<PluginDetailVO> getPluginDetail(@RequestParam("pluginType") String pluginType,
-            @RequestParam("pluginName") String pluginName) throws NacosApiException {
+        @RequestParam("pluginName") String pluginName) throws NacosApiException {
         
         String pluginId = pluginType + ":" + pluginName;
         PluginInfo pluginInfo = unifiedPluginManager.getPlugin(pluginId).orElseThrow(
-                () -> new NacosApiException(HttpStatus.NOT_FOUND.value(), ErrorCode.RESOURCE_NOT_FOUND,
-                        "Plugin not found: " + pluginId));
+            () -> new NacosApiException(HttpStatus.NOT_FOUND.value(), ErrorCode.RESOURCE_NOT_FOUND,
+                "Plugin not found: " + pluginId));
         
         PluginDetailVO detailVO = convertToDetailVO(pluginInfo);
         return Result.success(detailVO);
@@ -137,7 +140,8 @@ public class PluginControllerV3 {
      */
     @PutMapping("/status")
     @Secured(resource = Commons.NACOS_ADMIN_CORE_CONTEXT_V3
-            + "/plugin", action = ActionTypes.WRITE, signType = SignType.CONSOLE, apiType = ApiType.ADMIN_API)
+        + "/plugin", action = ActionTypes.WRITE, signType = SignType.CONSOLE,
+        apiType = ApiType.ADMIN_API)
     @Operation(summary = "nacos.admin.core.plugin.api.status.summary", description = "nacos.admin.core.plugin.api.status.description", security = @SecurityRequirement(name = "nacos"))
     @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE, schema = @Schema(implementation = Result.class, example = "nacos.admin.core.plugin.api.status.example")))
     @Parameters(value = {@Parameter(name = "pluginType", required = true, example = "auth"),
@@ -145,8 +149,9 @@ public class PluginControllerV3 {
             @Parameter(name = "enabled", required = true, schema = @Schema(type = "boolean"), example = "true"),
             @Parameter(name = "localOnly", schema = @Schema(type = "boolean"), example = "false")})
     public Result<String> updatePluginStatus(@RequestParam("pluginType") String pluginType,
-            @RequestParam("pluginName") String pluginName, @RequestParam("enabled") boolean enabled,
-            @RequestParam(value = "localOnly", defaultValue = "false") boolean localOnly) throws NacosApiException {
+        @RequestParam("pluginName") String pluginName, @RequestParam("enabled") boolean enabled,
+        @RequestParam(value = "localOnly", defaultValue = "false") boolean localOnly)
+        throws NacosApiException {
         validatePluginIdentifier(pluginType, pluginName);
         String pluginId = pluginType + ":" + pluginName;
         unifiedPluginManager.setPluginEnabled(pluginId, enabled, localOnly);
@@ -164,7 +169,8 @@ public class PluginControllerV3 {
      */
     @PutMapping("/config")
     @Secured(resource = Commons.NACOS_ADMIN_CORE_CONTEXT_V3
-            + "/plugin", action = ActionTypes.WRITE, signType = SignType.CONSOLE, apiType = ApiType.ADMIN_API)
+        + "/plugin", action = ActionTypes.WRITE, signType = SignType.CONSOLE,
+        apiType = ApiType.ADMIN_API)
     @Operation(summary = "nacos.admin.core.plugin.api.config.summary", description = "nacos.admin.core.plugin.api.config.description", security = @SecurityRequirement(name = "nacos"))
     @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE, schema = @Schema(implementation = Result.class, example = "nacos.admin.core.plugin.api.config.example")))
     @Parameters(value = {@Parameter(name = "pluginType", required = true, example = "auth"),
@@ -172,24 +178,29 @@ public class PluginControllerV3 {
             @Parameter(name = "config", required = true, example = "{\"key\":\"value\"}"),
             @Parameter(name = "localOnly", schema = @Schema(type = "boolean"), example = "false")})
     public Result<String> updatePluginConfig(@RequestParam("pluginType") String pluginType,
-            @RequestParam("pluginName") String pluginName, @RequestParam("config") String configJson,
-            @RequestParam(value = "localOnly", defaultValue = "false") boolean localOnly) throws NacosApiException {
+        @RequestParam("pluginName") String pluginName, @RequestParam("config") String configJson,
+        @RequestParam(value = "localOnly", defaultValue = "false") boolean localOnly)
+        throws NacosApiException {
         validatePluginIdentifier(pluginType, pluginName);
-        Map<String, String> config = JacksonUtils.toObj(configJson, new TypeReference<Map<String, String>>() {
-        });
+        Map<String, String> config =
+            JacksonUtils.toObj(configJson, new TypeReference<Map<String, String>>() {
+            });
         if (config == null) {
-            throw new NacosApiException(HttpStatus.BAD_REQUEST.value(), ErrorCode.PARAMETER_VALIDATE_ERROR,
-                    "Plugin configuration is required");
+            throw new NacosApiException(HttpStatus.BAD_REQUEST.value(),
+                ErrorCode.PARAMETER_VALIDATE_ERROR,
+                "Plugin configuration is required");
         }
         String pluginId = pluginType + ":" + pluginName;
         unifiedPluginManager.updatePluginConfig(pluginId, config, localOnly);
         return Result.success("Plugin configuration updated successfully");
     }
     
-    private void validatePluginIdentifier(String pluginType, String pluginName) throws NacosApiException {
+    private void validatePluginIdentifier(String pluginType, String pluginName)
+        throws NacosApiException {
         if (StringUtils.isBlank(pluginType) || StringUtils.isBlank(pluginName)) {
-            throw new NacosApiException(HttpStatus.BAD_REQUEST.value(), ErrorCode.PARAMETER_VALIDATE_ERROR,
-                    "Plugin type and name are required");
+            throw new NacosApiException(HttpStatus.BAD_REQUEST.value(),
+                ErrorCode.PARAMETER_VALIDATE_ERROR,
+                "Plugin type and name are required");
         }
     }
     

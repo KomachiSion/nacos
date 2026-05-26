@@ -75,13 +75,14 @@ public class ConsoleClusterController {
      */
     @GetMapping(value = "/nodes")
     @Secured(resource = Commons.NACOS_CORE_CONTEXT
-            + "/cluster", action = ActionTypes.READ, signType = SignType.CONSOLE, apiType = ApiType.CONSOLE_API)
+        + "/cluster", action = ActionTypes.READ, signType = SignType.CONSOLE,
+        apiType = ApiType.CONSOLE_API)
     @Operation(summary = "nacos.console.core.cluster.api.nodes.summary", description = "nacos.console.core.cluster.api.nodes.description",
             security = @SecurityRequirement(name = "nacos"))
     @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
             schema = @Schema(implementation = Result.class, example = "nacos.console.core.cluster.api.nodes.example")))
     public Result<Collection<NacosMember>> getNodeList(
-            @RequestParam(value = "keyword", required = false) String ipKeyWord) throws NacosException {
+        @RequestParam(value = "keyword", required = false) String ipKeyWord) throws NacosException {
         Collection<NacosMember> result = clusterProxy.getNodeList(ipKeyWord);
         return Result.success(result);
     }

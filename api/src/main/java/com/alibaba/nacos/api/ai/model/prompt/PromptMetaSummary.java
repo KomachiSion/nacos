@@ -19,6 +19,7 @@ package com.alibaba.nacos.api.ai.model.prompt;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Prompt meta summary for prompt list response.
@@ -37,9 +38,36 @@ public class PromptMetaSummary implements Serializable {
     
     private List<String> bizTags = new ArrayList<>();
     
+    private String bizTagsStr;
+    
     private String latestVersion;
     
     private Long gmtModified;
+    
+    /**
+     * The version currently being edited (draft).
+     */
+    private String editingVersion;
+    
+    /**
+     * The version currently under pipeline review.
+     */
+    private String reviewingVersion;
+    
+    /**
+     * Number of online versions.
+     */
+    private Integer onlineCnt;
+    
+    /**
+     * Label to version mapping, e.g. {"latest":"1.0.0","stable":"0.9.0"}.
+     */
+    private Map<String, String> labels;
+    
+    /**
+     * Total download count of this prompt (sum of all versions).
+     */
+    private Long downloadCount;
     
     public int getSchemaVersion() {
         return schemaVersion;
@@ -73,6 +101,14 @@ public class PromptMetaSummary implements Serializable {
         this.bizTags = bizTags;
     }
     
+    public String getBizTagsStr() {
+        return bizTagsStr;
+    }
+    
+    public void setBizTagsStr(String bizTagsStr) {
+        this.bizTagsStr = bizTagsStr;
+    }
+    
     public String getLatestVersion() {
         return latestVersion;
     }
@@ -87,5 +123,45 @@ public class PromptMetaSummary implements Serializable {
     
     public void setGmtModified(Long gmtModified) {
         this.gmtModified = gmtModified;
+    }
+    
+    public String getEditingVersion() {
+        return editingVersion;
+    }
+    
+    public void setEditingVersion(String editingVersion) {
+        this.editingVersion = editingVersion;
+    }
+    
+    public String getReviewingVersion() {
+        return reviewingVersion;
+    }
+    
+    public void setReviewingVersion(String reviewingVersion) {
+        this.reviewingVersion = reviewingVersion;
+    }
+    
+    public Integer getOnlineCnt() {
+        return onlineCnt;
+    }
+    
+    public void setOnlineCnt(Integer onlineCnt) {
+        this.onlineCnt = onlineCnt;
+    }
+    
+    public Map<String, String> getLabels() {
+        return labels;
+    }
+    
+    public void setLabels(Map<String, String> labels) {
+        this.labels = labels;
+    }
+    
+    public Long getDownloadCount() {
+        return downloadCount;
+    }
+    
+    public void setDownloadCount(Long downloadCount) {
+        this.downloadCount = downloadCount;
     }
 }

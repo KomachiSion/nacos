@@ -15,7 +15,14 @@
  */
 
 import request from '../utils/request';
-import { GET_STATE, LOGINPAGE_ENABLED, GET_NOTICE, SERVER_GUIDE, LANGUAGE_KEY } from '../constants';
+import {
+  GET_STATE,
+  LOGINPAGE_ENABLED,
+  GET_NOTICE,
+  SERVER_GUIDE,
+  LANGUAGE_KEY,
+  COPILOT_ENABLED,
+} from '../constants';
 
 const initialState = {
   version: null,
@@ -26,6 +33,9 @@ const initialState = {
   notice: '',
   consoleUiEnable: '',
   authAdminRequest: '',
+  authSystemType: '',
+  copilotEnabled: false,
+  aiEnabled: true,
   guideMsg: '',
   configRetentionDays: 30, // config default retention days is 30
 };
@@ -52,6 +62,7 @@ const getState = () => dispatch =>
     .get('v3/console/server/state')
     .then(res => {
       localStorage.setItem(LOGINPAGE_ENABLED, res.login_page_enabled);
+      localStorage.setItem(COPILOT_ENABLED, res.copilot_enabled === 'true');
       dispatch({
         type: GET_STATE,
         data: {
@@ -60,10 +71,13 @@ const getState = () => dispatch =>
           functionMode: res.function_mode,
           loginPageEnabled: res.login_page_enabled,
           authEnabled: res.auth_enabled,
+          authSystemType: res.auth_system_type,
           authAdminRequest: res.auth_admin_request,
           consoleUiEnable: res.console_ui_enabled,
           startupMode: res.startup_mode,
           configRetentionDays: res.config_retention_days,
+          copilotEnabled: res.copilot_enabled === 'true',
+          aiEnabled: res.ai_enabled === undefined ? true : res.ai_enabled === 'true',
         },
       });
     })

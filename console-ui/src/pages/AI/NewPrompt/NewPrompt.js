@@ -21,6 +21,7 @@ import PageTitle from 'components/PageTitle';
 import MonacoEditor from '../../../components/MonacoEditor/MonacoEditor';
 import PromptOptimizeDialog from '../PromptOptimizeDialog';
 import { getParams, request } from '@/globalLib';
+import { COPILOT_ENABLED } from '@/constants';
 import './NewPrompt.scss';
 
 @ConfigProvider.config
@@ -47,9 +48,51 @@ class NewPrompt extends React.Component {
   }
 
   componentDidMount() {
-    // Set default version
-    this.field.setValue('version', '1.0.0');
+    // Check for fork mode
+    const mode = getParams('mode') || 'create';
+    const basedOnVersion = getParams('basedOnVersion') || '';
+    const promptKeyParam = getParams('promptKey') || '';
+
+    if (mode === 'fork' && basedOnVersion && promptKeyParam) {
+      // Fork mode: load base version data
+      this.field.setValue('promptKey', promptKeyParam);
+      this.field.setValues({ promptKey: promptKeyParam });
+      this.loadBaseVersion(promptKeyParam, basedOnVersion);
+    }
   }
+
+  loadBaseVersion = (promptKey, version) => {
+    const namespaceId = getParams('namespace') || '';
+    const params = new URLSearchParams();
+    params.append('promptKey', promptKey);
+    params.append('version', version);
+    if (namespaceId) {
+      params.append('namespaceId', namespaceId);
+    }
+
+    request({
+      url: `v3/console/ai/prompt/version?${params.toString()}`,
+      success: data => {
+        if (data && data.code === 0 && data.data) {
+          const versionData = data.data;
+          const template = versionData.template || '';
+          const variables = this.extractVariables(template);
+          const defaults = {};
+          const descs = {};
+          (versionData.variables || []).forEach(v => {
+            if (v.defaultValue) defaults[v.name] = v.defaultValue;
+            if (v.description) descs[v.name] = v.description;
+          });
+          this.setState({
+            template,
+            variables,
+            variableDefaults: defaults,
+            variableDescriptions: descs,
+          });
+        }
+      },
+    });
+  };
 
   // Extract {{variable}} from template (supports Chinese and other Unicode characters)
   extractVariables = template => {
@@ -88,12 +131,6 @@ class NewPrompt extends React.Component {
         return;
       }
 
-      // Validate version format
-      if (!this.validateVersion(values.version)) {
-        Message.error(locale.versionFormatError || '版本号格式错误，请使用 x.y.z 格式');
-        return;
-      }
-
       // Validate template
       if (!template || !template.trim()) {
         Message.error(locale.templateRequired || '请输入 Prompt 模板内容');
@@ -103,6 +140,7 @@ class NewPrompt extends React.Component {
       this.setState({ loading: true });
 
       const namespaceId = getParams('namespace') || '';
+      const basedOnVersion = getParams('basedOnVersion') || '';
 
       const { variables: vars, variableDefaults, variableDescriptions } = this.state;
       const variablesDef = vars.map(name => ({
@@ -111,32 +149,50 @@ class NewPrompt extends React.Component {
         description: variableDescriptions[name] || null,
       }));
 
+      const requestData = {
+        namespaceId: namespaceId,
+        promptKey: values.promptKey,
+        description: values.description || '',
+        template: template,
+        commitMsg: values.commitMsg || '',
+        variables: JSON.stringify(variablesDef),
+      };
+
+      // Optional target version
+      if (values.targetVersion && values.targetVersion.trim()) {
+        requestData.targetVersion = values.targetVersion.trim();
+      }
+
+      // Fork mode: pass basedOnVersion
+      if (basedOnVersion) {
+        requestData.basedOnVersion = basedOnVersion;
+      }
+
       request({
         method: 'POST',
-        url: 'v3/console/ai/prompt',
-        data: {
-          namespaceId: namespaceId,
-          promptKey: values.promptKey,
-          version: values.version,
-          description: values.description || '',
-          template: template,
-          commitMsg: values.commitMsg || '',
-          variables: JSON.stringify(variablesDef),
-        },
+        url: 'v3/console/ai/prompt/draft',
+        data: requestData,
+        contentType: 'application/x-www-form-urlencoded',
         success: data => {
           this.setState({ loading: false });
           if (data && data.code === 0) {
-            Message.success(locale.createSuccess || '创建成功');
+            Message.success(locale.createDraftSuccess || locale.createSuccess || '创建成功');
             setTimeout(() => {
-              this.handleGoBack();
-            }, 1000);
+              // Navigate to detail page
+              const promptKeyVal = values.promptKey;
+              this.props.history.push(
+                `/promptDetail?namespace=${namespaceId}&promptKey=${promptKeyVal}`
+              );
+            }, 500);
           } else {
-            Message.error(data?.message || locale.createFailed || '创建失败');
+            Message.error(
+              data?.message || locale.createDraftFailed || locale.createFailed || '创建失败'
+            );
           }
         },
         error: () => {
           this.setState({ loading: false });
-          Message.error(locale.createFailed || '创建失败');
+          Message.error(locale.createDraftFailed || locale.createFailed || '创建失败');
         },
       });
     });
@@ -196,28 +252,24 @@ class NewPrompt extends React.Component {
                           message: locale.promptKeyRequired || '请输入 Prompt 名称',
                         },
                         {
-                          pattern: /^[a-zA-Z0-9_-]+$/,
+                          pattern: /^[a-zA-Z0-9_.-]+$/,
                           message: locale.promptKeyPattern || '只允许字母、数字、下划线和横杠',
                         },
                       ],
                     })}
                     placeholder={locale.promptKeyPlaceholder || '请输入 Prompt 名称'}
                     style={{ width: '100%' }}
+                    disabled={!!getParams('basedOnVersion')}
                   />
                 </Form.Item>
 
                 <Form.Item
-                  label={locale.version || '版本'}
-                  required
-                  help={locale.versionHelp || '格式: major.minor.patch，例如 1.0.0、2.1.3'}
+                  label={locale.targetVersion || '目标版本号'}
+                  help={locale.targetVersionPlaceholder || '可选，例如: 1.0.1'}
                 >
                   <Input
-                    {...init('version', {
-                      rules: [
-                        { required: true, message: locale.versionRequired || '请输入版本号' },
-                      ],
-                    })}
-                    placeholder={locale.versionPlaceholder || '例如: 1.0.0'}
+                    {...init('targetVersion')}
+                    placeholder={locale.targetVersionPlaceholder || '可选，例如: 1.0.1'}
                     style={{ width: 200 }}
                   />
                 </Form.Item>
@@ -251,15 +303,17 @@ class NewPrompt extends React.Component {
                 >
                   <div className="editor-container">
                     <div className="editor-toolbar">
-                      <Button
-                        type="secondary"
-                        size="small"
-                        onClick={this.handleOpenOptimizeDialog}
-                        disabled={!template || !template.trim()}
-                      >
-                        <Icon type="magic" style={{ marginRight: 4 }} />
-                        {locale.aiOptimize || 'AI 优化'}
-                      </Button>
+                      {localStorage.getItem(COPILOT_ENABLED) === 'true' && (
+                        <Button
+                          type="secondary"
+                          size="small"
+                          onClick={this.handleOpenOptimizeDialog}
+                          disabled={!template || !template.trim()}
+                        >
+                          <Icon type="magic" style={{ marginRight: 4 }} />
+                          {locale.aiOptimize || 'AI 优化'}
+                        </Button>
+                      )}
                     </div>
                     <MonacoEditor
                       language="plaintext"

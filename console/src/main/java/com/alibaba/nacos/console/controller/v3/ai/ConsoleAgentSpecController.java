@@ -17,6 +17,7 @@
 package com.alibaba.nacos.console.controller.v3.ai;
 
 import com.alibaba.nacos.ai.constant.Constants;
+import com.alibaba.nacos.ai.form.AiResourceFilterableForm;
 import com.alibaba.nacos.ai.form.agentspecs.admin.AgentSpecBizTagsUpdateForm;
 import com.alibaba.nacos.ai.form.agentspecs.admin.AgentSpecDraftCreateForm;
 import com.alibaba.nacos.ai.form.agentspecs.admin.AgentSpecForm;
@@ -66,6 +67,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
+
+import static com.alibaba.nacos.plugin.auth.constant.Constants.Resource.CONSOLE_RESOURCE_NAME_PREFIX;
 
 /**
  * Console AgentSpec Controller.
@@ -165,11 +168,13 @@ public class ConsoleAgentSpecController {
             @Parameter(name = "agentSpecName", example = "my-agentspec"),
             @Parameter(name = "search", example = "blur", description = "Search mode: accurate or blur"),
             @Parameter(name = "agentSpecListForm", hidden = true), @Parameter(name = "pageForm", hidden = true)})
-    public Result<Page<AgentSpecSummary>> listAgentSpecs(AgentSpecListForm agentSpecListForm, PageForm pageForm)
-            throws NacosException {
+    public Result<Page<AgentSpecSummary>> listAgentSpecs(AgentSpecListForm agentSpecListForm,
+        AiResourceFilterableForm filterableForm, PageForm pageForm) throws NacosException {
         agentSpecListForm.validate();
+        filterableForm.validate();
         pageForm.validate();
-        return Result.success(agentSpecProxy.listAgentSpecs(agentSpecListForm, pageForm));
+        return Result
+            .success(agentSpecProxy.listAgentSpecs(agentSpecListForm, filterableForm, pageForm));
     }
     
     /**
@@ -191,12 +196,14 @@ public class ConsoleAgentSpecController {
             @SchemaProperty(name = "overwrite", schema = @Schema(type = "boolean", example = "false")),
             @SchemaProperty(name = "file", schema = @Schema(type = "string", format = "binary", description = "ZIP file containing agentspec package"))}))
     public Result<String> uploadAgentSpec(HttpServletRequest request,
-            @RequestParam(value = "namespaceId", required = false) String namespaceId,
-            @RequestParam(value = "overwrite", required = false, defaultValue = "false") boolean overwrite,
-            @RequestParam("file") MultipartFile file) throws NacosException {
+        @RequestParam(value = "namespaceId", required = false) String namespaceId,
+        @RequestParam(value = "overwrite", required = false,
+            defaultValue = "false") boolean overwrite,
+        @RequestParam("file") MultipartFile file) throws NacosException {
         namespaceId = NamespaceUtil.processNamespaceParameter(namespaceId);
         byte[] zipBytes = AgentSpecRequestUtil.validateAndExtractZipBytes(file);
-        String agentSpecName = agentSpecProxy.uploadAgentSpecFromZip(namespaceId, zipBytes, overwrite);
+        String agentSpecName =
+            agentSpecProxy.uploadAgentSpecFromZip(namespaceId, zipBytes, overwrite);
         return Result.success(agentSpecName);
     }
     
@@ -304,6 +311,36 @@ public class ConsoleAgentSpecController {
     }
     
     /**
+     * Force-publish an agentspec version, bypassing pipeline validation. Accepts draft (pipeline-rejected) and
+     * reviewing (pipeline in-progress) versions. Restricted to admin users only (apiType = ADMIN_API enforces global
+     * admin check).
+     */
+    @PostMapping("/force-publish")
+    @Secured(resource = CONSOLE_RESOURCE_NAME_PREFIX
+        + "agentspecs", action = ActionTypes.WRITE, signType = SignType.CONSOLE,
+        apiType = ApiType.CONSOLE_API)
+    public Result<String> forcePublish(AgentSpecPublishForm form) throws NacosException {
+        form.validate();
+        agentSpecProxy.forcePublish(form);
+        return Result.success("ok");
+    }
+    
+    /**
+     * Re-edit a reviewed agent spec version, transitioning it back to draft status.
+     *
+     * @param form publish form
+     * @return result of the redraft operation
+     * @throws NacosException if the operation fails
+     */
+    @PostMapping("/redraft")
+    @Secured(action = ActionTypes.WRITE, signType = SignType.AI, apiType = ApiType.CONSOLE_API)
+    public Result<String> redraft(AgentSpecPublishForm form) throws NacosException {
+        form.validate();
+        agentSpecProxy.redraft(form);
+        return Result.success("ok");
+    }
+    
+    /**
      * Update runtime route labels.
      *
      * @param form labels update form
@@ -323,7 +360,7 @@ public class ConsoleAgentSpecController {
         agentSpecProxy.updateLabels(form);
         return Result.success("ok");
     }
-
+    
     /**
      * Update agentspec biz tags without changing version status.
      */
@@ -362,7 +399,7 @@ public class ConsoleAgentSpecController {
         agentSpecProxy.online(form);
         return Result.success("ok");
     }
-
+    
     /**
      * Update agentspec visibility scope.
      *

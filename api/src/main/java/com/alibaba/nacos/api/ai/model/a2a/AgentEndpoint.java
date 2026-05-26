@@ -54,6 +54,20 @@ public class AgentEndpoint {
     private String version;
     
     /**
+     * For A2A 1.0.0.
+     *
+     * @since 3.2.1
+     */
+    private String protocolVersion;
+    
+    /**
+     * For A2A 1.0.0.
+     *
+     * @since 3.2.1
+     */
+    private String tenant;
+    
+    /**
      * Custom Protocol for A2A transport. Default `HTTP`.
      *
      * @since 3.1.1
@@ -115,6 +129,22 @@ public class AgentEndpoint {
         this.version = version;
     }
     
+    public String getProtocolVersion() {
+        return protocolVersion;
+    }
+    
+    public void setProtocolVersion(String protocolVersion) {
+        this.protocolVersion = protocolVersion;
+    }
+    
+    public String getTenant() {
+        return tenant;
+    }
+    
+    public void setTenant(String tenant) {
+        this.tenant = tenant;
+    }
+    
     public String getProtocol() {
         return protocol;
     }
@@ -150,21 +180,32 @@ public class AgentEndpoint {
             return false;
         }
         AgentEndpoint endpoint = (AgentEndpoint) o;
-        return port == endpoint.port && supportTls == endpoint.supportTls && Objects.equals(transport,
-                endpoint.transport) && Objects.equals(address, endpoint.address) && Objects.equals(path, endpoint.path)
-                && Objects.equals(version, endpoint.version) && Objects.equals(protocol, endpoint.protocol)
-                && Objects.equals(query, endpoint.query);
+        return port == endpoint.port && supportTls == endpoint.supportTls
+            && Objects.equals(transport,
+                endpoint.transport)
+            && Objects.equals(address, endpoint.address) && Objects.equals(path, endpoint.path)
+            && Objects.equals(version, endpoint.version)
+            && Objects.equals(protocol, endpoint.protocol)
+            && Objects.equals(query, endpoint.query)
+            && Objects.equals(protocolVersion, endpoint.protocolVersion)
+            && Objects.equals(tenant, endpoint.tenant);
     }
     
     @Override
     public int hashCode() {
-        return Objects.hash(transport, address, port, path, supportTls, version, protocol, query);
+        return Objects.hash(transport, address, port, path, supportTls, version, protocolVersion,
+            tenant, protocol,
+            query);
     }
     
     @Override
     public String toString() {
-        return "AgentEndpoint{" + "transport='" + transport + '\'' + ", address='" + address + '\'' + ", port=" + port
-                + ", path='" + path + '\'' + ", supportTls=" + supportTls + ", version='" + version + '\''
-                + ", protocol='" + protocol + '\'' + ", query='" + query + '\'' + '}';
+        return "AgentEndpoint{" + "transport='" + transport + '\'' + ", address='" + address + '\''
+            + ", port=" + port
+            + ", path='" + path + '\'' + ", supportTls=" + supportTls + ", version='" + version
+            + '\''
+            + ", protocolVersion='" + protocolVersion + '\'' + ", tenant='" + tenant + '\''
+            + ", protocol='"
+            + protocol + '\'' + ", query='" + query + '\'' + '}';
     }
 }

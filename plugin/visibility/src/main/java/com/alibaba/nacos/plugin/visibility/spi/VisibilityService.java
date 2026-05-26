@@ -16,6 +16,7 @@
 
 package com.alibaba.nacos.plugin.visibility.spi;
 
+import com.alibaba.nacos.plugin.visibility.constant.VisibilityConstants;
 import com.alibaba.nacos.plugin.visibility.model.VisibilityQueryContext;
 import com.alibaba.nacos.plugin.visibility.model.VisibilityResource;
 
@@ -27,7 +28,7 @@ import java.util.Properties;
  * @author xiweng.yy
  */
 public interface VisibilityService {
-
+    
     /**
      * Initialize service with external properties.
      *
@@ -39,9 +40,26 @@ public interface VisibilityService {
     default void init(Properties properties) {
     }
     
-    ValidationResult validateVisibility(String identity, String action, String apiType, VisibilityResource resource);
+    /**
+     * Resolve default scope for a newly created resource.
+     *
+     * <p>Default implementation keeps backward compatibility for existing SPI implementations.</p>
+     *
+     * @param identity     current identity
+     * @param apiType      current api type
+     * @param resourceType resource type, such as skill / agentspec
+     * @return default scope for new resource
+     */
+    default String resolveDefaultScopeForCreate(String identity, String apiType,
+        String resourceType) {
+        return VisibilityConstants.SCOPE_PRIVATE;
+    }
     
-    QueryAdvisor adviseQuery(String identity, String action, String apiType, VisibilityQueryContext context);
+    ValidationResult validateVisibility(String identity, String action, String apiType,
+        VisibilityResource resource);
+    
+    QueryAdvisor adviseQuery(String identity, String action, String apiType,
+        VisibilityQueryContext context);
     
     String getVisibilityServiceName();
 }

@@ -19,6 +19,7 @@ package com.alibaba.nacos.ai.utils;
 import com.alibaba.nacos.ai.form.mcp.admin.McpDetailForm;
 import com.alibaba.nacos.api.ai.constant.AiConstants;
 import com.alibaba.nacos.api.ai.model.mcp.McpEndpointSpec;
+import com.alibaba.nacos.api.ai.model.mcp.McpResourceSpecification;
 import com.alibaba.nacos.api.ai.model.mcp.McpServerBasicInfo;
 import com.alibaba.nacos.api.ai.model.mcp.McpServiceRef;
 import com.alibaba.nacos.api.ai.model.mcp.McpTool;
@@ -51,10 +52,11 @@ public class McpRequestUtil {
      * @return mcp server basic info.
      * @throws NacosApiException if parse failed or request parameter is conflicted.
      */
-    public static McpServerBasicInfo parseMcpServerBasicInfo(McpDetailForm mcpForm) throws NacosApiException {
+    public static McpServerBasicInfo parseMcpServerBasicInfo(McpDetailForm mcpForm)
+        throws NacosApiException {
         McpServerBasicInfo result = McpRequestUtil.deserializeSpec(mcpForm.getServerSpecification(),
-                new TypeReference<>() {
-                });
+            new TypeReference<>() {
+            });
         if (StringUtils.isEmpty(result.getName())) {
             result.setName(mcpForm.getMcpName());
         }
@@ -68,12 +70,31 @@ public class McpRequestUtil {
      * @return mcp server tool info
      * @throws NacosApiException if parse failed.
      */
-    public static McpToolSpecification parseMcpTools(McpDetailForm mcpForm) throws NacosApiException {
+    public static McpToolSpecification parseMcpTools(McpDetailForm mcpForm)
+        throws NacosApiException {
         if (StringUtils.isBlank(mcpForm.getToolSpecification())) {
             return null;
         }
-        return McpRequestUtil.deserializeSpec(mcpForm.getToolSpecification(), new TypeReference<>() {
-        });
+        return McpRequestUtil.deserializeSpec(mcpForm.getToolSpecification(),
+            new TypeReference<>() {
+            });
+    }
+    
+    /**
+     * Parse Mcp resources request form to {@link McpResourceSpecification}.
+     *
+     * @param mcpForm mcp detail request.
+     * @return mcp server resource info
+     * @throws NacosApiException if parse failed.
+     */
+    public static McpResourceSpecification parseMcpResources(McpDetailForm mcpForm)
+        throws NacosApiException {
+        if (StringUtils.isBlank(mcpForm.getResourceSpecification())) {
+            return null;
+        }
+        return McpRequestUtil.deserializeSpec(mcpForm.getResourceSpecification(),
+            new TypeReference<>() {
+            });
     }
     
     /**
@@ -84,17 +105,20 @@ public class McpRequestUtil {
      * @return mcp server endpoint info
      * @throws NacosApiException  if parse failed or request parameter is conflicted.
      */
-    public static McpEndpointSpec parseMcpEndpointSpec(McpServerBasicInfo basicInfo, McpDetailForm mcpForm)
-            throws NacosApiException {
+    public static McpEndpointSpec parseMcpEndpointSpec(McpServerBasicInfo basicInfo,
+        McpDetailForm mcpForm)
+        throws NacosApiException {
         if (AiConstants.Mcp.MCP_PROTOCOL_STDIO.equalsIgnoreCase(basicInfo.getProtocol())) {
             return null;
         }
         if (StringUtils.isBlank(mcpForm.getEndpointSpecification())) {
-            throw new NacosApiException(NacosApiException.INVALID_PARAM, ErrorCode.PARAMETER_MISSING,
-                    "request parameter `endpointSpecification` is required if mcp server type not `local`.");
+            throw new NacosApiException(NacosApiException.INVALID_PARAM,
+                ErrorCode.PARAMETER_MISSING,
+                "request parameter `endpointSpecification` is required if mcp server type not `local`.");
         }
-        return McpRequestUtil.deserializeSpec(mcpForm.getEndpointSpecification(), new TypeReference<>() {
-        });
+        return McpRequestUtil.deserializeSpec(mcpForm.getEndpointSpecification(),
+            new TypeReference<>() {
+            });
     }
     
     /**
@@ -106,7 +130,8 @@ public class McpRequestUtil {
      * @return spec object.
      * @throws NacosApiException if deserialize failed.
      */
-    public static <T> T deserializeSpec(String spec, TypeReference<T> typeReference) throws NacosApiException {
+    public static <T> T deserializeSpec(String spec, TypeReference<T> typeReference)
+        throws NacosApiException {
         return deserializeSpec(spec, typeReference, LOGGER);
     }
     
@@ -121,14 +146,17 @@ public class McpRequestUtil {
      * @throws NacosApiException if deserialize failed.
      */
     public static <T> T deserializeSpec(String spec, TypeReference<T> typeReference, Logger logger)
-            throws NacosApiException {
+        throws NacosApiException {
         try {
             return JacksonUtils.toObj(spec, typeReference);
         } catch (NacosDeserializationException e) {
-            logger.error(String.format("Deserialize %s from %s failed, ", typeReference.getType().getTypeName(), spec),
-                    e);
-            throw new NacosApiException(NacosApiException.INVALID_PARAM, ErrorCode.PARAMETER_VALIDATE_ERROR,
-                    "serverSpecification or toolSpecification is invalid. Can't be parsed.");
+            logger.error(
+                String.format("Deserialize %s from %s failed, ",
+                    typeReference.getType().getTypeName(), spec),
+                e);
+            throw new NacosApiException(NacosApiException.INVALID_PARAM,
+                ErrorCode.PARAMETER_VALIDATE_ERROR,
+                "serverSpecification or toolSpecification is invalid. Can't be parsed.");
         }
     }
     

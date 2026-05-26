@@ -17,6 +17,7 @@
 package com.alibaba.nacos.common.http.client;
 
 import com.alibaba.nacos.common.http.client.handler.BeanResponseHandler;
+import com.alibaba.nacos.common.http.client.handler.ByteArrayResponseHandler;
 import com.alibaba.nacos.common.http.client.handler.ResponseHandler;
 import com.alibaba.nacos.common.http.client.handler.RestResultResponseHandler;
 import com.alibaba.nacos.common.http.client.handler.StringResponseHandler;
@@ -44,7 +45,8 @@ class AbstractNacosRestTemplateTest {
     @BeforeEach
     void setUp() throws Exception {
         restTemplate = new MockNacosRestTemplate(null);
-        restTemplate.registerResponseHandler(MockNacosRestTemplate.class.getName(), mockResponseHandler);
+        restTemplate.registerResponseHandler(MockNacosRestTemplate.class.getName(),
+            mockResponseHandler);
     }
     
     @Test
@@ -54,17 +56,26 @@ class AbstractNacosRestTemplateTest {
     
     @Test
     void testSelectResponseHandlerForRestResult() {
-        assertTrue(restTemplate.testFindResponseHandler(RestResult.class) instanceof RestResultResponseHandler);
+        assertTrue(restTemplate
+            .testFindResponseHandler(RestResult.class) instanceof RestResultResponseHandler);
+    }
+    
+    @Test
+    void testSelectResponseHandlerForByteArray() {
+        assertTrue(
+            restTemplate.testFindResponseHandler(byte[].class) instanceof ByteArrayResponseHandler);
     }
     
     @Test
     void testSelectResponseHandlerForDefault() {
-        assertTrue(restTemplate.testFindResponseHandler(AbstractNacosRestTemplateTest.class) instanceof BeanResponseHandler);
+        assertTrue(restTemplate.testFindResponseHandler(
+            AbstractNacosRestTemplateTest.class) instanceof BeanResponseHandler);
     }
     
     @Test
     void testSelectResponseHandlerForCustom() {
-        assertEquals(mockResponseHandler, restTemplate.testFindResponseHandler(MockNacosRestTemplate.class));
+        assertEquals(mockResponseHandler,
+            restTemplate.testFindResponseHandler(MockNacosRestTemplate.class));
     }
     
     private static class MockNacosRestTemplate extends AbstractNacosRestTemplate {

@@ -25,6 +25,7 @@ import com.alibaba.nacos.ai.pipeline.model.PipelineExecutionStatus;
 import com.alibaba.nacos.ai.pipeline.model.PipelineNodeResult;
 import com.alibaba.nacos.ai.pipeline.repository.PipelineExecutionRepository;
 import com.alibaba.nacos.plugin.ai.pipeline.model.PublishPipelineContext;
+import com.alibaba.nacos.plugin.ai.pipeline.model.PublishPipelineResourceType;
 import com.alibaba.nacos.plugin.ai.pipeline.model.PublishPipelineResult;
 import com.alibaba.nacos.plugin.ai.pipeline.spi.PublishPipelineService;
 import org.slf4j.Logger;
@@ -55,8 +56,9 @@ public class PublishPipelineExecutor {
     
     private final ExecutorService asyncExecutor;
     
-    public PublishPipelineExecutor(PublishPipelineManager pipelineManager, PipelineConfigProvider configProvider,
-            PipelineExecutionRepository executionRepository, ExecutorService asyncExecutor) {
+    public PublishPipelineExecutor(PublishPipelineManager pipelineManager,
+        PipelineConfigProvider configProvider,
+        PipelineExecutionRepository executionRepository, ExecutorService asyncExecutor) {
         this.pipelineManager = pipelineManager;
         this.configProvider = configProvider;
         this.executionRepository = executionRepository;
@@ -79,6 +81,22 @@ public class PublishPipelineExecutor {
      * @return executionId, or null if pipeline is not enabled or no matching nodes
      */
     public String execute(PublishPipelineContext context, PipelineCallback callback) {
+        return execute(context, callback, UUID.randomUUID().toString());
+    }
+    
+    /**
+     * Asynchronously execute the pipeline with a pre-generated executionId.
+     *
+     * <p>Callers who need to write pipeline state (e.g. IN_PROGRESS) before the async task
+     * starts should pre-generate an executionId and use this overload.</p>
+     *
+     * @param context     pipeline context containing resource metadata
+     * @param callback    async callback, invoked exactly once when pipeline execution completes
+     * @param executionId pre-generated execution identifier
+     * @return executionId, or null if pipeline is not enabled or no matching nodes
+     */
+    public String execute(PublishPipelineContext context, PipelineCallback callback,
+        String executionId) {
         // Step 1: Check config
         PipelineConfig config = configProvider.getConfig();
         if (!config.isEnabled()) {
@@ -86,14 +104,14 @@ public class PublishPipelineExecutor {
         }
         
         // Step 2: Get matching pipeline services
-        List<PublishPipelineService> services = pipelineManager.getPipelineServices(context.getResourceType(),
+        List<PublishPipelineService> services =
+            pipelineManager.getPipelineServices(context.getResourceType(),
                 config.getNodes());
         if (services.isEmpty()) {
             return null;
         }
         
         // Step 3: Create execution record
-        String executionId = UUID.randomUUID().toString();
         long now = System.currentTimeMillis();
         
         PipelineExecution execution = new PipelineExecution();
@@ -110,7 +128,8 @@ public class PublishPipelineExecutor {
         try {
             executionRepository.save(execution);
         } catch (Exception e) {
-            LOG.error("Failed to save initial pipeline execution record for executionId={}", executionId, e);
+            LOG.error("Failed to save initial pipeline execution record for executionId={}",
+                executionId, e);
         }
         
         // Step 4: Submit async task
@@ -153,7 +172,8 @@ public class PublishPipelineExecutor {
                     try {
                         executionRepository.update(execution);
                     } catch (Exception e) {
-                        LOG.error("Failed to update pipeline execution record for executionId={}", executionId, e);
+                        LOG.error("Failed to update pipeline execution record for executionId={}",
+                            executionId, e);
                     }
                     
                     if (!allPassed) {
@@ -163,14 +183,15 @@ public class PublishPipelineExecutor {
                 
                 // Set final status
                 PipelineExecutionStatus finalStatus = allPassed
-                        ? PipelineExecutionStatus.APPROVED : PipelineExecutionStatus.REJECTED;
+                    ? PipelineExecutionStatus.APPROVED : PipelineExecutionStatus.REJECTED;
                 execution.setStatus(finalStatus);
                 execution.setUpdateTime(System.currentTimeMillis());
                 
                 try {
                     executionRepository.update(execution);
                 } catch (Exception e) {
-                    LOG.error("Failed to update final pipeline execution status for executionId={}", executionId, e);
+                    LOG.error("Failed to update final pipeline execution status for executionId={}",
+                        executionId, e);
                 }
                 
                 // Build result and invoke callback
@@ -180,7 +201,8 @@ public class PublishPipelineExecutor {
                 result.setPipeline(execution.getPipeline());
                 callback.onComplete(result);
             } catch (Exception e) {
-                LOG.error("Unexpected error during pipeline execution for executionId={}", executionId, e);
+                LOG.error("Unexpected error during pipeline execution for executionId={}",
+                    executionId, e);
                 // Ensure callback is called even on unexpected errors
                 PipelineExecutionResult result = new PipelineExecutionResult();
                 result.setExecutionId(executionId);
@@ -191,5 +213,21 @@ public class PublishPipelineExecutor {
         });
         
         return executionId;
+    }
+    
+    /**
+     * Read-only check: whether the pipeline is available for the given resource type.
+     *
+     * @param resourceType the resource type to check
+     * @return true if pipeline is enabled and has matching service nodes
+     */
+    public boolean isPipelineAvailable(PublishPipelineResourceType resourceType) {
+        PipelineConfig config = configProvider.getConfig();
+        if (!config.isEnabled()) {
+            return false;
+        }
+        List<PublishPipelineService> services =
+            pipelineManager.getPipelineServices(resourceType, config.getNodes());
+        return !services.isEmpty();
     }
 }

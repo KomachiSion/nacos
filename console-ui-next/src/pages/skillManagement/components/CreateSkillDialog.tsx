@@ -5,6 +5,7 @@ import MDEditor from '@uiw/react-md-editor';
 import Markdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import remarkFrontmatter from 'remark-frontmatter';
+import { useServerStore } from '@/stores/server-store';
 import {
   Sparkles,
   Loader2,
@@ -43,6 +44,7 @@ import {
   parseSkillFromContent,
   filterSkillMdFromResources,
 } from '@/lib/sse-utils';
+import { hasNonFrontmatterMarkdownBody } from '@/lib/markdown-utils';
 import type { SSEStreamHandle } from '@/lib/sse-utils';
 import type {
   SelectedMcpTool,
@@ -52,6 +54,8 @@ import type {
 } from '@/types/skill-ai';
 
 const FRONTMATTER_REGEX = /^---\r?\n([\s\S]*?)\r?\n---(\r?\n|$)/;
+const SKILL_NAME_PATTERN = /^[a-z0-9]([a-z0-9-]*[a-z0-9])?$/;
+const SKILL_NAME_MAX_LENGTH = 64;
 
 function toYamlQuotedValue(value: string): string {
   return `"${value.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"`;
@@ -98,10 +102,12 @@ export function CreateSkillDialog({
   onSuccess,
 }: CreateSkillDialogProps) {
   const { t } = useTranslation();
+  const copilotEnabled = useServerStore((s) => s.copilotEnabled);
 
   // Manual tab state
   const [skillName, setSkillName] = useState('');
   const [description, setDescription] = useState('');
+  const [createCommitMsg, setCreateCommitMsg] = useState('');
   const [instruction, setInstruction] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -127,6 +133,7 @@ export function CreateSkillDialog({
   const reset = useCallback(() => {
     setSkillName('');
     setDescription('');
+    setCreateCommitMsg('');
     setInstruction('');
     setError(null);
     setLoading(false);
@@ -158,18 +165,39 @@ export function CreateSkillDialog({
     [onOpenChange, reset],
   );
 
+  // ===== Skill name validation (consistent with backend DefaultParamChecker) =====
+  const validateSkillName = useCallback(
+    (name: string): string | null => {
+      if (!name) {
+        return t('skill.nameRequired');
+      }
+      if (name.length > SKILL_NAME_MAX_LENGTH) {
+        return t('skill.nameTooLong');
+      }
+      if (!SKILL_NAME_PATTERN.test(name)) {
+        return t('skill.nameInvalidFormat');
+      }
+      if (name.includes('--')) {
+        return t('skill.nameNoConsecutiveHyphens');
+      }
+      return null;
+    },
+    [t],
+  );
+
   // ===== Manual Create =====
   const handleCreate = useCallback(async () => {
     const trimmedName = skillName.trim();
-    if (!trimmedName) {
-      setError(t('skill.nameRequired'));
+    const nameError = validateSkillName(trimmedName);
+    if (nameError) {
+      setError(nameError);
       return;
     }
     if (!description.trim()) {
       setError(t('skill.descriptionRequired'));
       return;
     }
-    if (!instruction.trim()) {
+    if (!hasNonFrontmatterMarkdownBody(instruction)) {
       setError(t('skill.instructionRequired'));
       return;
     }
@@ -182,7 +210,11 @@ export function CreateSkillDialog({
         skillMd: instruction.trim(),
         resource: {},
       });
-      await skillApi.createDraft({ namespaceId, skillCard });
+      await skillApi.createDraft({
+        namespaceId,
+        skillCard,
+        commitMsg: createCommitMsg.trim() || undefined,
+      });
       toast.success(t('skill.createSuccess'));
       handleClose(false);
       onSuccess(trimmedName);
@@ -192,7 +224,7 @@ export function CreateSkillDialog({
     } finally {
       setLoading(false);
     }
-  }, [skillName, description, instruction, namespaceId, t, handleClose, onSuccess]);
+  }, [skillName, description, createCommitMsg, instruction, namespaceId, t, handleClose, onSuccess, validateSkillName]);
 
   // ===== AI Generate =====
   const handleGenerate = useCallback(() => {
@@ -300,6 +332,10 @@ export function CreateSkillDialog({
       setGenerateError(t('skill.nameRequired'));
       return;
     }
+    if (!hasNonFrontmatterMarkdownBody(generatedSkill.skillMd || '')) {
+      setGenerateError(t('skill.instructionRequired'));
+      return;
+    }
 
     setLoading(true);
     setGenerateError(null);
@@ -310,7 +346,11 @@ export function CreateSkillDialog({
         skillMd: generatedSkill.skillMd || '',
         resource: generatedSkill.resource || {},
       });
-      await skillApi.createDraft({ namespaceId, skillCard });
+      await skillApi.createDraft({
+        namespaceId,
+        skillCard,
+        commitMsg: createCommitMsg.trim() || undefined,
+      });
 
       toast.success(t('skill.generateSuccess'));
       handleClose(false);
@@ -321,7 +361,7 @@ export function CreateSkillDialog({
     } finally {
       setLoading(false);
     }
-  }, [generatedSkill, namespaceId, t, handleClose, onSuccess]);
+  }, [generatedSkill, namespaceId, createCommitMsg, t, handleClose, onSuccess]);
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
@@ -337,10 +377,12 @@ export function CreateSkillDialog({
               <FileText className="h-3.5 w-3.5" />
               {t('skill.manualCreate')}
             </TabsTrigger>
-            <TabsTrigger value="ai" className="flex-1 gap-1.5">
-              <Sparkles className="h-3.5 w-3.5" />
-              {t('skill.aiGenerate')}
-            </TabsTrigger>
+            {copilotEnabled && (
+              <TabsTrigger value="ai" className="flex-1 gap-1.5">
+                <Sparkles className="h-3.5 w-3.5" />
+                {t('skill.aiGenerate')}
+              </TabsTrigger>
+            )}
           </TabsList>
 
           {/* ===== Manual Tab ===== */}
@@ -352,13 +394,15 @@ export function CreateSkillDialog({
                   id="skill-name"
                   placeholder={t('skill.namePlaceholder')}
                   value={skillName}
+                  maxLength={SKILL_NAME_MAX_LENGTH}
                   onChange={(e) => {
                     const nextName = e.target.value;
                     setSkillName(nextName);
                     setInstruction((prev) =>
                       syncSkillMdFrontmatter(prev, nextName, description),
                     );
-                    setError(null);
+                    const nameError = validateSkillName(nextName.trim());
+                    setError(nameError);
                   }}
                   onKeyDown={(e) => e.key === 'Enter' && handleCreate()}
                 />
@@ -379,6 +423,22 @@ export function CreateSkillDialog({
                     setError(null);
                   }}
                 />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="skill-create-commit-msg">{t('skill.commitMsg')}</Label>
+                <Textarea
+                  id="skill-create-commit-msg"
+                  value={createCommitMsg}
+                  onChange={(e) => {
+                    setCreateCommitMsg(e.target.value);
+                    setError(null);
+                  }}
+                  placeholder={t('skill.commitMsgPlaceholder')}
+                  rows={2}
+                  className="text-sm resize-y"
+                />
+                <p className="text-xs text-muted-foreground">{t('skill.commitMsgHint')}</p>
               </div>
 
               <div className="space-y-2">
@@ -420,7 +480,12 @@ export function CreateSkillDialog({
                 </Button>
                 <Button
                   onClick={handleCreate}
-                  disabled={!skillName.trim() || !description.trim() || !instruction.trim() || loading}
+                  disabled={
+                    !!validateSkillName(skillName.trim()) ||
+                    !description.trim() ||
+                    !hasNonFrontmatterMarkdownBody(instruction) ||
+                    loading
+                  }
                 >
                   {loading ? t('common.loading') : t('skill.createSkill')}
                 </Button>
@@ -628,6 +693,19 @@ export function CreateSkillDialog({
                           </div>
                         </div>
                       )}
+                  </div>
+
+                  <div className="space-y-2 pt-1">
+                    <Label htmlFor="skill-ai-create-commit-msg">{t('skill.commitMsg')}</Label>
+                    <Textarea
+                      id="skill-ai-create-commit-msg"
+                      value={createCommitMsg}
+                      onChange={(e) => setCreateCommitMsg(e.target.value)}
+                      placeholder={t('skill.commitMsgPlaceholder')}
+                      rows={2}
+                      className="text-sm resize-y"
+                    />
+                    <p className="text-xs text-muted-foreground">{t('skill.commitMsgHint')}</p>
                   </div>
 
                   <div className="flex gap-2 pt-2">

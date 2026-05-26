@@ -3,7 +3,7 @@
 export type SkillSearchMode = 'accurate' | 'blur';
 
 /** Skill version status */
-export type SkillVersionStatus = 'draft' | 'reviewing' | 'online' | 'offline';
+export type SkillVersionStatus = 'draft' | 'reviewing' | 'reviewed' | 'online' | 'offline';
 
 /** Skill list item for admin API */
 export interface SkillListItem {
@@ -27,7 +27,7 @@ export interface SkillVersionSummary {
   version: string;
   status: SkillVersionStatus;
   author: string;
-  description: string;
+  commitMsg: string;
   createTime: number;
   updateTime: number;
   publishPipelineInfo: string | null;
@@ -78,6 +78,12 @@ export interface SkillListParams {
   skillName?: string;
   search?: SkillSearchMode;
   orderBy?: string;
+  /** Filter by resource owner. Admin: any value; non-admin: own username only. */
+  owner?: string;
+  /** Filter by visibility scope: "PUBLIC" or "PRIVATE". Empty = no filter. */
+  scope?: string;
+  /** Filter by business tag (fuzzy match on bizTags). Empty = no filter. */
+  bizTag?: string;
   pageNo?: number;
   pageSize?: number;
 }
@@ -110,6 +116,7 @@ export interface PublishPipelineInfo {
   executionId: string;
   status: PipelineExecutionStatus;
   pipeline: PipelineNode[];
+  historical?: boolean;
 }
 
 /** Safely parse publishPipelineInfo JSON string */

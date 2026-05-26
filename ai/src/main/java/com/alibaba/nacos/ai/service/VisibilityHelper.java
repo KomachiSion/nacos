@@ -20,6 +20,7 @@ import com.alibaba.nacos.ai.model.AiResource;
 import com.alibaba.nacos.api.exception.NacosException;
 import com.alibaba.nacos.api.exception.api.NacosApiException;
 import com.alibaba.nacos.api.model.v2.ErrorCode;
+import com.alibaba.nacos.common.utils.StringUtils;
 import com.alibaba.nacos.core.context.RequestContextHolder;
 import com.alibaba.nacos.plugin.auth.api.IdentityContext;
 import com.alibaba.nacos.plugin.auth.constant.Constants;
@@ -32,6 +33,7 @@ import com.alibaba.nacos.sys.env.EnvUtil;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import java.util.Optional;
 
 /**
@@ -55,7 +57,8 @@ public class VisibilityHelper {
      */
     public static String resolveCurrentIdentity() {
         try {
-            IdentityContext identity = RequestContextHolder.getContext().getAuthContext().getIdentityContext();
+            IdentityContext identity =
+                RequestContextHolder.getContext().getAuthContext().getIdentityContext();
             Object id = identity.getParameter(Constants.Identity.IDENTITY_ID);
             return id == null ? "" : id.toString();
         } catch (Exception e) {
@@ -78,13 +81,29 @@ public class VisibilityHelper {
     }
     
     /**
+     * Resolve the client IP from request context.
+     *
+     * @return client IP address, empty string when absent
+     */
+    public static String resolveClientIp() {
+        try {
+            String sourceIp = RequestContextHolder.getContext().getBasicContext()
+                .getAddressContext().getSourceIp();
+            return sourceIp == null ? "" : sourceIp;
+        } catch (Exception e) {
+            return "";
+        }
+    }
+    
+    /**
      * Filter candidate resources by read permission for current user.
      *
      * @param candidates candidate resources
      * @param <T>        filterable resource type
      * @return resources the current user is allowed to read
      */
-    public static <T extends VisibilityResource> List<T> filterReadableResources(List<T> candidates) {
+    public static <T extends VisibilityResource> List<T> filterReadableResources(
+        List<T> candidates) {
         Optional<VisibilityService> visibilityService = findVisibilityService();
         if (visibilityService.isEmpty()) {
             return candidates;
@@ -93,7 +112,8 @@ public class VisibilityHelper {
         List<T> result = new ArrayList<>(candidates.size());
         for (T each : candidates) {
             ValidationResult validationResult = visibilityService.get()
-                    .validateVisibility(currentUser, VisibilityConstants.ACTION_READ, resolveCurrentApiType(), each);
+                .validateVisibility(currentUser, VisibilityConstants.ACTION_READ,
+                    resolveCurrentApiType(), each);
             if (validationResult.isAllowed()) {
                 result.add(each);
             }
@@ -113,8 +133,9 @@ public class VisibilityHelper {
             return true;
         }
         ValidationResult result = visibilityService.get()
-                .validateVisibility(resolveCurrentIdentity(), VisibilityConstants.ACTION_READ, resolveCurrentApiType(),
-                        resource);
+            .validateVisibility(resolveCurrentIdentity(), VisibilityConstants.ACTION_READ,
+                resolveCurrentApiType(),
+                resource);
         return result.isAllowed();
     }
     
@@ -130,12 +151,29 @@ public class VisibilityHelper {
             return;
         }
         ValidationResult result = visibilityService.get()
-                .validateVisibility(resolveCurrentIdentity(), VisibilityConstants.ACTION_WRITE, resolveCurrentApiType(),
-                        resource);
+            .validateVisibility(resolveCurrentIdentity(), VisibilityConstants.ACTION_WRITE,
+                resolveCurrentApiType(),
+                resource);
         if (!result.isAllowed()) {
             throw new NacosApiException(NacosException.NO_RIGHT, ErrorCode.ACCESS_DENIED,
-                    "No permission to modify " + resource.getType() + ": " + resource.getName());
+                "No permission to modify " + resource.getType() + ": " + resource.getName());
         }
+    }
+    
+    /**
+     * Resolve default scope for creating a new resource, delegated to visibility plugin.
+     *
+     * @param resourceType resource type, such as skill / agentspec
+     * @return resolved default scope, fallback to PRIVATE
+     */
+    public static String resolveDefaultScopeForCreate(String resourceType) {
+        String identity = resolveCurrentIdentity();
+        String apiType = resolveCurrentApiType();
+        return findVisibilityService()
+            .map(service -> service.resolveDefaultScopeForCreate(identity, apiType, resourceType))
+            .filter(StringUtils::isNotBlank)
+            .map(each -> each.toUpperCase(Locale.ROOT))
+            .orElse(VisibilityConstants.SCOPE_PRIVATE);
     }
     
     private static String resolveVisibilityServiceName() {
@@ -146,7 +184,7 @@ public class VisibilityHelper {
         synchronized (VisibilityHelper.class) {
             if (cachedVisibilityServiceName == null) {
                 String configured = EnvUtil.getProperty(VISIBILITY_PLUGIN_TYPE_CONFIG_KEY,
-                        DEFAULT_VISIBILITY_SERVICE_NAME);
+                    DEFAULT_VISIBILITY_SERVICE_NAME);
                 cachedVisibilityServiceName = configured.trim();
             }
             return cachedVisibilityServiceName;
@@ -159,6 +197,7 @@ public class VisibilityHelper {
      * @return optional visibility service
      */
     public static Optional<VisibilityService> findVisibilityService() {
-        return VisibilityPluginManager.getInstance().findVisibilityService(resolveVisibilityServiceName());
+        return VisibilityPluginManager.getInstance()
+            .findVisibilityService(resolveVisibilityServiceName());
     }
 }

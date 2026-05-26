@@ -16,12 +16,13 @@
 
 package com.alibaba.nacos.ai.service.prompt;
 
-import com.alibaba.nacos.api.ai.model.prompt.PromptMetaInfo;
 import com.alibaba.nacos.api.ai.model.prompt.PromptVersionInfo;
 import com.alibaba.nacos.api.exception.NacosException;
 
 /**
  * Prompt client operation service.
+ *
+ * <p>Handles runtime prompt queries for SDK clients, including MD5-based conditional fetch.</p>
  *
  * @author nacos
  */
@@ -38,8 +39,9 @@ public interface PromptClientOperationService {
      * @return the prompt version info
      * @throws NacosException the nacos exception
      */
-    PromptVersionInfo queryPrompt(String namespaceId, String promptKey, String version, String label, String md5)
-            throws NacosException;
+    PromptVersionInfo queryPrompt(String namespaceId, String promptKey, String version,
+        String label, String md5)
+        throws NacosException;
     
     /**
      * Query prompt by version/label/latest with priority version > label > latest.
@@ -51,26 +53,9 @@ public interface PromptClientOperationService {
      * @return the prompt version info
      * @throws NacosException the nacos exception
      */
-    default PromptVersionInfo queryPrompt(String namespaceId, String promptKey, String version, String label)
-            throws NacosException {
+    default PromptVersionInfo queryPrompt(String namespaceId, String promptKey, String version,
+        String label)
+        throws NacosException {
         return queryPrompt(namespaceId, promptKey, version, label, null);
     }
-    
-    /**
-     * Invalidate prompt meta cache entry.
-     *
-     * @param namespaceId the namespace id
-     * @param promptKey   the prompt key
-     */
-    void invalidateMetaCache(String namespaceId, String promptKey);
-    
-    /**
-     * Get prompt meta with cache.
-     *
-     * @param namespaceId the namespace id
-     * @param promptKey   the prompt key
-     * @return the prompt meta
-     * @throws NacosException the nacos exception
-     */
-    PromptMetaInfo getPromptMeta(String namespaceId, String promptKey) throws NacosException;
 }

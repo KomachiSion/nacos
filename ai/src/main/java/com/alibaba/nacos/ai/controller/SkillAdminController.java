@@ -17,6 +17,7 @@
 package com.alibaba.nacos.ai.controller;
 
 import com.alibaba.nacos.ai.constant.Constants;
+import com.alibaba.nacos.ai.form.AiResourceFilterableForm;
 import com.alibaba.nacos.ai.form.skills.admin.SkillBizTagsUpdateForm;
 import com.alibaba.nacos.ai.form.skills.admin.SkillDraftCreateForm;
 import com.alibaba.nacos.ai.form.skills.admin.SkillForm;
@@ -27,8 +28,10 @@ import com.alibaba.nacos.ai.form.skills.admin.SkillPublishForm;
 import com.alibaba.nacos.ai.form.skills.admin.SkillScopeForm;
 import com.alibaba.nacos.ai.form.skills.admin.SkillSubmitForm;
 import com.alibaba.nacos.ai.form.skills.admin.SkillUpdateForm;
+import com.alibaba.nacos.api.ai.model.skills.BatchUploadResult;
 import com.alibaba.nacos.ai.param.SkillHttpParamExtractor;
 import com.alibaba.nacos.ai.service.skills.SkillOperationService;
+import com.alibaba.nacos.ai.service.skills.SkillUploadRequest;
 import com.alibaba.nacos.ai.utils.SkillRequestUtil;
 import com.alibaba.nacos.api.ai.model.skills.Skill;
 import com.alibaba.nacos.api.ai.model.skills.SkillMeta;
@@ -71,6 +74,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.util.Map;
 
+import static com.alibaba.nacos.ai.constant.Constants.Skills.ADMIN_PATH;
 import static com.alibaba.nacos.plugin.auth.constant.Constants.Tag.ALLOW_ANONYMOUS;
 
 /**
@@ -108,7 +112,8 @@ public class SkillAdminController {
             @Parameter(name = "form", hidden = true)})
     public Result<SkillMeta> getSkill(SkillForm form) throws NacosException {
         form.validate();
-        return Result.success(skillOperationService.getSkillDetail(form.getNamespaceId(), form.getSkillName()));
+        return Result.success(
+            skillOperationService.getSkillDetail(form.getNamespaceId(), form.getSkillName()));
     }
     
     /**
@@ -128,7 +133,8 @@ public class SkillAdminController {
             @Parameter(name = "form", hidden = true)})
     public Result<Skill> getSkillVersion(SkillForm form) throws NacosException {
         form.validate();
-        return Result.success(skillOperationService.getSkillVersionDetail(form.getNamespaceId(), form.getSkillName(),
+        return Result.success(
+            skillOperationService.getSkillVersionDetail(form.getNamespaceId(), form.getSkillName(),
                 form.getVersion()));
     }
     
@@ -149,7 +155,8 @@ public class SkillAdminController {
             @Parameter(name = "form", hidden = true)})
     public ResponseEntity<byte[]> downloadSkillVersion(SkillForm form) throws NacosException {
         form.validate();
-        Skill skill = skillOperationService.downloadSkillVersion(form.getNamespaceId(), form.getSkillName(),
+        Skill skill =
+            skillOperationService.downloadSkillVersion(form.getNamespaceId(), form.getSkillName(),
                 form.getVersion());
         return SkillRequestUtil.buildSkillZipResponse(skill);
     }
@@ -183,7 +190,8 @@ public class SkillAdminController {
      * @throws NacosException if the skill list fails
      */
     @GetMapping("/list")
-    @Secured(action = ActionTypes.READ, signType = SignType.AI, apiType = ApiType.ADMIN_API, tags = {ALLOW_ANONYMOUS})
+    @Secured(action = ActionTypes.READ, signType = SignType.AI, apiType = ApiType.ADMIN_API,
+        tags = {ALLOW_ANONYMOUS})
     @Operation(summary = "nacos.admin.ai.skill.api.list.summary", description = "nacos.admin.ai.skill.api.list.description", security = @SecurityRequirement(name = "nacos"))
     @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE, schema = @Schema(implementation = Result.class, example = "nacos.admin.ai.skill.api.list.example")))
     @Parameters(value = {@Parameter(name = "pageNo", required = true, schema = @Schema(type = "integer"), example = "1"),
@@ -191,12 +199,17 @@ public class SkillAdminController {
             @Parameter(name = "namespaceId", example = "public"), @Parameter(name = "skillName", example = "my-skill"),
             @Parameter(name = "search", example = "blur", description = "Search mode: accurate or blur"),
             @Parameter(name = "skillListForm", hidden = true), @Parameter(name = "pageForm", hidden = true)})
-    public Result<Page<SkillSummary>> listSkills(SkillListForm skillListForm, PageForm pageForm) throws NacosException {
+    public Result<Page<SkillSummary>> listSkills(SkillListForm skillListForm,
+        AiResourceFilterableForm filterableForm, PageForm pageForm) throws NacosException {
         skillListForm.validate();
+        filterableForm.validate();
         pageForm.validate();
         return Result.success(
-                skillOperationService.listSkills(skillListForm.getNamespaceId(), skillListForm.getSkillName(),
-                        skillListForm.getSearch(), pageForm.getPageNo(), pageForm.getPageSize()));
+            skillOperationService.listSkills(skillListForm.getNamespaceId(),
+                skillListForm.getSkillName(),
+                skillListForm.getSearch(), skillListForm.getOrderBy(),
+                filterableForm.getOwner(), filterableForm.getScope(), filterableForm.getBizTag(),
+                pageForm.getPageNo(), pageForm.getPageSize()));
     }
     
     /**
@@ -204,6 +217,7 @@ public class SkillAdminController {
      *
      * @param request     HTTP servlet request
      * @param namespaceId namespace ID
+     * @param commitMsg   version-level commit message
      * @param file        zip file containing skill
      * @return result of the upload operation
      * @throws NacosException if the upload fails
@@ -218,14 +232,49 @@ public class SkillAdminController {
             @SchemaProperty(name = "overwrite", schema = @Schema(type = "boolean", example = "false")),
             @SchemaProperty(name = "file", schema = @Schema(type = "string", format = "binary", description = "ZIP file containing skill package"))}))
     public Result<String> uploadSkill(HttpServletRequest request,
-            @RequestParam(value = "namespaceId", required = false) String namespaceId,
-            @RequestParam(value = "overwrite", required = false, defaultValue = "false") boolean overwrite,
-            @RequestParam("file") MultipartFile file) throws NacosException {
+        @RequestParam(value = "namespaceId", required = false) String namespaceId,
+        @RequestParam(value = "overwrite", required = false,
+            defaultValue = "false") boolean overwrite,
+        @RequestParam(value = "targetVersion", required = false) String targetVersion,
+        @RequestParam(value = "commitMsg", required = false) String commitMsg,
+        @RequestParam("file") MultipartFile file) throws NacosException {
         namespaceId = NamespaceUtil.processNamespaceParameter(namespaceId);
         byte[] zipBytes = SkillRequestUtil.validateAndExtractZipBytes(file);
-        String skillName = skillOperationService.uploadSkillFromZip(namespaceId, zipBytes, file.getOriginalFilename(),
-                overwrite);
+        SkillUploadRequest uploadRequest = SkillUploadRequest.builder()
+            .namespaceId(namespaceId)
+            .zipBytes(zipBytes)
+            .overwrite(overwrite)
+            .targetVersion(targetVersion)
+            .commitMsg(commitMsg)
+            .build();
+        String skillName = skillOperationService.uploadSkillFromZip(uploadRequest);
         return Result.success(skillName);
+    }
+    
+    /**
+     * Batch upload multiple skills from a single zip file. The zip must contain one-level subdirectories,
+     * each with its own SKILL.md. Uses best-effort strategy.
+     *
+     * @param request     HTTP servlet request
+     * @param namespaceId namespace ID
+     * @param overwrite   whether to overwrite existing drafts
+     * @param file        zip file containing multiple skill subdirectories
+     * @return batch upload result with succeeded and failed lists
+     * @throws NacosException if zip parsing fails entirely
+     */
+    @PostMapping(value = "/upload/batch", consumes = "multipart/form-data")
+    @Secured(action = ActionTypes.WRITE, signType = SignType.AI, apiType = ApiType.ADMIN_API)
+    @ExtractorManager.Extractor(httpExtractor = ExtractorManager.DefaultHttpExtractor.class)
+    public Result<BatchUploadResult> batchUploadSkills(HttpServletRequest request,
+        @RequestParam(value = "namespaceId", required = false) String namespaceId,
+        @RequestParam(value = "overwrite", required = false,
+            defaultValue = "false") boolean overwrite,
+        @RequestParam("file") MultipartFile file) throws NacosException {
+        namespaceId = NamespaceUtil.processNamespaceParameter(namespaceId);
+        byte[] zipBytes = SkillRequestUtil.validateAndExtractZipBytes(file);
+        BatchUploadResult result =
+            skillOperationService.batchUploadSkillsFromZip(namespaceId, zipBytes, overwrite);
+        return Result.success(result);
     }
     
     /**
@@ -244,7 +293,8 @@ public class SkillAdminController {
     public Result<String> createDraft(SkillDraftCreateForm form) throws NacosException {
         form.prepareCreateDraftRequest();
         String v = skillOperationService.createDraft(form.getNamespaceId(), form.getSkillName(),
-                form.getBasedOnVersion(), form.getTargetVersion(), form.getResolvedInitialSkillOrNull());
+            form.getBasedOnVersion(), form.getTargetVersion(), form.getResolvedInitialSkillOrNull(),
+            form.getCommitMsg());
         return Result.success(v);
     }
     
@@ -262,7 +312,7 @@ public class SkillAdminController {
     public Result<String> updateDraft(SkillUpdateForm form) throws NacosException {
         form.validate();
         Skill skill = SkillRequestUtil.parseSkill(form);
-        skillOperationService.updateDraft(form.getNamespaceId(), skill);
+        skillOperationService.updateDraft(form.getNamespaceId(), skill, form.getCommitMsg());
         return Result.success("ok");
     }
     
@@ -295,7 +345,8 @@ public class SkillAdminController {
             @Parameter(name = "form", hidden = true)})
     public Result<String> submit(SkillSubmitForm form) throws NacosException {
         form.validate();
-        String result = skillOperationService.submit(form.getNamespaceId(), form.getSkillName(), form.getVersion());
+        String result = skillOperationService.submit(form.getNamespaceId(), form.getSkillName(),
+            form.getVersion());
         return Result.success(result);
     }
     
@@ -314,7 +365,36 @@ public class SkillAdminController {
     public Result<String> publish(SkillPublishForm form) throws NacosException {
         form.validate();
         boolean updateLatest = form.getUpdateLatestLabel() == null || form.getUpdateLatestLabel();
-        skillOperationService.publish(form.getNamespaceId(), form.getSkillName(), form.getVersion(), updateLatest);
+        skillOperationService.publish(form.getNamespaceId(), form.getSkillName(), form.getVersion(),
+            updateLatest);
+        return Result.success("ok");
+    }
+    
+    /**
+     * Force-publish a skill version, bypassing pipeline validation. Accepts draft (pipeline-rejected) and reviewing
+     * (pipeline in-progress) versions. Only admin users can call this endpoint.
+     */
+    @PostMapping("/force-publish")
+    @Secured(resource = ADMIN_PATH
+        + "/force-publish", action = ActionTypes.WRITE, signType = SignType.CONSOLE,
+        apiType = ApiType.ADMIN_API)
+    public Result<String> forcePublish(SkillPublishForm form) throws NacosException {
+        form.validate();
+        boolean updateLatest = form.getUpdateLatestLabel() == null || form.getUpdateLatestLabel();
+        skillOperationService.forcePublish(form.getNamespaceId(), form.getSkillName(),
+            form.getVersion(), updateLatest);
+        return Result.success("ok");
+    }
+    
+    /**
+     * Re-edit a reviewed version, transitioning it back to draft for modification.
+     */
+    @PostMapping("/redraft")
+    @Secured(action = ActionTypes.WRITE, signType = SignType.AI, apiType = ApiType.ADMIN_API)
+    public Result<String> redraft(SkillPublishForm form) throws NacosException {
+        form.validate();
+        skillOperationService.redraft(form.getNamespaceId(), form.getSkillName(),
+            form.getVersion());
         return Result.success("ok");
     }
     
@@ -349,7 +429,8 @@ public class SkillAdminController {
             @Parameter(name = "form", hidden = true)})
     public Result<String> updateBizTags(SkillBizTagsUpdateForm form) throws NacosException {
         form.validate();
-        skillOperationService.updateBizTags(form.getNamespaceId(), form.getSkillName(), form.getBizTags());
+        skillOperationService.updateBizTags(form.getNamespaceId(), form.getSkillName(),
+            form.getBizTags());
         return Result.success("ok");
     }
     
@@ -367,8 +448,9 @@ public class SkillAdminController {
             @Parameter(name = "form", hidden = true)})
     public Result<String> online(SkillOnlineForm form) throws NacosException {
         form.validate();
-        skillOperationService.changeOnlineStatus(form.getNamespaceId(), form.getSkillName(), form.getScope(),
-                form.getVersion(), true);
+        skillOperationService.changeOnlineStatus(form.getNamespaceId(), form.getSkillName(),
+            form.getScope(),
+            form.getVersion(), true);
         return Result.success("ok");
     }
     
@@ -389,7 +471,8 @@ public class SkillAdminController {
             @Parameter(name = "form", hidden = true)})
     public Result<String> updateScope(SkillScopeForm form) throws NacosException {
         form.validate();
-        skillOperationService.updateScope(form.getNamespaceId(), form.getSkillName(), form.getScope());
+        skillOperationService.updateScope(form.getNamespaceId(), form.getSkillName(),
+            form.getScope());
         return Result.success("ok");
     }
     
@@ -407,8 +490,9 @@ public class SkillAdminController {
             @Parameter(name = "form", hidden = true)})
     public Result<String> offline(SkillOnlineForm form) throws NacosException {
         form.validate();
-        skillOperationService.changeOnlineStatus(form.getNamespaceId(), form.getSkillName(), form.getScope(),
-                form.getVersion(), false);
+        skillOperationService.changeOnlineStatus(form.getNamespaceId(), form.getSkillName(),
+            form.getScope(),
+            form.getVersion(), false);
         return Result.success("ok");
     }
 }

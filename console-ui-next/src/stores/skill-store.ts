@@ -15,6 +15,12 @@ interface SkillState {
   pageSize: number;
   searchName: string;
   orderBy: string;
+  /** Filter by resource owner; empty string = no filter */
+  filterOwner: string;
+  /** Filter by visibility scope: "PUBLIC" | "PRIVATE" | "" (no filter) */
+  filterScope: string;
+  /** Filter by business tag (fuzzy match); empty string = no filter */
+  filterBizTag: string;
   selectedNames: Set<string>;
 
   // Detail
@@ -28,7 +34,7 @@ interface SkillState {
 interface SkillActions {
   fetchList: (namespaceId: string) => Promise<void>;
   fetchDetail: (namespaceId: string, name: string) => Promise<void>;
-  setSearchParams: (params: { searchName?: string; orderBy?: string }) => void;
+  setSearchParams: (params: { searchName?: string; orderBy?: string; filterOwner?: string; filterScope?: string; filterBizTag?: string }) => void;
   setPage: (pageNo: number, pageSize?: number) => void;
   resetSearch: () => void;
   toggleSelect: (name: string) => void;
@@ -49,6 +55,9 @@ export const useSkillStore = create<SkillStore>((set, get) => ({
   pageSize: 12,
   searchName: '',
   orderBy: '',
+  filterOwner: '',
+  filterScope: '',
+  filterBizTag: '',
   selectedNames: new Set(),
 
   // Detail
@@ -61,12 +70,15 @@ export const useSkillStore = create<SkillStore>((set, get) => ({
   fetchList: async (namespaceId: string) => {
     set({ loading: true, error: null });
     try {
-      const { searchName, pageNo, pageSize, orderBy } = get();
+      const { searchName, pageNo, pageSize, orderBy, filterOwner, filterScope, filterBizTag } = get();
       const response = await skillApi.list({
         namespaceId,
         skillName: searchName || undefined,
         search: searchName ? 'blur' : undefined,
         orderBy: orderBy || undefined,
+        owner: filterOwner || undefined,
+        scope: filterScope || undefined,
+        bizTag: filterBizTag || undefined,
         pageNo,
         pageSize,
       });
@@ -121,7 +133,7 @@ export const useSkillStore = create<SkillStore>((set, get) => ({
   },
 
   resetSearch: () => {
-    set({ searchName: '', orderBy: '', pageNo: 1 });
+    set({ searchName: '', orderBy: '', filterOwner: '', filterScope: '', filterBizTag: '', pageNo: 1 });
   },
 
   toggleSelect: (name: string) => {

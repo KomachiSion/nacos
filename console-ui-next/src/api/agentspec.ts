@@ -52,6 +52,7 @@ export const agentSpecApi = {
     namespaceId?: string;
     agentSpecName: string;
     basedOnVersion?: string;
+    targetVersion?: string;
   }): ApiResult<string> =>
     client.post(`${BASE}/draft`, params) as ApiResult<string>,
 
@@ -86,6 +87,23 @@ export const agentSpecApi = {
     updateLatestLabel?: boolean;
   }): ApiResult<string> =>
     client.post(`${BASE}/publish`, data) as ApiResult<string>,
+
+  /** 强制发布（跳过 pipeline 校验，仅限管理员） */
+  forcePublish: (data: {
+    namespaceId?: string;
+    agentSpecName: string;
+    version: string;
+    updateLatestLabel?: boolean;
+  }): ApiResult<string> =>
+    client.post(`${BASE}/force-publish`, data) as ApiResult<string>,
+
+  /** 重新编辑已审核版本（回退到草稿状态） */
+  redraft: (data: {
+    namespaceId?: string;
+    agentSpecName: string;
+    version: string;
+  }): ApiResult<string> =>
+    client.post(`${BASE}/redraft`, data) as ApiResult<string>,
 
   /** 更新标签 */
   updateLabels: (data: {

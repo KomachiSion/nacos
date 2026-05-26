@@ -31,6 +31,12 @@ class ServerAbilitiesTest {
     
     @Test
     void testSupportPersistentInstanceByGrpcAbilities() {
-        assertTrue(ServerAbilities.getStaticAbilities().get(AbilityKey.SERVER_PERSISTENT_INSTANCE_BY_GRPC));
+        assertTrue(ServerAbilities.getStaticAbilities()
+            .get(AbilityKey.SERVER_PERSISTENT_INSTANCE_BY_GRPC));
+    }
+    
+    @Test
+    void testSupportAgentCardV1Abilities() {
+        assertTrue(ServerAbilities.getStaticAbilities().get(AbilityKey.SERVER_AGENT_CARD_V1));
     }
 }

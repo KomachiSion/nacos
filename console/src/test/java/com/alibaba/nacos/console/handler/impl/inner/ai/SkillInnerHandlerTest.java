@@ -16,8 +16,9 @@
 
 package com.alibaba.nacos.console.handler.impl.inner.ai;
 
-import com.alibaba.nacos.ai.form.skills.admin.SkillDraftCreateForm;
+import com.alibaba.nacos.ai.form.AiResourceFilterableForm;
 import com.alibaba.nacos.ai.form.skills.admin.SkillBizTagsUpdateForm;
+import com.alibaba.nacos.ai.form.skills.admin.SkillDraftCreateForm;
 import com.alibaba.nacos.ai.form.skills.admin.SkillForm;
 import com.alibaba.nacos.ai.form.skills.admin.SkillLabelsUpdateForm;
 import com.alibaba.nacos.ai.form.skills.admin.SkillListForm;
@@ -25,7 +26,9 @@ import com.alibaba.nacos.ai.form.skills.admin.SkillOnlineForm;
 import com.alibaba.nacos.ai.form.skills.admin.SkillPublishForm;
 import com.alibaba.nacos.ai.form.skills.admin.SkillScopeForm;
 import com.alibaba.nacos.ai.form.skills.admin.SkillSubmitForm;
+import com.alibaba.nacos.ai.form.skills.admin.SkillUpdateForm;
 import com.alibaba.nacos.ai.service.skills.SkillOperationService;
+import com.alibaba.nacos.ai.service.skills.SkillUploadRequest;
 import com.alibaba.nacos.api.ai.model.skills.Skill;
 import com.alibaba.nacos.api.ai.model.skills.SkillMeta;
 import com.alibaba.nacos.api.ai.model.skills.SkillSummary;
@@ -43,6 +46,7 @@ import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
@@ -57,21 +61,21 @@ import static org.mockito.Mockito.when;
  */
 @ExtendWith(MockitoExtension.class)
 class SkillInnerHandlerTest {
-
+    
     private static final String NAMESPACE_ID = "test-ns";
-
+    
     private static final String SKILL_NAME = "test-skill";
-
+    
     @Mock
     private SkillOperationService skillOperationService;
-
+    
     private SkillInnerHandler skillInnerHandler;
-
+    
     @BeforeEach
     void setUp() {
         skillInnerHandler = new SkillInnerHandler(skillOperationService);
     }
-
+    
     @Test
     void testGetSkill() throws NacosException {
         SkillForm form = new SkillForm();
@@ -79,15 +83,16 @@ class SkillInnerHandlerTest {
         form.setSkillName(SKILL_NAME);
         SkillMeta detail = new SkillMeta();
         detail.setEnable(true);
-        when(skillOperationService.getSkillDetail(eq(NAMESPACE_ID), eq(SKILL_NAME))).thenReturn(detail);
-
+        when(skillOperationService.getSkillDetail(eq(NAMESPACE_ID), eq(SKILL_NAME)))
+            .thenReturn(detail);
+        
         SkillMeta result = skillInnerHandler.getSkill(form);
-
+        
         assertNotNull(result);
         assertEquals(true, result.isEnable());
         verify(skillOperationService).getSkillDetail(NAMESPACE_ID, SKILL_NAME);
     }
-
+    
     @Test
     void testGetSkillVersion() throws NacosException {
         SkillForm form = new SkillForm();
@@ -96,15 +101,16 @@ class SkillInnerHandlerTest {
         form.setVersion("v1");
         Skill skill = new Skill();
         skill.setName(SKILL_NAME);
-        when(skillOperationService.getSkillVersionDetail(eq(NAMESPACE_ID), eq(SKILL_NAME), eq("v1")))
-                .thenReturn(skill);
-
+        when(
+            skillOperationService.getSkillVersionDetail(eq(NAMESPACE_ID), eq(SKILL_NAME), eq("v1")))
+            .thenReturn(skill);
+        
         Skill result = skillInnerHandler.getSkillVersion(form);
-
+        
         assertEquals(SKILL_NAME, result.getName());
         verify(skillOperationService).getSkillVersionDetail(NAMESPACE_ID, SKILL_NAME, "v1");
     }
-
+    
     @Test
     void testDownloadSkillVersion() throws NacosException {
         SkillForm form = new SkillForm();
@@ -114,26 +120,26 @@ class SkillInnerHandlerTest {
         Skill skill = new Skill();
         skill.setName(SKILL_NAME);
         when(skillOperationService.downloadSkillVersion(eq(NAMESPACE_ID), eq(SKILL_NAME), eq("v1")))
-                .thenReturn(skill);
-
+            .thenReturn(skill);
+        
         Skill result = skillInnerHandler.downloadSkillVersion(form);
-
+        
         assertEquals(SKILL_NAME, result.getName());
         verify(skillOperationService).downloadSkillVersion(NAMESPACE_ID, SKILL_NAME, "v1");
     }
-
+    
     @Test
     void testDeleteSkill() throws NacosException {
         SkillForm form = new SkillForm();
         form.setNamespaceId(NAMESPACE_ID);
         form.setSkillName(SKILL_NAME);
         doNothing().when(skillOperationService).deleteSkill(eq(NAMESPACE_ID), eq(SKILL_NAME));
-
+        
         skillInnerHandler.deleteSkill(form);
-
+        
         verify(skillOperationService).deleteSkill(NAMESPACE_ID, SKILL_NAME);
     }
-
+    
     @Test
     void testListSkills() throws NacosException {
         SkillListForm listForm = new SkillListForm();
@@ -150,26 +156,30 @@ class SkillInnerHandlerTest {
         item.setName(SKILL_NAME);
         page.setPageItems(List.of(item));
         when(skillOperationService.listSkills(eq(NAMESPACE_ID), eq(SKILL_NAME), eq("blur"),
-                eq("download_count"), eq(1), eq(10))).thenReturn(page);
-
-        Page<SkillSummary> result = skillInnerHandler.listSkills(listForm, pageForm);
-
+            eq("download_count"),
+            isNull(), isNull(), isNull(), eq(1), eq(10))).thenReturn(page);
+        
+        Page<SkillSummary> result =
+            skillInnerHandler.listSkills(listForm, new AiResourceFilterableForm(), pageForm);
+        
         assertEquals(1, result.getTotalCount());
-        verify(skillOperationService).listSkills(NAMESPACE_ID, SKILL_NAME, "blur", "download_count", 1, 10);
+        verify(skillOperationService).listSkills(NAMESPACE_ID, SKILL_NAME, "blur", "download_count",
+            null, null, null, 1, 10);
     }
-
+    
     @Test
     void testUploadSkillFromZip() throws NacosException {
         byte[] zipBytes = "test-zip".getBytes();
-        when(skillOperationService.uploadSkillFromZip(eq(NAMESPACE_ID), eq(zipBytes), eq(false))).thenReturn(
-                SKILL_NAME);
-
-        String result = skillInnerHandler.uploadSkillFromZip(NAMESPACE_ID, zipBytes);
-
+        SkillUploadRequest request = SkillUploadRequest.builder().namespaceId(NAMESPACE_ID)
+            .zipBytes(zipBytes).overwrite(false).build();
+        when(skillOperationService.uploadSkillFromZip(request)).thenReturn(SKILL_NAME);
+        
+        String result = skillInnerHandler.uploadSkillFromZip(request);
+        
         assertEquals(SKILL_NAME, result);
-        verify(skillOperationService).uploadSkillFromZip(NAMESPACE_ID, zipBytes, false);
+        verify(skillOperationService).uploadSkillFromZip(request);
     }
-
+    
     @Test
     void testCreateDraft() throws NacosException {
         SkillDraftCreateForm form = new SkillDraftCreateForm();
@@ -178,40 +188,41 @@ class SkillInnerHandlerTest {
         form.setBasedOnVersion("v1");
         form.prepareCreateDraftRequest();
         when(skillOperationService.createDraft(eq(NAMESPACE_ID), eq(SKILL_NAME), eq("v1"), isNull(),
-                isNull())).thenReturn("v2");
-
+            isNull(), isNull())).thenReturn("v2");
+        
         String result = skillInnerHandler.createDraft(form);
-
+        
         assertEquals("v2", result);
-        verify(skillOperationService).createDraft(NAMESPACE_ID, SKILL_NAME, "v1", null, null);
+        verify(skillOperationService).createDraft(NAMESPACE_ID, SKILL_NAME, "v1", null, null, null);
     }
-
+    
     @Test
     void testDeleteDraft() throws NacosException {
         SkillForm form = new SkillForm();
         form.setNamespaceId(NAMESPACE_ID);
         form.setSkillName(SKILL_NAME);
         doNothing().when(skillOperationService).deleteDraft(eq(NAMESPACE_ID), eq(SKILL_NAME));
-
+        
         skillInnerHandler.deleteDraft(form);
-
+        
         verify(skillOperationService).deleteDraft(NAMESPACE_ID, SKILL_NAME);
     }
-
+    
     @Test
     void testSubmit() throws NacosException {
         SkillSubmitForm form = new SkillSubmitForm();
         form.setNamespaceId(NAMESPACE_ID);
         form.setSkillName(SKILL_NAME);
         form.setVersion("v1");
-        when(skillOperationService.submit(eq(NAMESPACE_ID), eq(SKILL_NAME), eq("v1"))).thenReturn("pipeline-1");
-
+        when(skillOperationService.submit(eq(NAMESPACE_ID), eq(SKILL_NAME), eq("v1")))
+            .thenReturn("pipeline-1");
+        
         String result = skillInnerHandler.submit(form);
-
+        
         assertEquals("pipeline-1", result);
         verify(skillOperationService).submit(NAMESPACE_ID, SKILL_NAME, "v1");
     }
-
+    
     @Test
     void testPublish() throws NacosException {
         SkillPublishForm form = new SkillPublishForm();
@@ -219,13 +230,14 @@ class SkillInnerHandlerTest {
         form.setSkillName(SKILL_NAME);
         form.setVersion("v1");
         form.setUpdateLatestLabel(true);
-        doNothing().when(skillOperationService).publish(eq(NAMESPACE_ID), eq(SKILL_NAME), eq("v1"), eq(true));
-
+        doNothing().when(skillOperationService).publish(eq(NAMESPACE_ID), eq(SKILL_NAME), eq("v1"),
+            eq(true));
+        
         skillInnerHandler.publish(form);
-
+        
         verify(skillOperationService).publish(NAMESPACE_ID, SKILL_NAME, "v1", true);
     }
-
+    
     @Test
     void testPublishWithNullUpdateLatestLabel() throws NacosException {
         SkillPublishForm form = new SkillPublishForm();
@@ -233,39 +245,43 @@ class SkillInnerHandlerTest {
         form.setSkillName(SKILL_NAME);
         form.setVersion("v1");
         form.setUpdateLatestLabel(null);
-        doNothing().when(skillOperationService).publish(eq(NAMESPACE_ID), eq(SKILL_NAME), eq("v1"), eq(true));
-
+        doNothing().when(skillOperationService).publish(eq(NAMESPACE_ID), eq(SKILL_NAME), eq("v1"),
+            eq(true));
+        
         skillInnerHandler.publish(form);
-
+        
         verify(skillOperationService).publish(NAMESPACE_ID, SKILL_NAME, "v1", true);
     }
-
+    
     @Test
     void testUpdateLabels() throws NacosException {
         SkillLabelsUpdateForm form = new SkillLabelsUpdateForm();
         form.setNamespaceId(NAMESPACE_ID);
         form.setSkillName(SKILL_NAME);
         form.setLabels("{\"latest\":\"v2\"}");
-        doNothing().when(skillOperationService).updateLabels(eq(NAMESPACE_ID), eq(SKILL_NAME), any(Map.class));
-
+        doNothing().when(skillOperationService).updateLabels(eq(NAMESPACE_ID), eq(SKILL_NAME),
+            any(Map.class));
+        
         skillInnerHandler.updateLabels(form);
-
-        verify(skillOperationService).updateLabels(eq(NAMESPACE_ID), eq(SKILL_NAME), any(Map.class));
+        
+        verify(skillOperationService).updateLabels(eq(NAMESPACE_ID), eq(SKILL_NAME),
+            any(Map.class));
     }
-
+    
     @Test
     void testUpdateBizTags() throws NacosException {
         SkillBizTagsUpdateForm form = new SkillBizTagsUpdateForm();
         form.setNamespaceId(NAMESPACE_ID);
         form.setSkillName(SKILL_NAME);
         form.setBizTags("[\"retail\"]");
-        doNothing().when(skillOperationService).updateBizTags(eq(NAMESPACE_ID), eq(SKILL_NAME), eq("[\"retail\"]"));
-
+        doNothing().when(skillOperationService).updateBizTags(eq(NAMESPACE_ID), eq(SKILL_NAME),
+            eq("[\"retail\"]"));
+        
         skillInnerHandler.updateBizTags(form);
-
+        
         verify(skillOperationService).updateBizTags(NAMESPACE_ID, SKILL_NAME, "[\"retail\"]");
     }
-
+    
     @Test
     void testChangeOnlineStatus() throws NacosException {
         SkillOnlineForm form = new SkillOnlineForm();
@@ -273,12 +289,14 @@ class SkillInnerHandlerTest {
         form.setSkillName(SKILL_NAME);
         form.setScope("version");
         form.setVersion("v1");
-        doNothing().when(skillOperationService).changeOnlineStatus(eq(NAMESPACE_ID), eq(SKILL_NAME),
-                eq("version"), eq("v1"), eq(true));
-
+        doNothing().when(skillOperationService)
+            .changeOnlineStatus(eq(NAMESPACE_ID), eq(SKILL_NAME), eq("version"), eq("v1"),
+                eq(true));
+        
         skillInnerHandler.changeOnlineStatus(form, true);
-
-        verify(skillOperationService).changeOnlineStatus(NAMESPACE_ID, SKILL_NAME, "version", "v1", true);
+        
+        verify(skillOperationService).changeOnlineStatus(NAMESPACE_ID, SKILL_NAME, "version", "v1",
+            true);
     }
     
     @Test
@@ -287,10 +305,100 @@ class SkillInnerHandlerTest {
         form.setNamespaceId(NAMESPACE_ID);
         form.setSkillName(SKILL_NAME);
         form.setScope("PUBLIC");
-        doNothing().when(skillOperationService).updateScope(eq(NAMESPACE_ID), eq(SKILL_NAME), eq("PUBLIC"));
+        doNothing().when(skillOperationService).updateScope(eq(NAMESPACE_ID), eq(SKILL_NAME),
+            eq("PUBLIC"));
         
         skillInnerHandler.updateScope(form);
         
         verify(skillOperationService).updateScope(NAMESPACE_ID, SKILL_NAME, "PUBLIC");
+    }
+    
+    @Test
+    void testForcePublish() throws NacosException {
+        SkillPublishForm form = new SkillPublishForm();
+        form.setNamespaceId(NAMESPACE_ID);
+        form.setSkillName(SKILL_NAME);
+        form.setVersion("v1");
+        form.setUpdateLatestLabel(true);
+        doNothing().when(skillOperationService).forcePublish(eq(NAMESPACE_ID), eq(SKILL_NAME),
+            eq("v1"), eq(true));
+        
+        skillInnerHandler.forcePublish(form);
+        
+        verify(skillOperationService).forcePublish(NAMESPACE_ID, SKILL_NAME, "v1", true);
+    }
+    
+    @Test
+    void testForcePublishWithNullUpdateLatestLabel() throws NacosException {
+        SkillPublishForm form = new SkillPublishForm();
+        form.setNamespaceId(NAMESPACE_ID);
+        form.setSkillName(SKILL_NAME);
+        form.setVersion("v1");
+        form.setUpdateLatestLabel(null);
+        doNothing().when(skillOperationService).forcePublish(eq(NAMESPACE_ID), eq(SKILL_NAME),
+            eq("v1"), eq(true));
+        
+        skillInnerHandler.forcePublish(form);
+        
+        verify(skillOperationService).forcePublish(NAMESPACE_ID, SKILL_NAME, "v1", true);
+    }
+    
+    @Test
+    void testUpdateDraft() throws NacosException {
+        SkillUpdateForm form = new SkillUpdateForm();
+        form.setNamespaceId(NAMESPACE_ID);
+        form.setSkillName(SKILL_NAME);
+        form.setSkillCard(
+            "{\"name\":\"test-skill\",\"description\":\"desc\",\"skillMd\":\"# Hi\"}");
+        form.setCommitMsg("update");
+        doNothing().when(skillOperationService).updateDraft(eq(NAMESPACE_ID), any(Skill.class),
+            eq("update"));
+        
+        skillInnerHandler.updateDraft(form);
+        
+        verify(skillOperationService).updateDraft(eq(NAMESPACE_ID), any(Skill.class), eq("update"));
+    }
+    
+    @Test
+    void testPublishWithFalseUpdateLatestLabel() throws NacosException {
+        SkillPublishForm form = new SkillPublishForm();
+        form.setNamespaceId(NAMESPACE_ID);
+        form.setSkillName(SKILL_NAME);
+        form.setVersion("v1");
+        form.setUpdateLatestLabel(false);
+        doNothing().when(skillOperationService).publish(eq(NAMESPACE_ID), eq(SKILL_NAME),
+            eq("v1"), eq(false));
+        
+        skillInnerHandler.publish(form);
+        
+        verify(skillOperationService).publish(NAMESPACE_ID, SKILL_NAME, "v1", false);
+    }
+    
+    @Test
+    void testForcePublishWithFalseUpdateLatestLabel() throws NacosException {
+        SkillPublishForm form = new SkillPublishForm();
+        form.setNamespaceId(NAMESPACE_ID);
+        form.setSkillName(SKILL_NAME);
+        form.setVersion("v1");
+        form.setUpdateLatestLabel(false);
+        doNothing().when(skillOperationService).forcePublish(eq(NAMESPACE_ID), eq(SKILL_NAME),
+            eq("v1"), eq(false));
+        
+        skillInnerHandler.forcePublish(form);
+        
+        verify(skillOperationService).forcePublish(NAMESPACE_ID, SKILL_NAME, "v1", false);
+    }
+    
+    @Test
+    void testRedraft() throws NacosException {
+        SkillPublishForm form = new SkillPublishForm();
+        form.setNamespaceId(NAMESPACE_ID);
+        form.setSkillName(SKILL_NAME);
+        form.setVersion("v1");
+        doNothing().when(skillOperationService).redraft(eq(NAMESPACE_ID), eq(SKILL_NAME), eq("v1"));
+        
+        skillInnerHandler.redraft(form);
+        
+        verify(skillOperationService).redraft(NAMESPACE_ID, SKILL_NAME, "v1");
     }
 }

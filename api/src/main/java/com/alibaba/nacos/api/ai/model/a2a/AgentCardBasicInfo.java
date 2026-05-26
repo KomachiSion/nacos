@@ -26,6 +26,13 @@ import java.util.Objects;
  */
 public class AgentCardBasicInfo {
     
+    /**
+     * Legacy field for old A2A protocol compatibility, may be removed in future versions.
+     * Use {@link AgentCard#getSupportedInterfaces()} for A2A 1.0.0.
+     *
+     * @deprecated For old A2A protocol compatibility only.
+     */
+    @Deprecated
     private String protocolVersion;
     
     private String name;
@@ -105,14 +112,18 @@ public class AgentCardBasicInfo {
             return false;
         }
         AgentCardBasicInfo that = (AgentCardBasicInfo) o;
-        return Objects.equals(protocolVersion, that.protocolVersion) && Objects.equals(name, that.name)
-                && Objects.equals(description, that.description) && Objects.equals(version, that.version)
-                && Objects.equals(iconUrl, that.iconUrl) && Objects.equals(capabilities, that.capabilities)
-                && Objects.equals(skills, that.skills);
+        return Objects.equals(protocolVersion, that.protocolVersion)
+            && Objects.equals(name, that.name)
+            && Objects.equals(description, that.description)
+            && Objects.equals(version, that.version)
+            && Objects.equals(iconUrl, that.iconUrl)
+            && Objects.equals(capabilities, that.capabilities)
+            && Objects.equals(skills, that.skills);
     }
     
     @Override
     public int hashCode() {
-        return Objects.hash(protocolVersion, name, description, version, iconUrl, capabilities, skills);
+        return Objects.hash(protocolVersion, name, description, version, iconUrl, capabilities,
+            skills);
     }
 }

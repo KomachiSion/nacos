@@ -1,4 +1,6 @@
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useLocation, useNavigate } from 'react-router-dom';
 import {
   Sun,
   Moon,
@@ -10,7 +12,8 @@ import {
 } from 'lucide-react';
 import { useAppStore } from '@/stores/app-store';
 import { useAuthStore } from '@/stores/auth-store';
-import { useNamespaceStore } from '@/stores/namespace-store';
+import { getNamespaceSearchAfterSwitch, useNamespaceStore } from '@/stores/namespace-store';
+import { useServerStore } from '@/stores/server-store';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -30,6 +33,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
+import { ChangePasswordDialog } from '@/components/layout/change-password-dialog';
 
 function getBaseUrl(language: string) {
   return language.toLowerCase() === 'en-us' ? 'https://nacos.io/en/' : 'https://nacos.io/';
@@ -60,9 +64,13 @@ const NAV_LINKS: NavLink[] = [
 
 export function Header() {
   const { t } = useTranslation();
+  const navigate = useNavigate();
+  const location = useLocation();
   const { theme, setTheme, language, setLanguage } = useAppStore();
-  const { username, logout } = useAuthStore();
+  const { username, logout, isOidcUser } = useAuthStore();
   const { currentNamespace, namespaces, setNamespace } = useNamespaceStore();
+  const { authEnabled } = useServerStore();
+  const [changePasswordOpen, setChangePasswordOpen] = useState(false);
 
   const baseUrl = getBaseUrl(language);
 
@@ -75,7 +83,13 @@ export function Header() {
 
   const handleNamespaceChange = (value: string) => {
     const ns = namespaces.find(n => n.namespace === value);
-    setNamespace(value, ns?.namespaceShowName || value);
+    const nextShowName = ns?.namespaceShowName || value;
+    setNamespace(value, nextShowName);
+
+    const nextSearch = getNamespaceSearchAfterSwitch(location.search, value, nextShowName);
+    if (nextSearch !== null && nextSearch !== location.search) {
+      navigate(`${location.pathname}${nextSearch}${location.hash}`, { replace: true });
+    }
   };
 
   return (
@@ -162,6 +176,10 @@ export function Header() {
         </Tooltip>
 
         {/* User menu */}
+        {authEnabled && !isOidcUser() && (
+          <ChangePasswordDialog open={changePasswordOpen} onOpenChange={setChangePasswordOpen} />
+        )}
+        {authEnabled && (
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" className="h-8 gap-2 px-2 text-muted-foreground">
@@ -176,17 +194,28 @@ export function Header() {
           <DropdownMenuContent align="end" className="w-48">
             <div className="px-2 py-1.5 text-xs text-muted-foreground">{username}</div>
             <DropdownMenuSeparator />
-            <DropdownMenuItem className="gap-2 text-xs">
-              <KeyRound size={14} />
-              {t('header.changePassword')}
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
+            {!isOidcUser() && (
+              <>
+                <DropdownMenuItem
+                  className="gap-2 text-xs"
+                  onSelect={(event) => {
+                    event.preventDefault();
+                    setChangePasswordOpen(true);
+                  }}
+                >
+                  <KeyRound size={14} />
+                  {t('header.changePassword')}
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+              </>
+            )}
             <DropdownMenuItem className="gap-2 text-xs text-destructive" onClick={logout}>
               <LogOut size={14} />
               {t('header.logout')}
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
+        )}
       </div>
     </header>
   );

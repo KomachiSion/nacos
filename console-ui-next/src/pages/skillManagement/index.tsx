@@ -1,8 +1,19 @@
-import { useEffect, useCallback, useState } from 'react';
+import { useEffect, useCallback, useState, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
-import { Trash2, Search, X, ChevronLeft, ChevronRight, Wand2, Upload, Plus } from 'lucide-react';
+import {
+  Trash2,
+  Search,
+  X,
+  ChevronLeft,
+  ChevronRight,
+  Wand2,
+  Upload,
+  Plus,
+  Tag,
+  Download,
+} from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -19,15 +30,25 @@ import {
 import { SkillCard } from './components/SkillCard';
 import { UploadSkillDialog } from './components/UploadSkillDialog';
 import { CreateSkillDialog } from './components/CreateSkillDialog';
+import { ImportSkillDialog } from '@/components/ai/skill/ImportSkillDialog';
 import { useSkillStore } from '@/stores/skill-store';
 import { useNamespaceStore } from '@/stores/namespace-store';
+import { useAuthStore } from '@/stores/auth-store';
 import { skillApi } from '@/api/skill';
+
+interface SkillBatchUploadResponse {
+  data?: {
+    succeeded?: string[];
+    failed?: { name: string; reason: string }[];
+  };
+}
 
 export default function SkillManagementPage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const location = useLocation();
   const { currentNamespace } = useNamespaceStore();
+  const { globalAdmin, username } = useAuthStore();
   const {
     items,
     loading,
@@ -36,6 +57,9 @@ export default function SkillManagementPage() {
     pageSize,
     searchName,
     orderBy,
+    filterOwner,
+    filterScope,
+    filterBizTag,
     selectedNames,
     error,
     fetchList,
@@ -51,8 +75,13 @@ export default function SkillManagementPage() {
   const [batchDeleteOpen, setBatchDeleteOpen] = useState(false);
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [searchInput, setSearchInput] = useState(searchName);
+  const [ownerInput, setOwnerInput] = useState(filterOwner);
+  const [bizTagInput, setBizTagInput] = useState(filterBizTag);
   const [uploadOpen, setUploadOpen] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
   const [createOpen, setCreateOpen] = useState(false);
+  const [isDragOver, setIsDragOver] = useState(false);
+  const dragCounter = useRef(0);
 
   const namespaceId = currentNamespace || 'public';
 
@@ -65,18 +94,25 @@ export default function SkillManagementPage() {
   }, [loadData, pageNo, pageSize, location.key]);
 
   const handleSearch = () => {
-    setSearchParams({ searchName: searchInput });
+    setSearchParams({
+      searchName: searchInput,
+      filterOwner: globalAdmin ? ownerInput : (ownerInput ? username || '' : ''),
+      filterBizTag: bizTagInput,
+    });
     fetchList(namespaceId);
   };
 
   const handleReset = () => {
     setSearchInput('');
+    setOwnerInput('');
+    setBizTagInput('');
     resetSearch();
     fetchList(namespaceId);
   };
 
   const handleDetail = (name: string) => {
-    navigate(`/skill/${encodeURIComponent(name)}`);
+    const params = new URLSearchParams({ namespaceId });
+    navigate(`/skill/${encodeURIComponent(name)}?${params}`);
   };
 
   const handleDelete = async () => {
@@ -112,11 +148,100 @@ export default function SkillManagementPage() {
     }
   };
 
+  const handlePageDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (e.dataTransfer) {
+      e.dataTransfer.dropEffect = 'copy';
+    }
+  }, []);
+
+  const handlePageDragEnter = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    dragCounter.current++;
+    if (e.dataTransfer) {
+      e.dataTransfer.dropEffect = 'copy';
+    }
+    setIsDragOver(true);
+  }, []);
+
+  const handlePageDragLeave = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    dragCounter.current--;
+    if (dragCounter.current === 0) {
+      setIsDragOver(false);
+    }
+  }, []);
+
+  const handlePageDrop = useCallback(async (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    dragCounter.current = 0;
+    setIsDragOver(false);
+    const droppedFile = e.dataTransfer?.files?.[0];
+    if (!droppedFile) return;
+    if (!droppedFile.name.toLowerCase().endsWith('.zip') && droppedFile.type !== 'application/zip') {
+      toast.error(t('skill.invalidZipFile'));
+      return;
+    }
+    try {
+      const res = await skillApi.batchUpload(namespaceId, droppedFile);
+      const data = (res as SkillBatchUploadResponse)?.data;
+      if (data && (data.succeeded || data.failed)) {
+        const succeededList: string[] = data.succeeded ?? [];
+        const failedList: { name: string; reason: string }[] = data.failed ?? [];
+        if (failedList.length === 0) {
+          toast.success(t('skill.batchUploadAllSuccess', { count: succeededList.length }), { duration: 5000 });
+        } else {
+          const title = succeededList.length > 0
+            ? t('skill.batchUploadResult', { succeeded: succeededList.length, failed: failedList.length })
+            : t('skill.batchUploadAllFailed', { count: failedList.length });
+          const description = (
+            <div className="flex flex-col gap-0.5 text-xs">
+              {succeededList.map((name) => (
+                <div key={name} style={{ color: '#16a34a' }}>✓ {name}</div>
+              ))}
+              {failedList.map((item) => (
+                <div key={item.name} style={{ color: '#dc2626' }}>
+                  ✗ {item.name}<span style={{ opacity: 0.8 }}> — {item.reason}</span>
+                </div>
+              ))}
+            </div>
+          );
+          const toastFn = succeededList.length > 0 ? toast.warning : toast.error;
+          toastFn(title, { description, duration: 8000 });
+        }
+      } else {
+        toast.success(t('skill.uploadSuccess'));
+      }
+      loadData();
+    } catch {
+      toast.error(t('skill.uploadFailed'));
+    }
+  }, [namespaceId, t, loadData]);
+
   const totalPages = Math.ceil(total / pageSize);
   const allSelected = items.length > 0 && items.every((a) => selectedNames.has(a.name));
 
   return (
-    <div className="space-y-5">
+    <div
+      className="space-y-5 relative"
+      onDragOver={handlePageDragOver}
+      onDragEnter={handlePageDragEnter}
+      onDragLeave={handlePageDragLeave}
+      onDrop={handlePageDrop}
+    >
+      {/* Drag overlay */}
+      {isDragOver && (
+        <div className="absolute inset-0 z-50 flex items-center justify-center rounded-lg border-2 border-dashed border-primary bg-primary/5 pointer-events-none">
+          <div className="text-center">
+            <Upload className="h-12 w-12 text-primary mx-auto mb-2" />
+            <p className="text-sm font-medium text-primary">{t('skill.dropFileHere')}</p>
+          </div>
+        </div>
+      )}
       {/* Page header */}
       <div className="flex items-center justify-between">
         <div>
@@ -126,9 +251,16 @@ export default function SkillManagementPage() {
           </p>
         </div>
         <div className="flex items-center gap-2">
+          <span className="text-xs text-muted-foreground hidden sm:inline">
+            {t('skill.dragDropHint')}
+          </span>
           <Button size="sm" variant="outline" onClick={() => setUploadOpen(true)}>
             <Upload className="mr-1.5 h-3.5 w-3.5" />
             {t('skill.upload')}
+          </Button>
+          <Button size="sm" variant="outline" onClick={() => setImportOpen(true)}>
+            <Download className="mr-1.5 h-3.5 w-3.5" />
+            {t('skill.importFromRegistry')}
           </Button>
           <Button size="sm" onClick={() => setCreateOpen(true)}>
             <Plus className="mr-1.5 h-3.5 w-3.5" />
@@ -137,10 +269,10 @@ export default function SkillManagementPage() {
         </div>
       </div>
 
-      {/* Search & filters bar */}
-      <div className="flex flex-wrap items-center gap-2">
-        <div className="relative flex-1 min-w-[220px] max-w-md">
-          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+      {/* Search & filters (single row; py gives room so focus rings are not clipped by overflow-x-auto) */}
+      <div className="flex w-full min-w-0 items-center gap-2 overflow-x-auto px-0.5 py-2">
+        <div className="relative min-w-[12rem] flex-1 max-w-md">
+          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
           <Input
             placeholder={t('skill.searchPlaceholder')}
             value={searchInput}
@@ -149,17 +281,64 @@ export default function SkillManagementPage() {
             className="pl-8 h-8 text-sm"
           />
         </div>
-        <Button size="sm" variant="secondary" className="h-8" onClick={handleSearch}>
+        <div className="relative w-[10.5rem] shrink-0">
+          <Tag className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
+          <Input
+            placeholder={t('skill.filterBizTagPlaceholder')}
+            value={bizTagInput}
+            onChange={(e) => setBizTagInput(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
+            className="pl-8 h-8 text-sm"
+          />
+        </div>
+        {globalAdmin ? (
+          <Input
+            placeholder={t('skill.filterOwnerPlaceholder')}
+            value={ownerInput}
+            onChange={(e) => setOwnerInput(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
+            className="w-[9rem] shrink-0 h-8 text-xs"
+            title={t('skill.filterByOwner')}
+          />
+        ) : (
+          <Button
+            size="sm"
+            variant={filterOwner ? 'default' : 'outline'}
+            className="h-8 text-xs shrink-0 whitespace-nowrap"
+            onClick={() => {
+              const next = filterOwner ? '' : (username || '');
+              setSearchParams({ filterOwner: next });
+              fetchList(namespaceId);
+            }}
+          >
+            {t('skill.filterOnlyMine')}
+          </Button>
+        )}
+        <Button size="sm" variant="secondary" className="h-8 shrink-0" onClick={handleSearch}>
           {t('common.search')}
         </Button>
-        {searchInput && (
-          <Button size="sm" variant="ghost" className="h-8" onClick={handleReset}>
+        {(searchInput || filterOwner || filterScope || filterBizTag) && (
+          <Button size="sm" variant="ghost" className="h-8 shrink-0" onClick={handleReset}>
             <X className="mr-1 h-3 w-3" />
             {t('common.reset')}
           </Button>
         )}
-
-        {/* Sort */}
+        <Select
+          value={filterScope || ''}
+          onValueChange={(v) => {
+            setSearchParams({ filterScope: v === '_all' ? '' : v });
+            fetchList(namespaceId);
+          }}
+        >
+          <SelectTrigger className="w-[7.5rem] h-8 text-xs shrink-0">
+            <SelectValue placeholder={t('skill.filterScopeAll')} />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="_all">{t('skill.filterScopeAll')}</SelectItem>
+            <SelectItem value="PUBLIC">{t('skill.filterScopePublic')}</SelectItem>
+            <SelectItem value="PRIVATE">{t('skill.filterScopePrivate')}</SelectItem>
+          </SelectContent>
+        </Select>
         <Select
           value={orderBy}
           onValueChange={(v) => {
@@ -167,7 +346,7 @@ export default function SkillManagementPage() {
             fetchList(namespaceId);
           }}
         >
-          <SelectTrigger className="w-[140px] h-8 text-xs">
+          <SelectTrigger className="w-[8.5rem] h-8 text-xs shrink-0">
             <SelectValue placeholder={t('skill.sortDefault')} />
           </SelectTrigger>
           <SelectContent>
@@ -175,23 +354,21 @@ export default function SkillManagementPage() {
             <SelectItem value="download_count">{t('skill.sortByDownloads')}</SelectItem>
           </SelectContent>
         </Select>
-
-        {/* Batch operations */}
         {selectedNames.size > 0 && (
-          <div className="flex items-center gap-2 ml-auto">
-            <span className="text-xs text-muted-foreground">
+          <div className="flex items-center gap-2 shrink-0 ml-auto pl-2 border-l border-border/60">
+            <span className="text-xs text-muted-foreground whitespace-nowrap">
               {t('config.selectedCount', { count: selectedNames.size })}
             </span>
             <Button
               variant="destructive"
               size="sm"
-              className="h-8"
+              className="h-8 shrink-0"
               onClick={() => setBatchDeleteOpen(true)}
             >
               <Trash2 className="mr-1 h-3 w-3" />
               {t('skill.batchDelete')}
             </Button>
-            <Button variant="ghost" size="sm" className="h-8" onClick={clearSelection}>
+            <Button variant="ghost" size="sm" className="h-8 shrink-0" onClick={clearSelection}>
               {t('common.cancel')}
             </Button>
           </div>
@@ -327,6 +504,14 @@ export default function SkillManagementPage() {
         onSuccess={loadData}
       />
 
+      {/* Import dialog */}
+      <ImportSkillDialog
+        open={importOpen}
+        onOpenChange={setImportOpen}
+        namespaceId={namespaceId}
+        onSuccess={loadData}
+      />
+
       {/* Create dialog */}
       <CreateSkillDialog
         open={createOpen}
@@ -334,7 +519,7 @@ export default function SkillManagementPage() {
         namespaceId={namespaceId}
         onSuccess={(name) => {
           loadData();
-          navigate(`/skill/${encodeURIComponent(name)}`);
+          handleDetail(name);
         }}
       />
 

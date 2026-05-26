@@ -51,7 +51,7 @@ public interface AgentSpecMaintainerService {
     default AgentSpec getAgentSpecDetail(String agentSpecName) throws NacosException {
         return getAgentSpecDetail(Constants.DEFAULT_NAMESPACE_ID, agentSpecName);
     }
-
+    
     /**
      * Get agentspec admin detail.
      *
@@ -60,8 +60,9 @@ public interface AgentSpecMaintainerService {
      * @return admin detail
      * @throws NacosException if fail to get agentspec admin detail
      */
-    AgentSpecMeta getAgentSpecAdminDetail(String namespaceId, String agentSpecName) throws NacosException;
-
+    AgentSpecMeta getAgentSpecAdminDetail(String namespaceId, String agentSpecName)
+        throws NacosException;
+    
     /**
      * Get specific agentspec version detail.
      *
@@ -71,8 +72,9 @@ public interface AgentSpecMaintainerService {
      * @return agentspec version detail
      * @throws NacosException if fail to get agentspec version detail
      */
-    AgentSpec getAgentSpecVersionDetail(String namespaceId, String agentSpecName, String version) throws NacosException;
-
+    AgentSpec getAgentSpecVersionDetail(String namespaceId, String agentSpecName, String version)
+        throws NacosException;
+    
     /**
      * Get specific agentspec version detail with default namespace.
      *
@@ -81,8 +83,35 @@ public interface AgentSpecMaintainerService {
      * @return agentspec version detail
      * @throws NacosException if fail to get agentspec version detail
      */
-    default AgentSpec getAgentSpecVersionDetail(String agentSpecName, String version) throws NacosException {
+    default AgentSpec getAgentSpecVersionDetail(String agentSpecName, String version)
+        throws NacosException {
         return getAgentSpecVersionDetail(Constants.DEFAULT_NAMESPACE_ID, agentSpecName, version);
+    }
+    
+    /**
+     * Get specific agentspec version metadata without resource content. Returns the agentspec main content and resource
+     * list (name + type only), skipping resource file IO.
+     *
+     * @param namespaceId namespace ID
+     * @param agentSpecName agentspec name
+     * @param version agentspec version
+     * @return agentspec with resource list containing only name and type
+     * @throws NacosException if fail to get agentspec version meta
+     */
+    AgentSpec getAgentSpecVersionMeta(String namespaceId, String agentSpecName, String version)
+        throws NacosException;
+    
+    /**
+     * Get specific agentspec version metadata with default namespace.
+     *
+     * @param agentSpecName agentspec name
+     * @param version agentspec version
+     * @return agentspec with resource list containing only name and type
+     * @throws NacosException if fail to get agentspec version meta
+     */
+    default AgentSpec getAgentSpecVersionMeta(String agentSpecName, String version)
+        throws NacosException {
+        return getAgentSpecVersionMeta(Constants.DEFAULT_NAMESPACE_ID, agentSpecName, version);
     }
     
     /**
@@ -117,8 +146,9 @@ public interface AgentSpecMaintainerService {
      * @return paged agentspec list
      * @throws NacosException if fail to list agentspecs
      */
-    Page<AgentSpecBasicInfo> listAgentSpecs(String namespaceId, String agentSpecName, String search, int pageNo,
-            int pageSize) throws NacosException;
+    Page<AgentSpecBasicInfo> listAgentSpecs(String namespaceId, String agentSpecName, String search,
+        int pageNo,
+        int pageSize) throws NacosException;
     
     /**
      * List agentspecs with default namespace.
@@ -130,10 +160,11 @@ public interface AgentSpecMaintainerService {
      * @throws NacosException if fail to list agentspecs
      */
     default Page<AgentSpecBasicInfo> listAgentSpecs(String agentSpecName, int pageNo, int pageSize)
-            throws NacosException {
-        return listAgentSpecs(Constants.DEFAULT_NAMESPACE_ID, agentSpecName, "blur", pageNo, pageSize);
+        throws NacosException {
+        return listAgentSpecs(Constants.DEFAULT_NAMESPACE_ID, agentSpecName, "blur", pageNo,
+            pageSize);
     }
-
+    
     /**
      * List agentspec admin items with governance metadata.
      *
@@ -145,8 +176,33 @@ public interface AgentSpecMaintainerService {
      * @return paged admin list
      * @throws NacosException if fail to list agentspec admin items
      */
-    Page<AgentSpecSummary> listAgentSpecAdminItems(String namespaceId, String agentSpecName, String search,
-            int pageNo, int pageSize) throws NacosException;
+    Page<AgentSpecSummary> listAgentSpecAdminItems(String namespaceId, String agentSpecName,
+        String search,
+        int pageNo, int pageSize) throws NacosException;
+    
+    /**
+     * List agentspec admin items with pagination, optional ordering and additional filter criteria.
+     *
+     * <p>Backward-compatible: when {@code orderBy}, {@code owner} and {@code scope} are all {@code null}/empty,
+     * the behaviour is identical to {@link #listAgentSpecAdminItems(String, String, String, int, int)}.</p>
+     *
+     * @param namespaceId   namespace ID
+     * @param agentSpecName agentspec name pattern for filtering
+     * @param search        search mode
+     * @param orderBy       optional sort field (e.g. "download_count"); null defaults to gmt_modified
+     * @param owner         optional filter by resource owner; null or empty means no owner filter
+     * @param scope         optional filter by visibility scope ("PUBLIC"/"PRIVATE"); null or empty means no scope filter
+     * @param pageNo        page number
+     * @param pageSize      page size
+     * @return paged admin list
+     * @throws NacosException if fail to list agentspec admin items
+     */
+    default Page<AgentSpecSummary> listAgentSpecAdminItems(String namespaceId, String agentSpecName,
+        String search,
+        String orderBy, String owner, String scope, int pageNo, int pageSize)
+        throws NacosException {
+        return listAgentSpecAdminItems(namespaceId, agentSpecName, search, pageNo, pageSize);
+    }
     
     /**
      * Upload agentspec from zip file.
@@ -156,10 +212,11 @@ public interface AgentSpecMaintainerService {
      * @return agentspec name
      * @throws NacosException if fail to upload agentspec
      */
-    default String uploadAgentSpecFromZip(String namespaceId, byte[] zipBytes) throws NacosException {
+    default String uploadAgentSpecFromZip(String namespaceId, byte[] zipBytes)
+        throws NacosException {
         return uploadAgentSpecFromZip(namespaceId, zipBytes, false);
     }
-
+    
     /**
      * Upload agentspec from zip file.
      *
@@ -169,7 +226,8 @@ public interface AgentSpecMaintainerService {
      * @return agentspec name
      * @throws NacosException if fail to upload agentspec
      */
-    String uploadAgentSpecFromZip(String namespaceId, byte[] zipBytes, boolean overwrite) throws NacosException;
+    String uploadAgentSpecFromZip(String namespaceId, byte[] zipBytes, boolean overwrite)
+        throws NacosException;
     
     /**
      * Upload agentspec from zip file with default namespace.
@@ -191,7 +249,24 @@ public interface AgentSpecMaintainerService {
      * @return created draft version
      * @throws NacosException if fail to create draft
      */
-    String createDraft(String namespaceId, String agentSpecName, String basedOnVersion) throws NacosException;
+    default String createDraft(String namespaceId, String agentSpecName, String basedOnVersion)
+        throws NacosException {
+        return createDraft(namespaceId, agentSpecName, basedOnVersion, null);
+    }
+    
+    /**
+     * Create draft version for an agentspec.
+     *
+     * @param namespaceId     namespace ID
+     * @param agentSpecName   agentspec name
+     * @param basedOnVersion  base version (optional)
+     * @param targetVersion   target version (optional, auto-increment if blank)
+     * @return created draft version
+     * @throws NacosException if fail to create draft
+     */
+    String createDraft(String namespaceId, String agentSpecName, String basedOnVersion,
+        String targetVersion)
+        throws NacosException;
     
     /**
      * Update current draft content.
@@ -202,7 +277,8 @@ public interface AgentSpecMaintainerService {
      * @return true if update success
      * @throws NacosException if fail to update draft
      */
-    boolean updateDraft(String namespaceId, String agentSpecCard, Boolean setAsLatest) throws NacosException;
+    boolean updateDraft(String namespaceId, String agentSpecCard, Boolean setAsLatest)
+        throws NacosException;
     
     /**
      * Delete current draft version.
@@ -235,8 +311,34 @@ public interface AgentSpecMaintainerService {
      * @return true if publish success
      * @throws NacosException if fail to publish
      */
-    boolean publish(String namespaceId, String agentSpecName, String version, Boolean updateLatestLabel)
-            throws NacosException;
+    boolean publish(String namespaceId, String agentSpecName, String version,
+        Boolean updateLatestLabel)
+        throws NacosException;
+    
+    /**
+     * Force-publish an agentspec version, bypassing pipeline validation.
+     *
+     * @param namespaceId       namespace ID
+     * @param agentSpecName     agentspec name
+     * @param version           version
+     * @param updateLatestLabel update latest label, default true if null
+     * @return true if force-publish success
+     * @throws NacosException if fail to force-publish
+     */
+    boolean forcePublish(String namespaceId, String agentSpecName, String version,
+        Boolean updateLatestLabel)
+        throws NacosException;
+    
+    /**
+     * Re-edit a reviewed agent spec version, transitioning it back to draft status.
+     *
+     * @param namespaceId   namespace ID
+     * @param agentSpecName agent spec name
+     * @param version       version to re-edit
+     * @return true if redraft success
+     * @throws NacosException if fail to redraft
+     */
+    boolean redraft(String namespaceId, String agentSpecName, String version) throws NacosException;
     
     /**
      * Update runtime labels mapping JSON.
@@ -247,8 +349,9 @@ public interface AgentSpecMaintainerService {
      * @return true if update success
      * @throws NacosException if fail to update labels
      */
-    boolean updateLabels(String namespaceId, String agentSpecName, String labels) throws NacosException;
-
+    boolean updateLabels(String namespaceId, String agentSpecName, String labels)
+        throws NacosException;
+    
     /**
      * Update agentspec biz tags JSON.
      *
@@ -258,7 +361,8 @@ public interface AgentSpecMaintainerService {
      * @return true if update success
      * @throws NacosException if fail to update biz tags
      */
-    boolean updateBizTags(String namespaceId, String agentSpecName, String bizTags) throws NacosException;
+    boolean updateBizTags(String namespaceId, String agentSpecName, String bizTags)
+        throws NacosException;
     
     /**
      * Online/offline operation.
@@ -271,9 +375,10 @@ public interface AgentSpecMaintainerService {
      * @return true if operation success
      * @throws NacosException if fail to change status
      */
-    boolean changeOnlineStatus(String namespaceId, String agentSpecName, String scope, String version,
-            boolean online) throws NacosException;
-
+    boolean changeOnlineStatus(String namespaceId, String agentSpecName, String scope,
+        String version,
+        boolean online) throws NacosException;
+    
     /**
      * Update agentspec visibility scope.
      *
@@ -283,5 +388,6 @@ public interface AgentSpecMaintainerService {
      * @return true if update success
      * @throws NacosException if fail to update scope
      */
-    boolean updateScope(String namespaceId, String agentSpecName, String scope) throws NacosException;
+    boolean updateScope(String namespaceId, String agentSpecName, String scope)
+        throws NacosException;
 }

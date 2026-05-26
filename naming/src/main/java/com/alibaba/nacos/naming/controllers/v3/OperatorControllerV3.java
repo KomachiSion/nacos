@@ -73,7 +73,8 @@ public class OperatorControllerV3 {
      * Get switch information.
      */
     @GetMapping("/switches")
-    @Secured(resource = UtilsAndCommons.OPERATOR_CONTROLLER_V3_ADMIN_PATH, action = ActionTypes.READ, apiType = ApiType.ADMIN_API)
+    @Secured(resource = UtilsAndCommons.OPERATOR_CONTROLLER_V3_ADMIN_PATH,
+        action = ActionTypes.READ, apiType = ApiType.ADMIN_API)
     @Operation(summary = "nacos.admin.naming.ops.api.switches.get.summary", description = "nacos.admin.naming.ops.api.switches.get.description", security = @SecurityRequirement(name = "nacos"))
     @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE, schema = @Schema(implementation = Result.class, example = "nacos.admin.naming.ops.api.switches.get.example")))
     public Result<SwitchDomain> switches() {
@@ -84,7 +85,8 @@ public class OperatorControllerV3 {
      * Update switch information.
      */
     @PutMapping("/switches")
-    @Secured(resource = UtilsAndCommons.OPERATOR_CONTROLLER_V3_ADMIN_PATH, action = ActionTypes.WRITE, apiType = ApiType.ADMIN_API)
+    @Secured(resource = UtilsAndCommons.OPERATOR_CONTROLLER_V3_ADMIN_PATH,
+        action = ActionTypes.WRITE, apiType = ApiType.ADMIN_API)
     @Operation(summary = "nacos.admin.naming.ops.api.switches.update.summary", description = "nacos.admin.naming.ops.api..switches.update.description", security = @SecurityRequirement(name = "nacos"))
     @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE, schema = @Schema(implementation = Result.class, example = "nacos.admin.naming.ops.api.switches.update.example")))
     @Parameters(value = {@Parameter(name = "entry", required = true, example = "pushEnabled"),
@@ -94,11 +96,12 @@ public class OperatorControllerV3 {
         updateSwitchForm.validate();
         try {
             operatorV2Impl.updateSwitch(updateSwitchForm.getEntry(), updateSwitchForm.getValue(),
-                    updateSwitchForm.getDebug());
+                updateSwitchForm.getDebug());
             return Result.success("ok");
         } catch (IllegalArgumentException e) {
-            throw new NacosApiException(HttpStatus.INTERNAL_SERVER_ERROR.value(), ErrorCode.SERVER_ERROR,
-                    e.getMessage());
+            throw new NacosApiException(HttpStatus.INTERNAL_SERVER_ERROR.value(),
+                ErrorCode.SERVER_ERROR,
+                e.getMessage());
         }
     }
     
@@ -106,12 +109,14 @@ public class OperatorControllerV3 {
      * Get metrics information.
      */
     @GetMapping("/metrics")
-    @Secured(resource = UtilsAndCommons.OPERATOR_CONTROLLER_V3_ADMIN_PATH, action = ActionTypes.READ, apiType = ApiType.ADMIN_API)
+    @Secured(resource = UtilsAndCommons.OPERATOR_CONTROLLER_V3_ADMIN_PATH,
+        action = ActionTypes.READ, apiType = ApiType.ADMIN_API)
     @Operation(summary = "nacos.admin.naming.ops.api.metrics.summary", description = "nacos.admin.naming.ops.api.metrics.description", security = @SecurityRequirement(name = "nacos"))
     @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE, schema = @Schema(implementation = Result.class, example = "nacos.admin.naming.ops.api.metrics.example")))
     @Parameters(value = {@Parameter(name = "onlyStatus", schema = @Schema(type = "boolean"), example = "true")})
     public Result<MetricsInfo> metrics(
-            @RequestParam(value = "onlyStatus", required = false, defaultValue = "true") Boolean onlyStatus) {
+        @RequestParam(value = "onlyStatus", required = false,
+            defaultValue = "true") Boolean onlyStatus) {
         return Result.success(MetricsInfoVo.toNewMetricsInfo(operatorV2Impl.metrics(onlyStatus)));
     }
     
@@ -119,7 +124,8 @@ public class OperatorControllerV3 {
      * Set log level.
      */
     @PutMapping("/log")
-    @Secured(resource = UtilsAndCommons.OPERATOR_CONTROLLER_V3_ADMIN_PATH, action = ActionTypes.WRITE, apiType = ApiType.ADMIN_API)
+    @Secured(resource = UtilsAndCommons.OPERATOR_CONTROLLER_V3_ADMIN_PATH,
+        action = ActionTypes.WRITE, apiType = ApiType.ADMIN_API)
     @Operation(summary = "nacos.admin.naming.ops.api.log.summary", description = "nacos.admin.naming.ops.api.log.description", security = @SecurityRequirement(name = "nacos"))
     @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE, schema = @Schema(implementation = Result.class, example = "nacos.admin.naming.ops.api.log.example")))
     @Parameters(value = {@Parameter(name = "logName", required = true, example = "naming-event"),
