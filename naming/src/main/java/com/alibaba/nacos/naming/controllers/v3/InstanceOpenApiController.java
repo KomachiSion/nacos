@@ -80,8 +80,11 @@ import java.util.List;
 @RestController
 @RequestMapping(UtilsAndCommons.INSTANCE_V3_CLIENT_API_PATH)
 @ExtractorManager.Extractor(httpExtractor = NamingDefaultHttpParamExtractor.class)
-@Tag(name = "nacos.client.naming.instance.api.controller.name", description = "nacos.client.naming.instance.api.controller.description", extensions = {
-        @Extension(name = RemoteConstants.LABEL_MODULE, properties = @ExtensionProperty(name = RemoteConstants.LABEL_MODULE, value = RemoteConstants.LABEL_MODULE_NAMING))})
+@Tag(name = "nacos.client.naming.instance.api.controller.name",
+    description = "nacos.client.naming.instance.api.controller.description", extensions = {
+        @Extension(name = RemoteConstants.LABEL_MODULE,
+            properties = @ExtensionProperty(name = RemoteConstants.LABEL_MODULE,
+                value = RemoteConstants.LABEL_MODULE_NAMING))})
 public class InstanceOpenApiController {
     
     private final InstanceOperator instanceOperator;
@@ -106,17 +109,28 @@ public class InstanceOpenApiController {
     @PostMapping
     @TpsControl(pointName = "NamingInstanceRegister", name = "HttpNamingInstanceRegister")
     @Secured(action = ActionTypes.WRITE, apiType = ApiType.OPEN_API)
-    @Operation(summary = "nacos.client.naming.instance.api.register.summary", description = "nacos.client.naming.instance.api.register.description", security = @SecurityRequirement(name = "nacos"))
-    @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE, schema = @Schema(implementation = Result.class, example = "nacos.client.naming.instance.api.register.example")))
+    @Operation(summary = "nacos.client.naming.instance.api.register.summary",
+        description = "nacos.client.naming.instance.api.register.description",
+        security = @SecurityRequirement(name = "nacos"))
+    @ApiResponse(responseCode = "200",
+        content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+            schema = @Schema(implementation = Result.class,
+                example = "nacos.client.naming.instance.api.register.example")))
     @Parameters(value = {@Parameter(name = "namespaceId", example = "public"),
-            @Parameter(name = "groupName", example = "DEFAULT_GROUP"),
-            @Parameter(name = "serviceName", required = true, example = "test"),
-            @Parameter(name = "clusterName", example = "DEFAULT"),
-            @Parameter(name = "ip", required = true, example = "127.0.0.1"),
-            @Parameter(name = "port", required = true, schema = @Schema(type = "integer"), example = "8080"), @Parameter(name = "weight", schema = @Schema(type = "number"), example = "1.0"),
-            @Parameter(name = "healthy", schema = @Schema(type = "boolean"), example = "true"), @Parameter(name = "enabled", schema = @Schema(type = "boolean"), example = "true"),
-            @Parameter(name = "metadata", example = "{\"zone\":\"a\"}"),
-            @Parameter(name = "heartBeat", schema = @Schema(type = "boolean"), example = "false"), @Parameter(name = "instanceForm", hidden = true)})
+        @Parameter(name = "groupName", example = "DEFAULT_GROUP"),
+        @Parameter(name = "serviceName", required = true, example = "test"),
+        @Parameter(name = "clusterName", example = "DEFAULT"),
+        @Parameter(name = "ip", required = true, example = "127.0.0.1"),
+        @Parameter(name = "port", required = true, schema = @Schema(type = "integer"),
+            example = "8080"),
+        @Parameter(name = "weight", schema = @Schema(type = "number"), example = "1.0"),
+        @Parameter(name = "healthy", schema = @Schema(type = "boolean"), example = "true"),
+        @Parameter(name = "enabled", schema = @Schema(type = "boolean"), example = "true"),
+        @Parameter(name = "metadata", schema = @Schema(type = "string",
+            description = "JSON object string parsed as metadata map"),
+            example = "\"{\\\"zone\\\":\\\"a\\\"}\""),
+        @Parameter(name = "heartBeat", schema = @Schema(type = "boolean"), example = "false"),
+        @Parameter(name = "instanceForm", hidden = true)})
     public Result<String> register(InstanceForm instanceForm,
         @RequestParam(defaultValue = "false") boolean heartBeat)
         throws NacosException {
@@ -143,15 +157,21 @@ public class InstanceOpenApiController {
     @DeleteMapping
     @TpsControl(pointName = "NamingInstanceDeregister", name = "HttpNamingInstanceDeregister")
     @Secured(action = ActionTypes.WRITE, apiType = ApiType.OPEN_API)
-    @Operation(summary = "nacos.client.naming.instance.api.deregister.summary", description = "nacos.client.naming.instance.api.deregister.description", security = @SecurityRequirement(name = "nacos"))
-    @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE, schema = @Schema(implementation = Result.class, example = "nacos.client.naming.instance.api.deregister.example")))
+    @Operation(summary = "nacos.client.naming.instance.api.deregister.summary",
+        description = "nacos.client.naming.instance.api.deregister.description",
+        security = @SecurityRequirement(name = "nacos"))
+    @ApiResponse(responseCode = "200",
+        content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+            schema = @Schema(implementation = Result.class,
+                example = "nacos.client.naming.instance.api.deregister.example")))
     @Parameters(value = {@Parameter(name = "namespaceId", example = "public"),
-            @Parameter(name = "groupName", example = "DEFAULT_GROUP"),
-            @Parameter(name = "serviceName", required = true, example = "test"),
-            @Parameter(name = "clusterName", example = "DEFAULT"),
-            @Parameter(name = "ip", required = true, example = "127.0.0.1"),
-            @Parameter(name = "port", required = true, schema = @Schema(type = "integer"), example = "8080"),
-            @Parameter(name = "instanceForm", hidden = true)})
+        @Parameter(name = "groupName", example = "DEFAULT_GROUP"),
+        @Parameter(name = "serviceName", required = true, example = "test"),
+        @Parameter(name = "clusterName", example = "DEFAULT"),
+        @Parameter(name = "ip", required = true, example = "127.0.0.1"),
+        @Parameter(name = "port", required = true, schema = @Schema(type = "integer"),
+            example = "8080"),
+        @Parameter(name = "instanceForm", hidden = true)})
     public Result<String> deregister(InstanceForm instanceForm) throws NacosException {
         // check param
         instanceForm.validate();
@@ -185,13 +205,19 @@ public class InstanceOpenApiController {
     @TpsControl(pointName = "NamingServiceSubscribe", name = "HttpNamingServiceSubscribe")
     @Secured(action = ActionTypes.READ, apiType = ApiType.OPEN_API)
     @ExtractorManager.Extractor(httpExtractor = NamingInstanceListHttpParamExtractor.class)
-    @Operation(summary = "nacos.client.naming.instance.api.list.summary", description = "nacos.client.naming.instance.api.list.description", security = @SecurityRequirement(name = "nacos"))
-    @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE, schema = @Schema(implementation = Result.class, example = "nacos.client.naming.instance.api.list.example")))
+    @Operation(summary = "nacos.client.naming.instance.api.list.summary",
+        description = "nacos.client.naming.instance.api.list.description",
+        security = @SecurityRequirement(name = "nacos"))
+    @ApiResponse(responseCode = "200",
+        content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+            schema = @Schema(implementation = Result.class,
+                example = "nacos.client.naming.instance.api.list.example")))
     @Parameters(value = {@Parameter(name = "namespaceId", example = "public"),
-            @Parameter(name = "groupName", example = "DEFAULT_GROUP"),
-            @Parameter(name = "serviceName", required = true, example = "test"),
-            @Parameter(name = "clusterName", example = "DEFAULT"), @Parameter(name = "instanceForm", hidden = true),
-            @Parameter(name = "pageForm", hidden = true)})
+        @Parameter(name = "groupName", example = "DEFAULT_GROUP"),
+        @Parameter(name = "serviceName", required = true, example = "test"),
+        @Parameter(name = "clusterName", example = "DEFAULT"),
+        @Parameter(name = "instanceForm", hidden = true),
+        @Parameter(name = "pageForm", hidden = true)})
     public Result<List<Instance>> list(InstanceListForm instanceForm) throws Exception {
         // check param
         instanceForm.validate();
