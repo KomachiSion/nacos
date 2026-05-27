@@ -359,7 +359,8 @@ public class ConfigControllerV3 {
             description = "nacos.admin.config.config.api.delete.batch.description", security = @SecurityRequirement(name = "nacos"))
     @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
             schema = @Schema(implementation = Result.class, example = "nacos.admin.config.config.api.delete.batch.example")))
-    @Parameters(value = {@Parameter(name = "ids", required = true, example = "[1,2,3]")})
+    @Parameters(value = {@Parameter(name = "ids", required = true,
+            array = @ArraySchema(schema = @Schema(type = "integer")), example = "[1,2,3]")})
     public Result<Boolean> deleteConfigs(HttpServletRequest request,
         @RequestParam(value = "ids") List<Long> ids) {
         String clientIp = getRemoteIp(request);
@@ -728,7 +729,8 @@ public class ConfigControllerV3 {
     @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_OCTET_STREAM_VALUE))
     @Parameters(value = {@Parameter(name = "namespaceId"), @Parameter(name = "groupName"), @Parameter(name = "dataId"),
             @Parameter(name = "appName", example = "testApp"),
-            @Parameter(name = "ids", example = "[1,2,3]"), @Parameter(name = "configForm", hidden = true)})
+            @Parameter(name = "ids", array = @ArraySchema(schema = @Schema(type = "integer")),
+                    example = "[1,2,3]"), @Parameter(name = "configForm", hidden = true)})
     public ResponseEntity<byte[]> exportConfig(ConfigFormV3 configForm,
         @RequestParam(value = "ids", required = false) List<Long> ids) throws NacosApiException {
         configForm.blurSearchValidate();

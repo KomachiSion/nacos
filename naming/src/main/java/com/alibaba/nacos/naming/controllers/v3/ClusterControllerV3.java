@@ -79,8 +79,12 @@ public class ClusterControllerV3 {
             @Parameter(name = "serviceName", required = true, example = "test"),
             @Parameter(name = "clusterName", required = true, example = "DEFAULT"),
             @Parameter(name = "checkPort", schema = @Schema(type = "integer"), example = "8080"), @Parameter(name = "useInstancePort4Check", schema = @Schema(type = "boolean"), example = "false"),
-            @Parameter(name = "healthChecker", example = "{\"type\":\"none\"}"),
-            @Parameter(name = "metadata", example = "{\"version\":\"1.0\"}"),
+            @Parameter(name = "healthChecker",
+                    schema = @Schema(type = "string", description = "JSON object string parsed as health checker"),
+                    example = "\"{\\\"type\\\":\\\"none\\\"}\""),
+            @Parameter(name = "metadata",
+                    schema = @Schema(type = "string", description = "JSON object string parsed as metadata map"),
+                    example = "\"{\\\"version\\\":\\\"1.0\\\"}\""),
             @Parameter(name = "updateClusterForm", hidden = true)})
     public Result<String> update(UpdateClusterForm updateClusterForm) throws Exception {
         updateClusterForm.validate();

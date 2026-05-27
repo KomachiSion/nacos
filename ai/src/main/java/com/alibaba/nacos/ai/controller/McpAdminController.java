@@ -76,7 +76,13 @@ public class McpAdminController {
     private static final String MCP_SERVER_SPEC_EXAMPLE = "{\"protocol\":\"stdio\",\"frontProtocol\":\"stdio\",\"name\":\"test\",\"id\":\"\",\"description\":\"ceshi\",\"versionDetail\":{\"version\":\"1.0.0\"},\"enabled\":true,\"localServerConfig\":{\"test\":{}}}";
     
     private static final String MCP_SERVER_SPEC_WITH_ID_EXAMPLE = "{\"protocol\":\"stdio\",\"frontProtocol\":\"stdio\",\"name\":\"test\",\"id\":\"d7a64724-a556-4fe4-82fa-e806d43e00dc\",\"description\":\"ceshi\",\"versionDetail\":{\"version\":\"1.0.0\"},\"enabled\":true,\"localServerConfig\":{\"test\":{}}}";
-    
+
+    private static final String MCP_SERVER_SPEC_TEXT_EXAMPLE =
+        "\"{\\\"protocol\\\":\\\"stdio\\\",\\\"frontProtocol\\\":\\\"stdio\\\",\\\"name\\\":\\\"test\\\",\\\"versionDetail\\\":{\\\"version\\\":\\\"1.0.0\\\"}}\"";
+
+    private static final String MCP_SERVER_SPEC_WITH_ID_TEXT_EXAMPLE =
+        "\"{\\\"protocol\\\":\\\"stdio\\\",\\\"frontProtocol\\\":\\\"stdio\\\",\\\"name\\\":\\\"test\\\",\\\"id\\\":\\\"d7a64724-a556-4fe4-82fa-e806d43e00dc\\\",\\\"versionDetail\\\":{\\\"version\\\":\\\"1.0.0\\\"}}\"";
+
     private final McpServerOperationService mcpServerOperationService;
     
     public McpAdminController(McpServerOperationService mcpServerOperationService) {
@@ -150,9 +156,17 @@ public class McpAdminController {
             schema = @Schema(implementation = Result.class, example = "nacos.admin.ai.mcp.api.create.example")))
     @Parameters(value = {@Parameter(name = "namespaceId", example = "public"),
             @Parameter(name = "serverSpecification", required = true,
-                    schema = @Schema(implementation = McpServerBasicInfo.class), example = MCP_SERVER_SPEC_EXAMPLE),
-            @Parameter(name = "toolSpecification", schema = @Schema(implementation = McpToolSpecification.class), example = "{}"),
-            @Parameter(name = "endpointSpecification", schema = @Schema(implementation = McpEndpointSpec.class), example = "{}"),
+                    schema = @Schema(type = "string",
+                            description = "JSON object string parsed as McpServerBasicInfo"),
+                    example = MCP_SERVER_SPEC_TEXT_EXAMPLE),
+            @Parameter(name = "toolSpecification",
+                    schema = @Schema(type = "string",
+                            description = "JSON object string parsed as McpToolSpecification"),
+                    example = "\"{}\""),
+            @Parameter(name = "endpointSpecification",
+                    schema = @Schema(type = "string",
+                            description = "JSON object string parsed as McpEndpointSpec"),
+                    example = "\"{}\""),
             @Parameter(name = "mcpForm", hidden = true)})
     public Result<String> createMcpServer(McpDetailForm mcpForm) throws NacosException {
         mcpForm.validate();
@@ -186,9 +200,17 @@ public class McpAdminController {
             @Parameter(name = "latest", schema = @Schema(type = "boolean"), example = "true"),
             @Parameter(name = "overrideExisting", schema = @Schema(type = "boolean"), example = "false"),
             @Parameter(name = "serverSpecification", required = true,
-                    schema = @Schema(implementation = McpServerBasicInfo.class), example = MCP_SERVER_SPEC_WITH_ID_EXAMPLE),
-            @Parameter(name = "toolSpecification", schema = @Schema(implementation = McpToolSpecification.class), example = "{}"),
-            @Parameter(name = "endpointSpecification", schema = @Schema(implementation = McpEndpointSpec.class), example = "{}"),
+                    schema = @Schema(type = "string",
+                            description = "JSON object string parsed as McpServerBasicInfo"),
+                    example = MCP_SERVER_SPEC_WITH_ID_TEXT_EXAMPLE),
+            @Parameter(name = "toolSpecification",
+                    schema = @Schema(type = "string",
+                            description = "JSON object string parsed as McpToolSpecification"),
+                    example = "\"{}\""),
+            @Parameter(name = "endpointSpecification",
+                    schema = @Schema(type = "string",
+                            description = "JSON object string parsed as McpEndpointSpec"),
+                    example = "\"{}\""),
             @Parameter(name = "mcpForm", hidden = true)})
     public Result<String> updateMcpServer(McpUpdateForm mcpForm) throws NacosException {
         mcpForm.validate();

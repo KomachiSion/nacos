@@ -86,8 +86,10 @@ import static com.alibaba.nacos.plugin.auth.constant.Constants.Tag.ALLOW_ANONYMO
 @RestController
 @RequestMapping(Constants.Skills.ADMIN_PATH)
 @ExtractorManager.Extractor(httpExtractor = SkillHttpParamExtractor.class)
-@Tag(name = "nacos.admin.ai.skill.api.controller.name", description = "nacos.admin.ai.skill.api.controller.description", extensions = {
-        @Extension(name = RemoteConstants.LABEL_MODULE, properties = @ExtensionProperty(name = RemoteConstants.LABEL_MODULE, value = "ai"))})
+@Tag(name = "nacos.admin.ai.skill.api.controller.name",
+    description = "nacos.admin.ai.skill.api.controller.description", extensions = {
+        @Extension(name = RemoteConstants.LABEL_MODULE,
+            properties = @ExtensionProperty(name = RemoteConstants.LABEL_MODULE, value = "ai"))})
 public class SkillAdminController {
     
     private final SkillOperationService skillOperationService;
@@ -105,11 +107,16 @@ public class SkillAdminController {
      */
     @GetMapping
     @Secured(action = ActionTypes.READ, signType = SignType.AI, apiType = ApiType.ADMIN_API)
-    @Operation(summary = "nacos.admin.ai.skill.api.get.summary", description = "nacos.admin.ai.skill.api.get.description", security = @SecurityRequirement(name = "nacos"))
-    @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE, schema = @Schema(implementation = Result.class, example = "nacos.admin.ai.skill.api.get.example")))
+    @Operation(summary = "nacos.admin.ai.skill.api.get.summary",
+        description = "nacos.admin.ai.skill.api.get.description",
+        security = @SecurityRequirement(name = "nacos"))
+    @ApiResponse(responseCode = "200",
+        content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+            schema = @Schema(implementation = Result.class,
+                example = "nacos.admin.ai.skill.api.get.example")))
     @Parameters(value = {@Parameter(name = "namespaceId", example = "public"),
-            @Parameter(name = "skillName", required = true, example = "my-skill"),
-            @Parameter(name = "form", hidden = true)})
+        @Parameter(name = "skillName", required = true, example = "my-skill"),
+        @Parameter(name = "form", hidden = true)})
     public Result<SkillMeta> getSkill(SkillForm form) throws NacosException {
         form.validate();
         return Result.success(
@@ -125,12 +132,17 @@ public class SkillAdminController {
      */
     @GetMapping("/version")
     @Secured(action = ActionTypes.READ, signType = SignType.AI, apiType = ApiType.ADMIN_API)
-    @Operation(summary = "nacos.admin.ai.skill.api.get.version.summary", description = "nacos.admin.ai.skill.api.get.version.description", security = @SecurityRequirement(name = "nacos"))
-    @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE, schema = @Schema(implementation = Result.class, example = "nacos.admin.ai.skill.api.get.version.example")))
+    @Operation(summary = "nacos.admin.ai.skill.api.get.version.summary",
+        description = "nacos.admin.ai.skill.api.get.version.description",
+        security = @SecurityRequirement(name = "nacos"))
+    @ApiResponse(responseCode = "200",
+        content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+            schema = @Schema(implementation = Result.class,
+                example = "nacos.admin.ai.skill.api.get.version.example")))
     @Parameters(value = {@Parameter(name = "namespaceId", example = "public"),
-            @Parameter(name = "skillName", required = true, example = "my-skill"),
-            @Parameter(name = "version", example = "1.0.0"),
-            @Parameter(name = "form", hidden = true)})
+        @Parameter(name = "skillName", required = true, example = "my-skill"),
+        @Parameter(name = "version", example = "1.0.0"),
+        @Parameter(name = "form", hidden = true)})
     public Result<Skill> getSkillVersion(SkillForm form) throws NacosException {
         form.validate();
         return Result.success(
@@ -147,12 +159,17 @@ public class SkillAdminController {
      */
     @GetMapping("/version/download")
     @Secured(action = ActionTypes.READ, signType = SignType.AI, apiType = ApiType.ADMIN_API)
-    @Operation(summary = "nacos.admin.ai.skill.api.download.version.summary", description = "nacos.admin.ai.skill.api.download.version.description", security = @SecurityRequirement(name = "nacos"))
-    @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_OCTET_STREAM_VALUE, schema = @Schema(type = "string", format = "binary", description = "ZIP file containing the skill package")))
+    @Operation(summary = "nacos.admin.ai.skill.api.download.version.summary",
+        description = "nacos.admin.ai.skill.api.download.version.description",
+        security = @SecurityRequirement(name = "nacos"))
+    @ApiResponse(responseCode = "200",
+        content = @Content(mediaType = MediaType.APPLICATION_OCTET_STREAM_VALUE,
+            schema = @Schema(type = "string", format = "binary",
+                description = "ZIP file containing the skill package")))
     @Parameters(value = {@Parameter(name = "namespaceId", example = "public"),
-            @Parameter(name = "skillName", required = true, example = "my-skill"),
-            @Parameter(name = "version", example = "1.0.0"),
-            @Parameter(name = "form", hidden = true)})
+        @Parameter(name = "skillName", required = true, example = "my-skill"),
+        @Parameter(name = "version", example = "1.0.0"),
+        @Parameter(name = "form", hidden = true)})
     public ResponseEntity<byte[]> downloadSkillVersion(SkillForm form) throws NacosException {
         form.validate();
         Skill skill =
@@ -170,11 +187,16 @@ public class SkillAdminController {
      */
     @DeleteMapping
     @Secured(action = ActionTypes.WRITE, signType = SignType.AI, apiType = ApiType.ADMIN_API)
-    @Operation(summary = "nacos.admin.ai.skill.api.delete.summary", description = "nacos.admin.ai.skill.api.delete.description", security = @SecurityRequirement(name = "nacos"))
-    @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE, schema = @Schema(implementation = Result.class, example = "nacos.admin.ai.skill.api.delete.example")))
+    @Operation(summary = "nacos.admin.ai.skill.api.delete.summary",
+        description = "nacos.admin.ai.skill.api.delete.description",
+        security = @SecurityRequirement(name = "nacos"))
+    @ApiResponse(responseCode = "200",
+        content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+            schema = @Schema(implementation = Result.class,
+                example = "nacos.admin.ai.skill.api.delete.example")))
     @Parameters(value = {@Parameter(name = "namespaceId", example = "public"),
-            @Parameter(name = "skillName", required = true, example = "my-skill"),
-            @Parameter(name = "form", hidden = true)})
+        @Parameter(name = "skillName", required = true, example = "my-skill"),
+        @Parameter(name = "form", hidden = true)})
     public Result<String> deleteSkill(SkillForm form) throws NacosException {
         form.validate();
         skillOperationService.deleteSkill(form.getNamespaceId(), form.getSkillName());
@@ -192,13 +214,24 @@ public class SkillAdminController {
     @GetMapping("/list")
     @Secured(action = ActionTypes.READ, signType = SignType.AI, apiType = ApiType.ADMIN_API,
         tags = {ALLOW_ANONYMOUS})
-    @Operation(summary = "nacos.admin.ai.skill.api.list.summary", description = "nacos.admin.ai.skill.api.list.description", security = @SecurityRequirement(name = "nacos"))
-    @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE, schema = @Schema(implementation = Result.class, example = "nacos.admin.ai.skill.api.list.example")))
-    @Parameters(value = {@Parameter(name = "pageNo", required = true, schema = @Schema(type = "integer"), example = "1"),
-            @Parameter(name = "pageSize", required = true, schema = @Schema(type = "integer"), example = "100"),
-            @Parameter(name = "namespaceId", example = "public"), @Parameter(name = "skillName", example = "my-skill"),
-            @Parameter(name = "search", example = "blur", description = "Search mode: accurate or blur"),
-            @Parameter(name = "skillListForm", hidden = true), @Parameter(name = "pageForm", hidden = true)})
+    @Operation(summary = "nacos.admin.ai.skill.api.list.summary",
+        description = "nacos.admin.ai.skill.api.list.description",
+        security = @SecurityRequirement(name = "nacos"))
+    @ApiResponse(responseCode = "200",
+        content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+            schema = @Schema(implementation = Result.class,
+                example = "nacos.admin.ai.skill.api.list.example")))
+    @Parameters(value = {
+        @Parameter(name = "pageNo", required = true, schema = @Schema(type = "integer"),
+            example = "1"),
+        @Parameter(name = "pageSize", required = true, schema = @Schema(type = "integer"),
+            example = "100"),
+        @Parameter(name = "namespaceId", example = "public"),
+        @Parameter(name = "skillName", example = "my-skill"),
+        @Parameter(name = "search", example = "blur",
+            description = "Search mode: accurate or blur"),
+        @Parameter(name = "skillListForm", hidden = true),
+        @Parameter(name = "pageForm", hidden = true)})
     public Result<Page<SkillSummary>> listSkills(SkillListForm skillListForm,
         AiResourceFilterableForm filterableForm, PageForm pageForm) throws NacosException {
         skillListForm.validate();
@@ -225,12 +258,26 @@ public class SkillAdminController {
     @PostMapping(value = "/upload", consumes = "multipart/form-data")
     @Secured(action = ActionTypes.WRITE, signType = SignType.AI, apiType = ApiType.ADMIN_API)
     @ExtractorManager.Extractor(httpExtractor = ExtractorManager.DefaultHttpExtractor.class)
-    @Operation(summary = "nacos.admin.ai.skill.api.upload.summary", description = "nacos.admin.ai.skill.api.upload.description", security = @SecurityRequirement(name = "nacos"))
-    @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE, schema = @Schema(implementation = Result.class, example = "nacos.admin.ai.skill.api.upload.example")))
-    @io.swagger.v3.oas.annotations.parameters.RequestBody(description = "nacos.admin.ai.skill.api.upload.body.description", content = @Content(mediaType = MediaType.MULTIPART_FORM_DATA_VALUE, schemaProperties = {
-            @SchemaProperty(name = "namespaceId", schema = @Schema(type = "string", example = "public")),
-            @SchemaProperty(name = "overwrite", schema = @Schema(type = "boolean", example = "false")),
-            @SchemaProperty(name = "file", schema = @Schema(type = "string", format = "binary", description = "ZIP file containing skill package"))}))
+    @Operation(summary = "nacos.admin.ai.skill.api.upload.summary",
+        description = "nacos.admin.ai.skill.api.upload.description",
+        security = @SecurityRequirement(name = "nacos"))
+    @ApiResponse(responseCode = "200",
+        content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+            schema = @Schema(implementation = Result.class,
+                example = "nacos.admin.ai.skill.api.upload.example")))
+    @io.swagger.v3.oas.annotations.parameters.RequestBody(
+        description = "nacos.admin.ai.skill.api.upload.body.description",
+        content = @Content(mediaType = MediaType.MULTIPART_FORM_DATA_VALUE, schemaProperties = {
+            @SchemaProperty(name = "namespaceId",
+                schema = @Schema(type = "string", example = "public")),
+            @SchemaProperty(name = "overwrite",
+                schema = @Schema(type = "boolean", example = "false")),
+            @SchemaProperty(name = "targetVersion",
+                schema = @Schema(type = "string", example = "1.0.0")),
+            @SchemaProperty(name = "commitMsg",
+                schema = @Schema(type = "string", example = "Initial version")),
+            @SchemaProperty(name = "file", schema = @Schema(type = "string", format = "binary",
+                description = "ZIP file containing skill package"))}))
     public Result<String> uploadSkill(HttpServletRequest request,
         @RequestParam(value = "namespaceId", required = false) String namespaceId,
         @RequestParam(value = "overwrite", required = false,
@@ -265,6 +312,22 @@ public class SkillAdminController {
     @PostMapping(value = "/upload/batch", consumes = "multipart/form-data")
     @Secured(action = ActionTypes.WRITE, signType = SignType.AI, apiType = ApiType.ADMIN_API)
     @ExtractorManager.Extractor(httpExtractor = ExtractorManager.DefaultHttpExtractor.class)
+    @Operation(summary = "nacos.admin.ai.skill.api.upload.batch.summary",
+        description = "nacos.admin.ai.skill.api.upload.batch.description",
+        security = @SecurityRequirement(name = "nacos"))
+    @ApiResponse(responseCode = "200",
+        content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+            schema = @Schema(implementation = Result.class,
+                example = "nacos.admin.ai.skill.api.upload.batch.example")))
+    @io.swagger.v3.oas.annotations.parameters.RequestBody(
+        description = "nacos.admin.ai.skill.api.upload.batch.body.description",
+        content = @Content(mediaType = MediaType.MULTIPART_FORM_DATA_VALUE, schemaProperties = {
+            @SchemaProperty(name = "namespaceId",
+                schema = @Schema(type = "string", example = "public")),
+            @SchemaProperty(name = "overwrite",
+                schema = @Schema(type = "boolean", example = "false")),
+            @SchemaProperty(name = "file", schema = @Schema(type = "string", format = "binary",
+                description = "ZIP file containing skill directories"))}))
     public Result<BatchUploadResult> batchUploadSkills(HttpServletRequest request,
         @RequestParam(value = "namespaceId", required = false) String namespaceId,
         @RequestParam(value = "overwrite", required = false,
@@ -282,14 +345,20 @@ public class SkillAdminController {
      */
     @PostMapping("/draft")
     @Secured(action = ActionTypes.WRITE, signType = SignType.AI, apiType = ApiType.ADMIN_API)
-    @Operation(summary = "nacos.admin.ai.skill.api.draft.create.summary", description = "nacos.admin.ai.skill.api.draft.create.description", security = @SecurityRequirement(name = "nacos"))
-    @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE, schema = @Schema(implementation = Result.class, example = "nacos.admin.ai.skill.api.draft.create.example")))
+    @Operation(summary = "nacos.admin.ai.skill.api.draft.create.summary",
+        description = "nacos.admin.ai.skill.api.draft.create.description",
+        security = @SecurityRequirement(name = "nacos"))
+    @ApiResponse(responseCode = "200",
+        content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+            schema = @Schema(implementation = Result.class,
+                example = "nacos.admin.ai.skill.api.draft.create.example")))
     @Parameters(value = {@Parameter(name = "namespaceId", example = "public"),
-            @Parameter(name = "skillName", example = "my-skill"),
-            @Parameter(name = "basedOnVersion", example = "1.0.0"),
-            @Parameter(name = "targetVersion", example = "1.1.0"),
-            @Parameter(name = "skillCard", description = "Skill card JSON; required if basedOnVersion is not set"),
-            @Parameter(name = "form", hidden = true)})
+        @Parameter(name = "skillName", example = "my-skill"),
+        @Parameter(name = "basedOnVersion", example = "1.0.0"),
+        @Parameter(name = "targetVersion", example = "1.1.0"),
+        @Parameter(name = "skillCard",
+            description = "Skill card JSON; required if basedOnVersion is not set"),
+        @Parameter(name = "form", hidden = true)})
     public Result<String> createDraft(SkillDraftCreateForm form) throws NacosException {
         form.prepareCreateDraftRequest();
         String v = skillOperationService.createDraft(form.getNamespaceId(), form.getSkillName(),
@@ -303,12 +372,18 @@ public class SkillAdminController {
      */
     @PutMapping("/draft")
     @Secured(action = ActionTypes.WRITE, signType = SignType.AI, apiType = ApiType.ADMIN_API)
-    @Operation(summary = "nacos.admin.ai.skill.api.draft.update.summary", description = "nacos.admin.ai.skill.api.draft.update.description", security = @SecurityRequirement(name = "nacos"))
-    @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE, schema = @Schema(implementation = Result.class, example = "nacos.admin.ai.skill.api.draft.update.example")))
+    @Operation(summary = "nacos.admin.ai.skill.api.draft.update.summary",
+        description = "nacos.admin.ai.skill.api.draft.update.description",
+        security = @SecurityRequirement(name = "nacos"))
+    @ApiResponse(responseCode = "200",
+        content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+            schema = @Schema(implementation = Result.class,
+                example = "nacos.admin.ai.skill.api.draft.update.example")))
     @Parameters(value = {@Parameter(name = "namespaceId", example = "public"),
-            @Parameter(name = "skillName", required = true, example = "my-skill"),
-            @Parameter(name = "skillCard", required = true, description = "Skill card JSON string containing complete Skill information"),
-            @Parameter(name = "form", hidden = true)})
+        @Parameter(name = "skillName", required = true, example = "my-skill"),
+        @Parameter(name = "skillCard", required = true,
+            description = "Skill card JSON string containing complete Skill information"),
+        @Parameter(name = "form", hidden = true)})
     public Result<String> updateDraft(SkillUpdateForm form) throws NacosException {
         form.validate();
         Skill skill = SkillRequestUtil.parseSkill(form);
@@ -321,11 +396,16 @@ public class SkillAdminController {
      */
     @DeleteMapping("/draft")
     @Secured(action = ActionTypes.WRITE, signType = SignType.AI, apiType = ApiType.ADMIN_API)
-    @Operation(summary = "nacos.admin.ai.skill.api.draft.delete.summary", description = "nacos.admin.ai.skill.api.draft.delete.description", security = @SecurityRequirement(name = "nacos"))
-    @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE, schema = @Schema(implementation = Result.class, example = "nacos.admin.ai.skill.api.draft.delete.example")))
+    @Operation(summary = "nacos.admin.ai.skill.api.draft.delete.summary",
+        description = "nacos.admin.ai.skill.api.draft.delete.description",
+        security = @SecurityRequirement(name = "nacos"))
+    @ApiResponse(responseCode = "200",
+        content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+            schema = @Schema(implementation = Result.class,
+                example = "nacos.admin.ai.skill.api.draft.delete.example")))
     @Parameters(value = {@Parameter(name = "namespaceId", example = "public"),
-            @Parameter(name = "skillName", required = true, example = "my-skill"),
-            @Parameter(name = "form", hidden = true)})
+        @Parameter(name = "skillName", required = true, example = "my-skill"),
+        @Parameter(name = "form", hidden = true)})
     public Result<String> deleteDraft(SkillForm form) throws NacosException {
         form.validate();
         skillOperationService.deleteDraft(form.getNamespaceId(), form.getSkillName());
@@ -337,12 +417,17 @@ public class SkillAdminController {
      */
     @PostMapping("/submit")
     @Secured(action = ActionTypes.WRITE, signType = SignType.AI, apiType = ApiType.ADMIN_API)
-    @Operation(summary = "nacos.admin.ai.skill.api.submit.summary", description = "nacos.admin.ai.skill.api.submit.description", security = @SecurityRequirement(name = "nacos"))
-    @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE, schema = @Schema(implementation = Result.class, example = "nacos.admin.ai.skill.api.submit.example")))
+    @Operation(summary = "nacos.admin.ai.skill.api.submit.summary",
+        description = "nacos.admin.ai.skill.api.submit.description",
+        security = @SecurityRequirement(name = "nacos"))
+    @ApiResponse(responseCode = "200",
+        content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+            schema = @Schema(implementation = Result.class,
+                example = "nacos.admin.ai.skill.api.submit.example")))
     @Parameters(value = {@Parameter(name = "namespaceId", example = "public"),
-            @Parameter(name = "skillName", required = true, example = "my-skill"),
-            @Parameter(name = "version", example = "1.0.0"),
-            @Parameter(name = "form", hidden = true)})
+        @Parameter(name = "skillName", required = true, example = "my-skill"),
+        @Parameter(name = "version", example = "1.0.0"),
+        @Parameter(name = "form", hidden = true)})
     public Result<String> submit(SkillSubmitForm form) throws NacosException {
         form.validate();
         String result = skillOperationService.submit(form.getNamespaceId(), form.getSkillName(),
@@ -355,13 +440,19 @@ public class SkillAdminController {
      */
     @PostMapping("/publish")
     @Secured(action = ActionTypes.WRITE, signType = SignType.AI, apiType = ApiType.ADMIN_API)
-    @Operation(summary = "nacos.admin.ai.skill.api.publish.summary", description = "nacos.admin.ai.skill.api.publish.description", security = @SecurityRequirement(name = "nacos"))
-    @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE, schema = @Schema(implementation = Result.class, example = "nacos.admin.ai.skill.api.publish.example")))
+    @Operation(summary = "nacos.admin.ai.skill.api.publish.summary",
+        description = "nacos.admin.ai.skill.api.publish.description",
+        security = @SecurityRequirement(name = "nacos"))
+    @ApiResponse(responseCode = "200",
+        content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+            schema = @Schema(implementation = Result.class,
+                example = "nacos.admin.ai.skill.api.publish.example")))
     @Parameters(value = {@Parameter(name = "namespaceId", example = "public"),
-            @Parameter(name = "skillName", required = true, example = "my-skill"),
-            @Parameter(name = "version", required = true, example = "1.0.0"),
-            @Parameter(name = "updateLatestLabel", schema = @Schema(type = "boolean"), example = "true"),
-            @Parameter(name = "form", hidden = true)})
+        @Parameter(name = "skillName", required = true, example = "my-skill"),
+        @Parameter(name = "version", required = true, example = "1.0.0"),
+        @Parameter(name = "updateLatestLabel", schema = @Schema(type = "boolean"),
+            example = "true"),
+        @Parameter(name = "form", hidden = true)})
     public Result<String> publish(SkillPublishForm form) throws NacosException {
         form.validate();
         boolean updateLatest = form.getUpdateLatestLabel() == null || form.getUpdateLatestLabel();
@@ -378,6 +469,19 @@ public class SkillAdminController {
     @Secured(resource = ADMIN_PATH
         + "/force-publish", action = ActionTypes.WRITE, signType = SignType.CONSOLE,
         apiType = ApiType.ADMIN_API)
+    @Operation(summary = "nacos.admin.ai.skill.api.force.publish.summary",
+        description = "nacos.admin.ai.skill.api.force.publish.description",
+        security = @SecurityRequirement(name = "nacos"))
+    @ApiResponse(responseCode = "200",
+        content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+            schema = @Schema(implementation = Result.class,
+                example = "nacos.admin.ai.skill.api.force.publish.example")))
+    @Parameters(value = {@Parameter(name = "namespaceId", example = "public"),
+        @Parameter(name = "skillName", required = true, example = "my-skill"),
+        @Parameter(name = "version", required = true, example = "1.0.0"),
+        @Parameter(name = "updateLatestLabel", schema = @Schema(type = "boolean"),
+            example = "true"),
+        @Parameter(name = "form", hidden = true)})
     public Result<String> forcePublish(SkillPublishForm form) throws NacosException {
         form.validate();
         boolean updateLatest = form.getUpdateLatestLabel() == null || form.getUpdateLatestLabel();
@@ -391,6 +495,17 @@ public class SkillAdminController {
      */
     @PostMapping("/redraft")
     @Secured(action = ActionTypes.WRITE, signType = SignType.AI, apiType = ApiType.ADMIN_API)
+    @Operation(summary = "nacos.admin.ai.skill.api.redraft.summary",
+        description = "nacos.admin.ai.skill.api.redraft.description",
+        security = @SecurityRequirement(name = "nacos"))
+    @ApiResponse(responseCode = "200",
+        content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+            schema = @Schema(implementation = Result.class,
+                example = "nacos.admin.ai.skill.api.redraft.example")))
+    @Parameters(value = {@Parameter(name = "namespaceId", example = "public"),
+        @Parameter(name = "skillName", required = true, example = "my-skill"),
+        @Parameter(name = "version", required = true, example = "1.0.0"),
+        @Parameter(name = "form", hidden = true)})
     public Result<String> redraft(SkillPublishForm form) throws NacosException {
         form.validate();
         skillOperationService.redraft(form.getNamespaceId(), form.getSkillName(),
@@ -403,12 +518,19 @@ public class SkillAdminController {
      */
     @PutMapping("/labels")
     @Secured(action = ActionTypes.WRITE, signType = SignType.AI, apiType = ApiType.ADMIN_API)
-    @Operation(summary = "nacos.admin.ai.skill.api.labels.update.summary", description = "nacos.admin.ai.skill.api.labels.update.description", security = @SecurityRequirement(name = "nacos"))
-    @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE, schema = @Schema(implementation = Result.class, example = "nacos.admin.ai.skill.api.labels.update.example")))
+    @Operation(summary = "nacos.admin.ai.skill.api.labels.update.summary",
+        description = "nacos.admin.ai.skill.api.labels.update.description",
+        security = @SecurityRequirement(name = "nacos"))
+    @ApiResponse(responseCode = "200",
+        content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+            schema = @Schema(implementation = Result.class,
+                example = "nacos.admin.ai.skill.api.labels.update.example")))
     @Parameters(value = {@Parameter(name = "namespaceId", example = "public"),
-            @Parameter(name = "skillName", required = true, example = "my-skill"),
-            @Parameter(name = "labels", required = true, example = "{\"latest\":\"v1.0.0\"}"),
-            @Parameter(name = "form", hidden = true)})
+        @Parameter(name = "skillName", required = true, example = "my-skill"),
+        @Parameter(name = "labels", required = true, schema = @Schema(type = "string",
+            description = "JSON object string parsed as label map"),
+            example = "\"{\\\"latest\\\":\\\"v1.0.0\\\"}\""),
+        @Parameter(name = "form", hidden = true)})
     public Result<String> updateLabels(SkillLabelsUpdateForm form) throws NacosException {
         form.validate();
         Map<String, String> labels = JacksonUtils.toObj(form.getLabels(), Map.class);
@@ -421,12 +543,19 @@ public class SkillAdminController {
      */
     @PutMapping("/biz-tags")
     @Secured(action = ActionTypes.WRITE, signType = SignType.AI, apiType = ApiType.ADMIN_API)
-    @Operation(summary = "nacos.admin.ai.skill.api.biz.tags.update.summary", description = "nacos.admin.ai.skill.api.biz.tags.update.description", security = @SecurityRequirement(name = "nacos"))
-    @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE, schema = @Schema(implementation = Result.class, example = "nacos.admin.ai.skill.api.biz.tags.update.example")))
+    @Operation(summary = "nacos.admin.ai.skill.api.biz.tags.update.summary",
+        description = "nacos.admin.ai.skill.api.biz.tags.update.description",
+        security = @SecurityRequirement(name = "nacos"))
+    @ApiResponse(responseCode = "200",
+        content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+            schema = @Schema(implementation = Result.class,
+                example = "nacos.admin.ai.skill.api.biz.tags.update.example")))
     @Parameters(value = {@Parameter(name = "namespaceId", example = "public"),
-            @Parameter(name = "skillName", required = true, example = "my-skill"),
-            @Parameter(name = "bizTags", required = true, example = "[\"tag1\",\"tag2\"]"),
-            @Parameter(name = "form", hidden = true)})
+        @Parameter(name = "skillName", required = true, example = "my-skill"),
+        @Parameter(name = "bizTags", required = true, schema = @Schema(type = "string",
+            description = "JSON array string parsed as biz tag list"),
+            example = "\"[\\\"tag1\\\",\\\"tag2\\\"]\""),
+        @Parameter(name = "form", hidden = true)})
     public Result<String> updateBizTags(SkillBizTagsUpdateForm form) throws NacosException {
         form.validate();
         skillOperationService.updateBizTags(form.getNamespaceId(), form.getSkillName(),
@@ -439,13 +568,19 @@ public class SkillAdminController {
      */
     @PostMapping("/online")
     @Secured(action = ActionTypes.WRITE, signType = SignType.AI, apiType = ApiType.ADMIN_API)
-    @Operation(summary = "nacos.admin.ai.skill.api.online.summary", description = "nacos.admin.ai.skill.api.online.description", security = @SecurityRequirement(name = "nacos"))
-    @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE, schema = @Schema(implementation = Result.class, example = "nacos.admin.ai.skill.api.online.example")))
+    @Operation(summary = "nacos.admin.ai.skill.api.online.summary",
+        description = "nacos.admin.ai.skill.api.online.description",
+        security = @SecurityRequirement(name = "nacos"))
+    @ApiResponse(responseCode = "200",
+        content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+            schema = @Schema(implementation = Result.class,
+                example = "nacos.admin.ai.skill.api.online.example")))
     @Parameters(value = {@Parameter(name = "namespaceId", example = "public"),
-            @Parameter(name = "skillName", required = true, example = "my-skill"),
-            @Parameter(name = "scope", example = "skill", description = "Use 'skill' for skill-level online; otherwise version-level"),
-            @Parameter(name = "version", example = "1.0.0"),
-            @Parameter(name = "form", hidden = true)})
+        @Parameter(name = "skillName", required = true, example = "my-skill"),
+        @Parameter(name = "scope", example = "skill",
+            description = "Use 'skill' for skill-level online; otherwise version-level"),
+        @Parameter(name = "version", example = "1.0.0"),
+        @Parameter(name = "form", hidden = true)})
     public Result<String> online(SkillOnlineForm form) throws NacosException {
         form.validate();
         skillOperationService.changeOnlineStatus(form.getNamespaceId(), form.getSkillName(),
@@ -463,12 +598,18 @@ public class SkillAdminController {
      */
     @PutMapping("/scope")
     @Secured(action = ActionTypes.WRITE, signType = SignType.AI, apiType = ApiType.ADMIN_API)
-    @Operation(summary = "nacos.admin.ai.skill.api.scope.update.summary", description = "nacos.admin.ai.skill.api.scope.update.description", security = @SecurityRequirement(name = "nacos"))
-    @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE, schema = @Schema(implementation = Result.class, example = "nacos.admin.ai.skill.api.scope.update.example")))
+    @Operation(summary = "nacos.admin.ai.skill.api.scope.update.summary",
+        description = "nacos.admin.ai.skill.api.scope.update.description",
+        security = @SecurityRequirement(name = "nacos"))
+    @ApiResponse(responseCode = "200",
+        content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+            schema = @Schema(implementation = Result.class,
+                example = "nacos.admin.ai.skill.api.scope.update.example")))
     @Parameters(value = {@Parameter(name = "namespaceId", example = "public"),
-            @Parameter(name = "skillName", required = true, example = "my-skill"),
-            @Parameter(name = "scope", required = true, example = "PUBLIC", description = "PUBLIC or PRIVATE"),
-            @Parameter(name = "form", hidden = true)})
+        @Parameter(name = "skillName", required = true, example = "my-skill"),
+        @Parameter(name = "scope", required = true, example = "PUBLIC",
+            description = "PUBLIC or PRIVATE"),
+        @Parameter(name = "form", hidden = true)})
     public Result<String> updateScope(SkillScopeForm form) throws NacosException {
         form.validate();
         skillOperationService.updateScope(form.getNamespaceId(), form.getSkillName(),
@@ -481,13 +622,19 @@ public class SkillAdminController {
      */
     @PostMapping("/offline")
     @Secured(action = ActionTypes.WRITE, signType = SignType.AI, apiType = ApiType.ADMIN_API)
-    @Operation(summary = "nacos.admin.ai.skill.api.offline.summary", description = "nacos.admin.ai.skill.api.offline.description", security = @SecurityRequirement(name = "nacos"))
-    @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE, schema = @Schema(implementation = Result.class, example = "nacos.admin.ai.skill.api.offline.example")))
+    @Operation(summary = "nacos.admin.ai.skill.api.offline.summary",
+        description = "nacos.admin.ai.skill.api.offline.description",
+        security = @SecurityRequirement(name = "nacos"))
+    @ApiResponse(responseCode = "200",
+        content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+            schema = @Schema(implementation = Result.class,
+                example = "nacos.admin.ai.skill.api.offline.example")))
     @Parameters(value = {@Parameter(name = "namespaceId", example = "public"),
-            @Parameter(name = "skillName", required = true, example = "my-skill"),
-            @Parameter(name = "scope", example = "skill", description = "Use 'skill' for skill-level offline; otherwise version-level"),
-            @Parameter(name = "version", example = "1.0.0"),
-            @Parameter(name = "form", hidden = true)})
+        @Parameter(name = "skillName", required = true, example = "my-skill"),
+        @Parameter(name = "scope", example = "skill",
+            description = "Use 'skill' for skill-level offline; otherwise version-level"),
+        @Parameter(name = "version", example = "1.0.0"),
+        @Parameter(name = "form", hidden = true)})
     public Result<String> offline(SkillOnlineForm form) throws NacosException {
         form.validate();
         skillOperationService.changeOnlineStatus(form.getNamespaceId(), form.getSkillName(),

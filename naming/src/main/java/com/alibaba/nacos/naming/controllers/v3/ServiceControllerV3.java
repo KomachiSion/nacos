@@ -117,8 +117,12 @@ public class ServiceControllerV3 {
             @Parameter(name = "groupName", example = "DEFAULT_GROUP"),
             @Parameter(name = "serviceName", required = true, example = "test"),
             @Parameter(name = "protectThreshold", schema = @Schema(type = "number"), example = "0.5"), @Parameter(name = "ephemeral", schema = @Schema(type = "boolean"), example = "false"),
-            @Parameter(name = "selector", example = "{\"type\":\"none\"}"),
-            @Parameter(name = "metadata", example = "{\"version\":\"1.0\"}"),
+            @Parameter(name = "selector",
+                    schema = @Schema(type = "string", description = "JSON object string parsed as selector"),
+                    example = "\"{\\\"type\\\":\\\"none\\\"}\""),
+            @Parameter(name = "metadata",
+                    schema = @Schema(type = "string", description = "JSON object string parsed as metadata map"),
+                    example = "\"{\\\"version\\\":\\\"1.0\\\"}\""),
             @Parameter(name = "serviceForm", hidden = true)})
     public Result<String> create(ServiceForm serviceForm) throws Exception {
         serviceForm.validate();
@@ -250,8 +254,12 @@ public class ServiceControllerV3 {
             @Parameter(name = "groupName", example = "DEFAULT_GROUP"),
             @Parameter(name = "serviceName", required = true, example = "test"),
             @Parameter(name = "protectThreshold", schema = @Schema(type = "number"), example = "0.5"), @Parameter(name = "ephemeral", schema = @Schema(type = "boolean"), example = "false"),
-            @Parameter(name = "selector", example = "{\"type\":\"none\"}"),
-            @Parameter(name = "metadata", example = "{\"version\":\"1.0\"}"),
+            @Parameter(name = "selector",
+                    schema = @Schema(type = "string", description = "JSON object string parsed as selector"),
+                    example = "\"{\\\"type\\\":\\\"none\\\"}\""),
+            @Parameter(name = "metadata",
+                    schema = @Schema(type = "string", description = "JSON object string parsed as metadata map"),
+                    example = "\"{\\\"version\\\":\\\"1.0\\\"}\""),
             @Parameter(name = "serviceForm", hidden = true)})
     public Result<String> update(ServiceForm serviceForm) throws Exception {
         serviceForm.validate();
