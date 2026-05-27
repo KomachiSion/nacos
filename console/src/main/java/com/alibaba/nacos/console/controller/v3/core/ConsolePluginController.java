@@ -64,8 +64,11 @@ import java.util.Map;
 @RestController
 @RequestMapping("/v3/console/plugin")
 @ExtractorManager.Extractor(httpExtractor = ConsoleDefaultHttpParamExtractor.class)
-@Tag(name = "nacos.console.core.plugin.api.controller.name", description = "nacos.console.core.plugin.api.controller.description", extensions = {
-        @Extension(name = RemoteConstants.LABEL_MODULE, properties = @ExtensionProperty(name = RemoteConstants.LABEL_MODULE, value = "common"))})
+@Tag(name = "nacos.console.core.plugin.api.controller.name",
+    description = "nacos.console.core.plugin.api.controller.description", extensions = {
+        @Extension(name = RemoteConstants.LABEL_MODULE,
+            properties = @ExtensionProperty(name = RemoteConstants.LABEL_MODULE,
+                value = "common"))})
 public class ConsolePluginController {
     
     private final PluginProxy pluginProxy;
@@ -84,8 +87,13 @@ public class ConsolePluginController {
     @Secured(resource = Constants.Resource.CONSOLE_RESOURCE_NAME_PREFIX
         + "plugins", action = ActionTypes.READ, signType = SignType.CONSOLE,
         apiType = ApiType.CONSOLE_API)
-    @Operation(summary = "nacos.console.core.plugin.api.list.summary", description = "nacos.console.core.plugin.api.list.description", security = @SecurityRequirement(name = "nacos"))
-    @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE, schema = @Schema(implementation = Result.class, example = "nacos.console.core.plugin.api.list.example")))
+    @Operation(summary = "nacos.console.core.plugin.api.list.summary",
+        description = "nacos.console.core.plugin.api.list.description",
+        security = @SecurityRequirement(name = "nacos"))
+    @ApiResponse(responseCode = "200",
+        content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+            schema = @Schema(implementation = Result.class,
+                example = "nacos.console.core.plugin.api.list.example")))
     @Parameters(value = @Parameter(name = "pluginType", example = "auth"))
     public Result<List<PluginInfoVO>> getPluginList(
         @RequestParam(value = "pluginType", required = false) String pluginType)
@@ -104,9 +112,15 @@ public class ConsolePluginController {
     @Secured(resource = Constants.Resource.CONSOLE_RESOURCE_NAME_PREFIX
         + "plugins", action = ActionTypes.READ, signType = SignType.CONSOLE,
         apiType = ApiType.CONSOLE_API)
-    @Operation(summary = "nacos.console.core.plugin.api.get.summary", description = "nacos.console.core.plugin.api.get.description", security = @SecurityRequirement(name = "nacos"))
-    @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE, schema = @Schema(implementation = Result.class, example = "nacos.console.core.plugin.api.get.example")))
-    @Parameters(value = {@Parameter(name = "pluginType", required = true, example = "auth"), @Parameter(name = "pluginName", required = true, example = "nacos-default-auth-plugin")})
+    @Operation(summary = "nacos.console.core.plugin.api.get.summary",
+        description = "nacos.console.core.plugin.api.get.description",
+        security = @SecurityRequirement(name = "nacos"))
+    @ApiResponse(responseCode = "200",
+        content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+            schema = @Schema(implementation = Result.class,
+                example = "nacos.console.core.plugin.api.get.example")))
+    @Parameters(value = {@Parameter(name = "pluginType", required = true, example = "auth"),
+        @Parameter(name = "pluginName", required = true, example = "nacos-default-auth-plugin")})
     public Result<PluginDetailVO> getPluginDetail(@RequestParam("pluginType") String pluginType,
         @RequestParam("pluginName") String pluginName) throws NacosException {
         return Result.success(pluginProxy.getPluginDetail(pluginType, pluginName));
@@ -124,9 +138,18 @@ public class ConsolePluginController {
     @Secured(resource = Constants.Resource.CONSOLE_RESOURCE_NAME_PREFIX
         + "plugins", action = ActionTypes.WRITE, signType = SignType.CONSOLE,
         apiType = ApiType.CONSOLE_API)
-    @Operation(summary = "nacos.console.core.plugin.api.status.summary", description = "nacos.console.core.plugin.api.status.description", security = @SecurityRequirement(name = "nacos"))
-    @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE, schema = @Schema(implementation = Result.class, example = "nacos.console.core.plugin.api.status.example")))
-    @Parameters(value = {@Parameter(name = "pluginType", required = true, example = "auth"), @Parameter(name = "pluginName", required = true, example = "nacos-default-auth-plugin"), @Parameter(name = "enabled", required = true, schema = @Schema(type = "boolean"), example = "true"), @Parameter(name = "localOnly", schema = @Schema(type = "boolean"), example = "false")})
+    @Operation(summary = "nacos.console.core.plugin.api.status.summary",
+        description = "nacos.console.core.plugin.api.status.description",
+        security = @SecurityRequirement(name = "nacos"))
+    @ApiResponse(responseCode = "200",
+        content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+            schema = @Schema(implementation = Result.class,
+                example = "nacos.console.core.plugin.api.status.example")))
+    @Parameters(value = {@Parameter(name = "pluginType", required = true, example = "auth"),
+        @Parameter(name = "pluginName", required = true, example = "nacos-default-auth-plugin"),
+        @Parameter(name = "enabled", required = true, schema = @Schema(type = "boolean"),
+            example = "true"),
+        @Parameter(name = "localOnly", schema = @Schema(type = "boolean"), example = "false")})
     public Result<String> updatePluginStatus(@RequestParam("pluginType") String pluginType,
         @RequestParam("pluginName") String pluginName, @RequestParam("enabled") boolean enabled,
         @RequestParam(value = "localOnly", defaultValue = "false") boolean localOnly)
@@ -145,9 +168,18 @@ public class ConsolePluginController {
     @Secured(resource = Constants.Resource.CONSOLE_RESOURCE_NAME_PREFIX
         + "plugins", action = ActionTypes.WRITE, signType = SignType.CONSOLE,
         apiType = ApiType.CONSOLE_API)
-    @Operation(summary = "nacos.console.core.plugin.api.config.summary", description = "nacos.console.core.plugin.api.config.description", security = @SecurityRequirement(name = "nacos"))
-    @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE, schema = @Schema(implementation = Result.class, example = "nacos.console.core.plugin.api.config.example")))
-    @Parameters(value = {@Parameter(name = "pluginType", required = true, example = "auth"), @Parameter(name = "pluginName", required = true, example = "nacos-default-auth-plugin"), @Parameter(name = "config", example = "{}"), @Parameter(name = "form", hidden = true)})
+    @Operation(summary = "nacos.console.core.plugin.api.config.summary",
+        description = "nacos.console.core.plugin.api.config.description",
+        security = @SecurityRequirement(name = "nacos"))
+    @ApiResponse(responseCode = "200",
+        content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+            schema = @Schema(implementation = Result.class,
+                example = "nacos.console.core.plugin.api.config.example")))
+    @Parameters(value = {@Parameter(name = "pluginType", required = true, example = "auth"),
+        @Parameter(name = "pluginName", required = true, example = "nacos-default-auth-plugin"),
+        @Parameter(name = "config", schema = @Schema(type = "string",
+            description = "JSON object string parsed as plugin configuration"), example = "\"{}\""),
+        @Parameter(name = "form", hidden = true)})
     public Result<String> updatePluginConfig(PluginConfigForm form) throws NacosException {
         if (StringUtils.isBlank(form.getPluginType())
             || StringUtils.isBlank(form.getPluginName())) {
@@ -176,9 +208,15 @@ public class ConsolePluginController {
     @Secured(resource = Constants.Resource.CONSOLE_RESOURCE_NAME_PREFIX
         + "plugins", action = ActionTypes.READ, signType = SignType.CONSOLE,
         apiType = ApiType.CONSOLE_API)
-    @Operation(summary = "nacos.console.core.plugin.api.availability.summary", description = "nacos.console.core.plugin.api.availability.description", security = @SecurityRequirement(name = "nacos"))
-    @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE, schema = @Schema(implementation = Result.class, example = "nacos.console.core.plugin.api.availability.example")))
-    @Parameters(value = {@Parameter(name = "pluginType", required = true, example = "auth"), @Parameter(name = "pluginName", required = true, example = "nacos-default-auth-plugin")})
+    @Operation(summary = "nacos.console.core.plugin.api.availability.summary",
+        description = "nacos.console.core.plugin.api.availability.description",
+        security = @SecurityRequirement(name = "nacos"))
+    @ApiResponse(responseCode = "200",
+        content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+            schema = @Schema(implementation = Result.class,
+                example = "nacos.console.core.plugin.api.availability.example")))
+    @Parameters(value = {@Parameter(name = "pluginType", required = true, example = "auth"),
+        @Parameter(name = "pluginName", required = true, example = "nacos-default-auth-plugin")})
     public Result<Map<String, Boolean>> getPluginAvailability(
         @RequestParam("pluginType") String pluginType,
         @RequestParam("pluginName") String pluginName) throws NacosException {

@@ -90,9 +90,11 @@ import static com.alibaba.nacos.config.server.utils.RequestUtil.getRemoteIp;
 @RestController
 @RequestMapping("/v3/console/cs/config")
 @ExtractorManager.Extractor(httpExtractor = ConfigDefaultHttpParamExtractor.class)
-@Tag(name = "nacos.console.config.config.api.controller.name", description = "nacos.console.config.config.api.controller.description", extensions = {
+@Tag(name = "nacos.console.config.config.api.controller.name",
+    description = "nacos.console.config.config.api.controller.description", extensions = {
         @Extension(name = RemoteConstants.LABEL_MODULE,
-                properties = @ExtensionProperty(name = RemoteConstants.LABEL_MODULE, value = RemoteConstants.LABEL_MODULE_CONFIG))})
+            properties = @ExtensionProperty(name = RemoteConstants.LABEL_MODULE,
+                value = RemoteConstants.LABEL_MODULE_CONFIG))})
 public class ConsoleConfigController {
     
     private final ConfigProxy configProxy;
@@ -110,13 +112,17 @@ public class ConsoleConfigController {
      */
     @GetMapping
     @Secured(action = ActionTypes.READ, signType = SignType.CONFIG, apiType = ApiType.CONSOLE_API)
-    @Operation(summary = "nacos.console.config.config.api.get.summary", description = "nacos.console.config.config.api.get.description",
-            security = @SecurityRequirement(name = "nacos"))
-    @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
-            schema = @Schema(implementation = Result.class, example = "nacos.console.config.config.api.get.example")))
+    @Operation(summary = "nacos.console.config.config.api.get.summary",
+        description = "nacos.console.config.config.api.get.description",
+        security = @SecurityRequirement(name = "nacos"))
+    @ApiResponse(responseCode = "200",
+        content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+            schema = @Schema(implementation = Result.class,
+                example = "nacos.console.config.config.api.get.example")))
     @Parameters(value = {@Parameter(name = "namespaceId", example = "public"),
-            @Parameter(name = "groupName", required = true, example = "DEFAULT_GROUP"),
-            @Parameter(name = "dataId", required = true, example = "test"), @Parameter(name = "configForm", hidden = true)})
+        @Parameter(name = "groupName", required = true, example = "DEFAULT_GROUP"),
+        @Parameter(name = "dataId", required = true, example = "test"),
+        @Parameter(name = "configForm", hidden = true)})
     public Result<ConfigDetailInfo> getConfigDetail(ConfigFormV3 configForm) throws NacosException {
         configForm.validate();
         String namespaceId = NamespaceUtil.processNamespaceParameter(configForm.getNamespaceId());
@@ -135,17 +141,22 @@ public class ConsoleConfigController {
      */
     @PostMapping()
     @Secured(action = ActionTypes.WRITE, signType = SignType.CONFIG, apiType = ApiType.CONSOLE_API)
-    @Operation(summary = "nacos.console.config.config.api.publish.summary", description = "nacos.console.config.config.api.publish.description",
-            security = @SecurityRequirement(name = "nacos"))
-    @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
-            schema = @Schema(implementation = Result.class, example = "nacos.console.config.config.api.publish.example")))
+    @Operation(summary = "nacos.console.config.config.api.publish.summary",
+        description = "nacos.console.config.config.api.publish.description",
+        security = @SecurityRequirement(name = "nacos"))
+    @ApiResponse(responseCode = "200",
+        content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+            schema = @Schema(implementation = Result.class,
+                example = "nacos.console.config.config.api.publish.example")))
     @Parameters(value = {@Parameter(name = "namespaceId", example = "public"),
-            @Parameter(name = "groupName", required = true, example = "DEFAULT_GROUP"),
-            @Parameter(name = "dataId", required = true, example = "test"),
-            @Parameter(name = "content", required = true, example = "testContent"),
-            @Parameter(name = "desc", example = "testDesc"), @Parameter(name = "type", example = "text"),
-            @Parameter(name = "configTags", example = "customTag"), @Parameter(name = "appName", example = "testApp"),
-            @Parameter(name = "configForm", hidden = true)})
+        @Parameter(name = "groupName", required = true, example = "DEFAULT_GROUP"),
+        @Parameter(name = "dataId", required = true, example = "test"),
+        @Parameter(name = "content", required = true, example = "testContent"),
+        @Parameter(name = "desc", example = "testDesc"),
+        @Parameter(name = "type", example = "text"),
+        @Parameter(name = "configTags", example = "customTag"),
+        @Parameter(name = "appName", example = "testApp"),
+        @Parameter(name = "configForm", hidden = true)})
     public Result<Boolean> publishConfig(HttpServletRequest request, ConfigFormV3 configForm)
         throws NacosException {
         // check required field
@@ -188,13 +199,17 @@ public class ConsoleConfigController {
      */
     @DeleteMapping
     @Secured(action = ActionTypes.WRITE, signType = SignType.CONFIG, apiType = ApiType.CONSOLE_API)
-    @Operation(summary = "nacos.console.config.config.api.delete.summary", description = "nacos.console.config.config.api.delete.description",
-            security = @SecurityRequirement(name = "nacos"))
-    @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
-            schema = @Schema(implementation = Result.class, example = "nacos.console.config.config.api.delete.example")))
+    @Operation(summary = "nacos.console.config.config.api.delete.summary",
+        description = "nacos.console.config.config.api.delete.description",
+        security = @SecurityRequirement(name = "nacos"))
+    @ApiResponse(responseCode = "200",
+        content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+            schema = @Schema(implementation = Result.class,
+                example = "nacos.console.config.config.api.delete.example")))
     @Parameters(value = {@Parameter(name = "namespaceId", example = "public"),
-            @Parameter(name = "groupName", required = true, example = "DEFAULT_GROUP"),
-            @Parameter(name = "dataId", required = true, example = "test"), @Parameter(name = "configForm", hidden = true)})
+        @Parameter(name = "groupName", required = true, example = "DEFAULT_GROUP"),
+        @Parameter(name = "dataId", required = true, example = "test"),
+        @Parameter(name = "configForm", hidden = true)})
     public Result<Boolean> deleteConfig(HttpServletRequest request, ConfigFormV3 configForm)
         throws NacosException {
         configForm.validate();
@@ -223,10 +238,14 @@ public class ConsoleConfigController {
     @DeleteMapping("/batchDelete")
     @Secured(action = ActionTypes.WRITE, signType = SignType.CONFIG, apiType = ApiType.CONSOLE_API)
     @Operation(summary = "nacos.console.config.config.api.batchDelete.summary",
-            description = "nacos.console.config.config.api.batchDelete.description", security = @SecurityRequirement(name = "nacos"))
-    @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
-            schema = @Schema(implementation = Result.class, example = "nacos.console.config.config.api.batchDelete.example")))
-    @Parameters(value = {@Parameter(name = "ids", required = true, example = "1")})
+        description = "nacos.console.config.config.api.batchDelete.description",
+        security = @SecurityRequirement(name = "nacos"))
+    @ApiResponse(responseCode = "200",
+        content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+            schema = @Schema(implementation = Result.class,
+                example = "nacos.console.config.config.api.batchDelete.example")))
+    @Parameters(value = {@Parameter(name = "ids", required = true,
+        array = @ArraySchema(schema = @Schema(type = "integer")), example = "[1,2,3]")})
     public Result<Boolean> batchDeleteConfigs(HttpServletRequest request,
         @RequestParam(value = "ids") List<Long> ids)
         throws NacosException {
@@ -249,17 +268,26 @@ public class ConsoleConfigController {
     @GetMapping("/list")
     @Secured(action = ActionTypes.READ, signType = SignType.CONFIG, apiType = ApiType.CONSOLE_API)
     @ExtractorManager.Extractor(httpExtractor = ConfigBlurSearchHttpParamExtractor.class)
-    @Operation(summary = "nacos.console.config.config.api.list.summary", description = "nacos.console.config.config.api.list.description",
-            security = @SecurityRequirement(name = "nacos"))
-    @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
-            schema = @Schema(implementation = Result.class, example = "nacos.console.config.config.api.list.example")))
-    @Parameters(value = {@Parameter(name = "pageNo", required = true, schema = @Schema(type = "integer"), example = "1"),
-            @Parameter(name = "pageSize", required = true, schema = @Schema(type = "integer"), example = "100"),
-            @Parameter(name = "namespaceId", example = "public"), @Parameter(name = "groupName", required = true),
-            @Parameter(name = "dataId", required = true), @Parameter(name = "type", example = "text"),
-            @Parameter(name = "configTags", example = "customTag"), @Parameter(name = "appName", example = "testApp"),
-            @Parameter(name = "search", example = "blur", description = "blur or accurate"),
-            @Parameter(name = "configForm", hidden = true), @Parameter(name = "pageForm", hidden = true)})
+    @Operation(summary = "nacos.console.config.config.api.list.summary",
+        description = "nacos.console.config.config.api.list.description",
+        security = @SecurityRequirement(name = "nacos"))
+    @ApiResponse(responseCode = "200",
+        content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+            schema = @Schema(implementation = Result.class,
+                example = "nacos.console.config.config.api.list.example")))
+    @Parameters(value = {
+        @Parameter(name = "pageNo", required = true, schema = @Schema(type = "integer"),
+            example = "1"),
+        @Parameter(name = "pageSize", required = true, schema = @Schema(type = "integer"),
+            example = "100"),
+        @Parameter(name = "namespaceId", example = "public"),
+        @Parameter(name = "groupName", required = true),
+        @Parameter(name = "dataId", required = true), @Parameter(name = "type", example = "text"),
+        @Parameter(name = "configTags", example = "customTag"),
+        @Parameter(name = "appName", example = "testApp"),
+        @Parameter(name = "search", example = "blur", description = "blur or accurate"),
+        @Parameter(name = "configForm", hidden = true),
+        @Parameter(name = "pageForm", hidden = true)})
     public Result<Page<ConfigBasicInfo>> getConfigList(ConfigFormV3 configForm, PageForm pageForm)
         throws IOException, ServletException, NacosException {
         configForm.blurSearchValidate();
@@ -298,18 +326,26 @@ public class ConsoleConfigController {
     @GetMapping("/searchDetail")
     @Secured(action = ActionTypes.READ, signType = SignType.CONFIG, apiType = ApiType.CONSOLE_API)
     @ExtractorManager.Extractor(httpExtractor = ConfigBlurSearchHttpParamExtractor.class)
-    @Operation(summary = "nacos.console.config.config.api.search.summary", description = "nacos.console.config.config.api.search.description",
-            security = @SecurityRequirement(name = "nacos"))
-    @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
-            schema = @Schema(implementation = Result.class, example = "nacos.console.config.config.api.search.example")))
-    @Parameters(value = {@Parameter(name = "pageNo", required = true, schema = @Schema(type = "integer"), example = "1"),
-            @Parameter(name = "pageSize", required = true, schema = @Schema(type = "integer"), example = "100"),
-            @Parameter(name = "namespaceId", example = "public"), @Parameter(name = "groupName"),
-            @Parameter(name = "dataId"), @Parameter(name = "type", example = "text"),
-            @Parameter(name = "configTags", example = "customTag"), @Parameter(name = "appName", example = "testApp"),
-            @Parameter(name = "configDetail", example = "*test*"),
-            @Parameter(name = "search", example = "blur", description = "blur or accurate"),
-            @Parameter(name = "configForm", hidden = true), @Parameter(name = "pageForm", hidden = true)})
+    @Operation(summary = "nacos.console.config.config.api.search.summary",
+        description = "nacos.console.config.config.api.search.description",
+        security = @SecurityRequirement(name = "nacos"))
+    @ApiResponse(responseCode = "200",
+        content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+            schema = @Schema(implementation = Result.class,
+                example = "nacos.console.config.config.api.search.example")))
+    @Parameters(value = {
+        @Parameter(name = "pageNo", required = true, schema = @Schema(type = "integer"),
+            example = "1"),
+        @Parameter(name = "pageSize", required = true, schema = @Schema(type = "integer"),
+            example = "100"),
+        @Parameter(name = "namespaceId", example = "public"), @Parameter(name = "groupName"),
+        @Parameter(name = "dataId"), @Parameter(name = "type", example = "text"),
+        @Parameter(name = "configTags", example = "customTag"),
+        @Parameter(name = "appName", example = "testApp"),
+        @Parameter(name = "configDetail", example = "*test*"),
+        @Parameter(name = "search", example = "blur", description = "blur or accurate"),
+        @Parameter(name = "configForm", hidden = true),
+        @Parameter(name = "pageForm", hidden = true)})
     public Result<Page<ConfigBasicInfo>> getConfigListByContent(ConfigFormV3 configForm,
         PageForm pageForm,
         String configDetail, @RequestParam(defaultValue = "blur") String search)
@@ -351,14 +387,19 @@ public class ConsoleConfigController {
      */
     @GetMapping("/listener")
     @Secured(action = ActionTypes.READ, signType = SignType.CONFIG, apiType = ApiType.CONSOLE_API)
-    @Operation(summary = "nacos.console.config.config.api.listener.summary", description = "nacos.console.config.config.api.listener.description",
-            security = @SecurityRequirement(name = "nacos"))
-    @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
-            schema = @Schema(implementation = Result.class, example = "nacos.console.config.config.api.listener.example")))
+    @Operation(summary = "nacos.console.config.config.api.listener.summary",
+        description = "nacos.console.config.config.api.listener.description",
+        security = @SecurityRequirement(name = "nacos"))
+    @ApiResponse(responseCode = "200",
+        content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+            schema = @Schema(implementation = Result.class,
+                example = "nacos.console.config.config.api.listener.example")))
     @Parameters(value = {@Parameter(name = "namespaceId", example = "public"),
-            @Parameter(name = "groupName", required = true, example = "DEFAULT_GROUP"),
-            @Parameter(name = "dataId", required = true, example = "test"), @Parameter(name = "aggregation", schema = @Schema(type = "boolean"), example = "true"),
-            @Parameter(name = "configForm", hidden = true), @Parameter(name = "aggregationForm", hidden = true)})
+        @Parameter(name = "groupName", required = true, example = "DEFAULT_GROUP"),
+        @Parameter(name = "dataId", required = true, example = "test"),
+        @Parameter(name = "aggregation", schema = @Schema(type = "boolean"), example = "true"),
+        @Parameter(name = "configForm", hidden = true),
+        @Parameter(name = "aggregationForm", hidden = true)})
     public Result<ConfigListenerInfo> getListeners(ConfigFormV3 configForm,
         AggregationForm aggregationForm)
         throws Exception {
@@ -379,13 +420,17 @@ public class ConsoleConfigController {
     @Secured(resource = Constants.LISTENER_CONTROLLER_PATH, action = ActionTypes.READ,
         signType = SignType.CONFIG, apiType = ApiType.CONSOLE_API)
     @Operation(summary = "nacos.console.config.config.api.listener.ip.summary",
-            description = "nacos.console.config.config.api.listener.ip.description", security = @SecurityRequirement(name = "nacos"))
-    @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
-            schema = @Schema(implementation = Result.class, example = "nacos.console.config.config.api.listener.ip.example")))
+        description = "nacos.console.config.config.api.listener.ip.description",
+        security = @SecurityRequirement(name = "nacos"))
+    @ApiResponse(responseCode = "200",
+        content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+            schema = @Schema(implementation = Result.class,
+                example = "nacos.console.config.config.api.listener.ip.example")))
     @Parameters(value = {@Parameter(name = "ip", required = true, example = "127.0.0.1"),
-            @Parameter(name = "all", schema = @Schema(type = "boolean"), example = "false"),
-            @Parameter(name = "namespaceId", example = "public"), @Parameter(name = "aggregation", schema = @Schema(type = "boolean"), example = "true"),
-            @Parameter(name = "aggregationForm", hidden = true)})
+        @Parameter(name = "all", schema = @Schema(type = "boolean"), example = "false"),
+        @Parameter(name = "namespaceId", example = "public"),
+        @Parameter(name = "aggregation", schema = @Schema(type = "boolean"), example = "true"),
+        @Parameter(name = "aggregationForm", hidden = true)})
     public Result<ConfigListenerInfo> getAllSubClientConfigByIp(@RequestParam("ip") String ip,
         @RequestParam(value = "all", required = false) boolean all,
         @RequestParam(value = "namespaceId", required = false) String namespaceId,
@@ -407,12 +452,17 @@ public class ConsoleConfigController {
      */
     @GetMapping("/export2")
     @Secured(action = ActionTypes.READ, signType = SignType.CONFIG, apiType = ApiType.CONSOLE_API)
-    @Operation(summary = "nacos.console.config.config.api.export.summary", description = "nacos.console.config.config.api.export.description",
-            security = @SecurityRequirement(name = "nacos"))
-    @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_OCTET_STREAM_VALUE))
-    @Parameters(value = {@Parameter(name = "namespaceId"), @Parameter(name = "groupName"), @Parameter(name = "dataId"),
-            @Parameter(name = "ids", example = "[1,2,3]"), @Parameter(name = "appName", example = "UNKNOWN"),
-            @Parameter(name = "configForm", hidden = true)})
+    @Operation(summary = "nacos.console.config.config.api.export.summary",
+        description = "nacos.console.config.config.api.export.description",
+        security = @SecurityRequirement(name = "nacos"))
+    @ApiResponse(responseCode = "200",
+        content = @Content(mediaType = MediaType.APPLICATION_OCTET_STREAM_VALUE))
+    @Parameters(value = {@Parameter(name = "namespaceId"), @Parameter(name = "groupName"),
+        @Parameter(name = "dataId"),
+        @Parameter(name = "ids", array = @ArraySchema(schema = @Schema(type = "integer")),
+            example = "[1,2,3]"),
+        @Parameter(name = "appName", example = "UNKNOWN"),
+        @Parameter(name = "configForm", hidden = true)})
     public ResponseEntity<byte[]> exportConfigV2(ConfigFormV3 configForm,
         @RequestParam(value = "ids", required = false) List<Long> ids) throws Exception {
         configForm.blurSearchValidate();
@@ -440,16 +490,23 @@ public class ConsoleConfigController {
      */
     @PostMapping("/import")
     @Secured(action = ActionTypes.WRITE, signType = SignType.CONFIG, apiType = ApiType.CONSOLE_API)
-    @Operation(summary = "nacos.console.config.config.api.import.summary", description = "nacos.console.config.config.api.import.description",
-            security = @SecurityRequirement(name = "nacos"))
-    @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
-            schema = @Schema(implementation = Result.class, example = "nacos.console.config.config.api.import.example")))
-    @io.swagger.v3.oas.annotations.parameters.RequestBody(description = "nacos.console.config.config.api.import.body.description",
-            content = @Content(mediaType = MediaType.MULTIPART_FORM_DATA_VALUE, schemaProperties = {
-                    @SchemaProperty(name = "file", schema = @Schema(type = "string", format = "binary")),
-                    @SchemaProperty(name = "src_user", schema = @Schema(type = "string", example = "nacos")),
-                    @SchemaProperty(name = "namespaceId", schema = @Schema(type = "string", example = "public")),
-                    @SchemaProperty(name = "policy", schema = @Schema(implementation = SameConfigPolicy.class))}))
+    @Operation(summary = "nacos.console.config.config.api.import.summary",
+        description = "nacos.console.config.config.api.import.description",
+        security = @SecurityRequirement(name = "nacos"))
+    @ApiResponse(responseCode = "200",
+        content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+            schema = @Schema(implementation = Result.class,
+                example = "nacos.console.config.config.api.import.example")))
+    @io.swagger.v3.oas.annotations.parameters.RequestBody(
+        description = "nacos.console.config.config.api.import.body.description",
+        content = @Content(mediaType = MediaType.MULTIPART_FORM_DATA_VALUE, schemaProperties = {
+            @SchemaProperty(name = "file", schema = @Schema(type = "string", format = "binary")),
+            @SchemaProperty(name = "src_user",
+                schema = @Schema(type = "string", example = "nacos")),
+            @SchemaProperty(name = "namespaceId",
+                schema = @Schema(type = "string", example = "public")),
+            @SchemaProperty(name = "policy",
+                schema = @Schema(implementation = SameConfigPolicy.class))}))
     public Result<Map<String, Object>> importAndPublishConfig(HttpServletRequest request,
         @RequestParam(required = false) String srcUser,
         @RequestParam(value = "namespaceId", required = false) String namespaceId,
@@ -483,15 +540,20 @@ public class ConsoleConfigController {
     @Secured(action = ActionTypes.WRITE, signType = SignType.CONFIG, apiType = ApiType.CONSOLE_API,
         tags = {
             com.alibaba.nacos.plugin.auth.constant.Constants.Tag.SECURED_SPECIAL_TAGS})
-    @Operation(summary = "nacos.console.config.config.api.clone.summary", description = "nacos.console.config.config.api.clone.description",
-            security = @SecurityRequirement(name = "nacos"))
-    @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
-            schema = @Schema(implementation = Result.class, example = "nacos.console.config.config.api.clone.example")))
-    @io.swagger.v3.oas.annotations.parameters.RequestBody(content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
-            array = @ArraySchema(schema = @Schema(implementation = SameNamespaceCloneConfigBean.class))))
+    @Operation(summary = "nacos.console.config.config.api.clone.summary",
+        description = "nacos.console.config.config.api.clone.description",
+        security = @SecurityRequirement(name = "nacos"))
+    @ApiResponse(responseCode = "200",
+        content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+            schema = @Schema(implementation = Result.class,
+                example = "nacos.console.config.config.api.clone.example")))
+    @io.swagger.v3.oas.annotations.parameters.RequestBody(
+        content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+            array = @ArraySchema(
+                schema = @Schema(implementation = SameNamespaceCloneConfigBean.class))))
     @Parameters(value = {@Parameter(name = "srcUser", example = "nacos"),
-            @Parameter(name = "targetNamespaceId", required = true, example = "public"),
-            @Parameter(name = "policy", schema = @Schema(implementation = SameConfigPolicy.class))})
+        @Parameter(name = "targetNamespaceId", required = true, example = "public"),
+        @Parameter(name = "policy", schema = @Schema(implementation = SameConfigPolicy.class))})
     public Result<Map<String, Object>> cloneConfig(HttpServletRequest request,
         @RequestParam(required = false) String srcUser,
         @RequestParam(value = "targetNamespaceId") String namespaceId,
@@ -521,12 +583,16 @@ public class ConsoleConfigController {
     @DeleteMapping("/beta")
     @Secured(action = ActionTypes.WRITE, signType = SignType.CONFIG)
     @Operation(summary = "nacos.console.config.config.api.delete.beta.summary",
-            description = "nacos.console.config.config.api.delete.beta.description", security = @SecurityRequirement(name = "nacos"))
-    @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
-            schema = @Schema(implementation = Result.class, example = "nacos.console.config.config.api.delete.beta.example")))
+        description = "nacos.console.config.config.api.delete.beta.description",
+        security = @SecurityRequirement(name = "nacos"))
+    @ApiResponse(responseCode = "200",
+        content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+            schema = @Schema(implementation = Result.class,
+                example = "nacos.console.config.config.api.delete.beta.example")))
     @Parameters(value = {@Parameter(name = "namespaceId", example = "public"),
-            @Parameter(name = "groupName", required = true, example = "DEFAULT_GROUP"),
-            @Parameter(name = "dataId", required = true, example = "test"), @Parameter(name = "configForm", hidden = true)})
+        @Parameter(name = "groupName", required = true, example = "DEFAULT_GROUP"),
+        @Parameter(name = "dataId", required = true, example = "test"),
+        @Parameter(name = "configForm", hidden = true)})
     public Result<Boolean> stopBeta(HttpServletRequest httpServletRequest, ConfigFormV3 configForm)
         throws NacosException {
         configForm.validate();
@@ -555,12 +621,16 @@ public class ConsoleConfigController {
     @GetMapping("/beta")
     @Secured(action = ActionTypes.READ, signType = SignType.CONFIG)
     @Operation(summary = "nacos.console.config.config.api.get.beta.summary",
-            description = "nacos.console.config.config.api.get.beta.description", security = @SecurityRequirement(name = "nacos"))
-    @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
-            schema = @Schema(implementation = Result.class, example = "nacos.console.config.config.api.get.beta.example")))
+        description = "nacos.console.config.config.api.get.beta.description",
+        security = @SecurityRequirement(name = "nacos"))
+    @ApiResponse(responseCode = "200",
+        content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+            schema = @Schema(implementation = Result.class,
+                example = "nacos.console.config.config.api.get.beta.example")))
     @Parameters(value = {@Parameter(name = "namespaceId", example = "public"),
-            @Parameter(name = "groupName", required = true, example = "DEFAULT_GROUP"),
-            @Parameter(name = "dataId", required = true, example = "test"), @Parameter(name = "configForm", hidden = true)})
+        @Parameter(name = "groupName", required = true, example = "DEFAULT_GROUP"),
+        @Parameter(name = "dataId", required = true, example = "test"),
+        @Parameter(name = "configForm", hidden = true)})
     public Result<ConfigGrayInfo> queryBeta(ConfigFormV3 configForm) throws NacosException {
         configForm.validate();
         String dataId = configForm.getDataId();

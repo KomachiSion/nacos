@@ -52,8 +52,10 @@ import org.springframework.web.bind.annotation.RestController;
 @NacosApi
 @RestController
 @RequestMapping(CopilotConstants.COPILOT_CONSOLE_PATH + "/config")
-@Tag(name = "nacos.console.ai.copilot.config.api.controller.name", description = "nacos.console.ai.copilot.config.api.controller.description", extensions = {
-        @Extension(name = RemoteConstants.LABEL_MODULE, properties = @ExtensionProperty(name = RemoteConstants.LABEL_MODULE, value = "ai"))})
+@Tag(name = "nacos.console.ai.copilot.config.api.controller.name",
+    description = "nacos.console.ai.copilot.config.api.controller.description", extensions = {
+        @Extension(name = RemoteConstants.LABEL_MODULE,
+            properties = @ExtensionProperty(name = RemoteConstants.LABEL_MODULE, value = "ai"))})
 public class ConsoleCopilotConfigController {
     
     private final CopilotConfigStorage configStorage;
@@ -74,8 +76,13 @@ public class ConsoleCopilotConfigController {
      */
     @GetMapping
     @Secured(action = ActionTypes.READ, signType = SignType.AI, apiType = ApiType.CONSOLE_API)
-    @Operation(summary = "nacos.console.ai.copilot.config.api.get.summary", description = "nacos.console.ai.copilot.config.api.get.description", security = @SecurityRequirement(name = "nacos"))
-    @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE, schema = @Schema(implementation = Result.class, example = "nacos.console.ai.copilot.config.api.get.example")))
+    @Operation(summary = "nacos.console.ai.copilot.config.api.get.summary",
+        description = "nacos.console.ai.copilot.config.api.get.description",
+        security = @SecurityRequirement(name = "nacos"))
+    @ApiResponse(responseCode = "200",
+        content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+            schema = @Schema(implementation = Result.class,
+                example = "nacos.console.ai.copilot.config.api.get.example")))
     public Result<CopilotProperties> getConfig() throws NacosException {
         CopilotProperties config = configStorage.getConfig();
         if (config == null) {
@@ -102,11 +109,19 @@ public class ConsoleCopilotConfigController {
      */
     @PostMapping
     @Secured(action = ActionTypes.WRITE, signType = SignType.AI, apiType = ApiType.CONSOLE_API)
-    @Operation(summary = "nacos.console.ai.copilot.config.api.save.summary", description = "nacos.console.ai.copilot.config.api.save.description", security = @SecurityRequirement(name = "nacos"))
-    @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE, schema = @Schema(implementation = Result.class, example = "nacos.console.ai.copilot.config.api.save.example")))
-    @RequestBody(description = "nacos.console.ai.copilot.config.api.save.body.description", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE, schema = @Schema(implementation = CopilotProperties.class)))
-    public Result<Boolean> saveConfig(@org.springframework.web.bind.annotation.RequestBody CopilotProperties config)
-            throws NacosException {
+    @Operation(summary = "nacos.console.ai.copilot.config.api.save.summary",
+        description = "nacos.console.ai.copilot.config.api.save.description",
+        security = @SecurityRequirement(name = "nacos"))
+    @ApiResponse(responseCode = "200",
+        content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+            schema = @Schema(implementation = Result.class,
+                example = "nacos.console.ai.copilot.config.api.save.example")))
+    @RequestBody(description = "nacos.console.ai.copilot.config.api.save.body.description",
+        content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+            schema = @Schema(implementation = CopilotProperties.class)))
+    public Result<Boolean> saveConfig(
+        @org.springframework.web.bind.annotation.RequestBody CopilotProperties config)
+        throws NacosException {
         if (config == null) {
             throw new NacosException(NacosException.INVALID_PARAM, "Configuration cannot be null");
         }

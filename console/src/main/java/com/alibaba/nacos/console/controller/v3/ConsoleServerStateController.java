@@ -52,8 +52,11 @@ import java.util.Map;
 @RestController
 @RequestMapping("/v3/console/server")
 @ExtractorManager.Extractor(httpExtractor = ConsoleDefaultHttpParamExtractor.class)
-@Tag(name = "nacos.console.state.api.controller.name", description = "nacos.console.state.api.controller.description", extensions = {
-        @Extension(name = RemoteConstants.LABEL_MODULE, properties = @ExtensionProperty(name = RemoteConstants.LABEL_MODULE, value = "common"))})
+@Tag(name = "nacos.console.state.api.controller.name",
+    description = "nacos.console.state.api.controller.description", extensions = {
+        @Extension(name = RemoteConstants.LABEL_MODULE,
+            properties = @ExtensionProperty(name = RemoteConstants.LABEL_MODULE,
+                value = "common"))})
 public class ConsoleServerStateController {
     
     private final ServerStateProxy serverStateProxy;
@@ -68,9 +71,12 @@ public class ConsoleServerStateController {
      * @return state json.
      */
     @GetMapping(value = "/state")
-    @Operation(summary = "nacos.console.state.api.state.summary", description = "nacos.console.state.api.state.description")
-    @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
-            schema = @Schema(implementation = Map.class, example = "nacos.console.state.api.state.example")))
+    @Operation(summary = "nacos.console.state.api.state.summary",
+        description = "nacos.console.state.api.state.description")
+    @ApiResponse(responseCode = "200",
+        content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+            schema = @Schema(implementation = Map.class,
+                example = "nacos.console.state.api.state.example")))
     public ResponseEntity<Map<String, String>> serverState() throws NacosException {
         Map<String, String> serverState = serverStateProxy.getServerState();
         return ResponseEntity.ok().body(serverState);
@@ -83,9 +89,12 @@ public class ConsoleServerStateController {
      * @return Announcement content as a string wrapped in a Result object
      */
     @GetMapping("/announcement")
-    @Operation(summary = "nacos.console.state.api.announcement.summary", description = "nacos.console.state.api.announcement.description")
-    @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
-            schema = @Schema(implementation = Result.class, example = "nacos.console.state.api.announcement.example")))
+    @Operation(summary = "nacos.console.state.api.announcement.summary",
+        description = "nacos.console.state.api.announcement.description")
+    @ApiResponse(responseCode = "200",
+        content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+            schema = @Schema(implementation = Result.class,
+                example = "nacos.console.state.api.announcement.example")))
     @Parameters(value = {@Parameter(name = "language", example = "zh-CN")})
     public Result<String> getAnnouncement(
         @RequestParam(required = false, name = "language",
@@ -104,9 +113,12 @@ public class ConsoleServerStateController {
      * @return Console UI guide information as a string wrapped in a Result object
      */
     @GetMapping("/guide")
-    @Operation(summary = "nacos.console.state.api.guide.summary", description = "nacos.console.state.api.guide.description")
-    @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
-            schema = @Schema(implementation = Result.class, example = "nacos.console.state.api.guide.example")))
+    @Operation(summary = "nacos.console.state.api.guide.summary",
+        description = "nacos.console.state.api.guide.description")
+    @ApiResponse(responseCode = "200",
+        content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+            schema = @Schema(implementation = Result.class,
+                example = "nacos.console.state.api.guide.example")))
     public Result<String> getConsoleUiGuide() {
         String guideInformation = serverStateProxy.getConsoleUiGuide();
         return Result.success(guideInformation);

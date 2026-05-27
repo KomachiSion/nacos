@@ -82,8 +82,10 @@ import java.util.Map;
 @RestController
 @RequestMapping(CopilotConstants.COPILOT_CONSOLE_PATH)
 @ExtractorManager.Extractor(httpExtractor = CopilotHttpParamExtractor.class)
-@Tag(name = "nacos.console.ai.copilot.api.controller.name", description = "nacos.console.ai.copilot.api.controller.description", extensions = {
-        @Extension(name = RemoteConstants.LABEL_MODULE, properties = @ExtensionProperty(name = RemoteConstants.LABEL_MODULE, value = "ai"))})
+@Tag(name = "nacos.console.ai.copilot.api.controller.name",
+    description = "nacos.console.ai.copilot.api.controller.description", extensions = {
+        @Extension(name = RemoteConstants.LABEL_MODULE,
+            properties = @ExtensionProperty(name = RemoteConstants.LABEL_MODULE, value = "ai"))})
 public class ConsoleCopilotController {
     
     private static final Logger LOGGER = LoggerFactory.getLogger(ConsoleCopilotController.class);
@@ -117,9 +119,16 @@ public class ConsoleCopilotController {
     @PostMapping(value = CopilotConstants.SKILL_OPTIMIZE_PATH,
         produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     @Secured(action = ActionTypes.WRITE, signType = SignType.AI, apiType = ApiType.CONSOLE_API)
-    @Operation(summary = "nacos.console.ai.copilot.api.skill.optimize.summary", description = "nacos.console.ai.copilot.api.skill.optimize.description", security = @SecurityRequirement(name = "nacos"))
-    @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.TEXT_EVENT_STREAM_VALUE))
-    @io.swagger.v3.oas.annotations.parameters.RequestBody(description = "nacos.console.ai.copilot.api.skill.optimize.body.description", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE, schema = @io.swagger.v3.oas.annotations.media.Schema(implementation = SkillOptimizationForm.class)))
+    @Operation(summary = "nacos.console.ai.copilot.api.skill.optimize.summary",
+        description = "nacos.console.ai.copilot.api.skill.optimize.description",
+        security = @SecurityRequirement(name = "nacos"))
+    @ApiResponse(responseCode = "200",
+        content = @Content(mediaType = MediaType.TEXT_EVENT_STREAM_VALUE))
+    @io.swagger.v3.oas.annotations.parameters.RequestBody(
+        description = "nacos.console.ai.copilot.api.skill.optimize.body.description",
+        content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+            schema = @io.swagger.v3.oas.annotations.media.Schema(
+                implementation = SkillOptimizationForm.class)))
     @SuppressWarnings("PMD.MethodTooLongRule")
     public SseEmitter optimizeSkillStream(
         @RequestBody(required = false) SkillOptimizationForm form) {
@@ -282,9 +291,16 @@ public class ConsoleCopilotController {
     @PostMapping(value = CopilotConstants.SKILL_GENERATE_PATH,
         produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     @Secured(action = ActionTypes.WRITE, signType = SignType.AI, apiType = ApiType.CONSOLE_API)
-    @Operation(summary = "nacos.console.ai.copilot.api.skill.generate.summary", description = "nacos.console.ai.copilot.api.skill.generate.description", security = @SecurityRequirement(name = "nacos"))
-    @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.TEXT_EVENT_STREAM_VALUE))
-    @io.swagger.v3.oas.annotations.parameters.RequestBody(description = "nacos.console.ai.copilot.api.skill.generate.body.description", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE, schema = @io.swagger.v3.oas.annotations.media.Schema(implementation = SkillGenerationForm.class)))
+    @Operation(summary = "nacos.console.ai.copilot.api.skill.generate.summary",
+        description = "nacos.console.ai.copilot.api.skill.generate.description",
+        security = @SecurityRequirement(name = "nacos"))
+    @ApiResponse(responseCode = "200",
+        content = @Content(mediaType = MediaType.TEXT_EVENT_STREAM_VALUE))
+    @io.swagger.v3.oas.annotations.parameters.RequestBody(
+        description = "nacos.console.ai.copilot.api.skill.generate.body.description",
+        content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+            schema = @io.swagger.v3.oas.annotations.media.Schema(
+                implementation = SkillGenerationForm.class)))
     @SuppressWarnings("PMD.MethodTooLongRule")
     public SseEmitter generateSkillStream(@RequestBody(required = false) SkillGenerationForm form) {
         // Create SSE emitter with 5 minutes timeout
@@ -392,9 +408,16 @@ public class ConsoleCopilotController {
     @PostMapping(value = CopilotConstants.PROMPT_OPTIMIZE_PATH,
         produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     @Secured(action = ActionTypes.WRITE, signType = SignType.AI, apiType = ApiType.CONSOLE_API)
-    @Operation(summary = "nacos.console.ai.copilot.api.prompt.optimize.summary", description = "nacos.console.ai.copilot.api.prompt.optimize.description", security = @SecurityRequirement(name = "nacos"))
-    @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.TEXT_EVENT_STREAM_VALUE))
-    @io.swagger.v3.oas.annotations.parameters.RequestBody(description = "nacos.console.ai.copilot.api.prompt.optimize.body.description", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE, schema = @io.swagger.v3.oas.annotations.media.Schema(implementation = PromptOptimizationForm.class)))
+    @Operation(summary = "nacos.console.ai.copilot.api.prompt.optimize.summary",
+        description = "nacos.console.ai.copilot.api.prompt.optimize.description",
+        security = @SecurityRequirement(name = "nacos"))
+    @ApiResponse(responseCode = "200",
+        content = @Content(mediaType = MediaType.TEXT_EVENT_STREAM_VALUE))
+    @io.swagger.v3.oas.annotations.parameters.RequestBody(
+        description = "nacos.console.ai.copilot.api.prompt.optimize.body.description",
+        content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+            schema = @io.swagger.v3.oas.annotations.media.Schema(
+                implementation = PromptOptimizationForm.class)))
     @SuppressWarnings("PMD.MethodTooLongRule")
     public SseEmitter optimizePromptStream(
         @RequestBody(required = false) PromptOptimizationForm form) {
@@ -504,9 +527,16 @@ public class ConsoleCopilotController {
     @PostMapping(value = CopilotConstants.PROMPT_DEBUG_PATH,
         produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     @Secured(action = ActionTypes.WRITE, signType = SignType.AI, apiType = ApiType.CONSOLE_API)
-    @Operation(summary = "nacos.console.ai.copilot.api.prompt.debug.summary", description = "nacos.console.ai.copilot.api.prompt.debug.description", security = @SecurityRequirement(name = "nacos"))
-    @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.TEXT_EVENT_STREAM_VALUE))
-    @io.swagger.v3.oas.annotations.parameters.RequestBody(description = "nacos.console.ai.copilot.api.prompt.debug.body.description", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE, schema = @io.swagger.v3.oas.annotations.media.Schema(implementation = PromptDebugForm.class)))
+    @Operation(summary = "nacos.console.ai.copilot.api.prompt.debug.summary",
+        description = "nacos.console.ai.copilot.api.prompt.debug.description",
+        security = @SecurityRequirement(name = "nacos"))
+    @ApiResponse(responseCode = "200",
+        content = @Content(mediaType = MediaType.TEXT_EVENT_STREAM_VALUE))
+    @io.swagger.v3.oas.annotations.parameters.RequestBody(
+        description = "nacos.console.ai.copilot.api.prompt.debug.body.description",
+        content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+            schema = @io.swagger.v3.oas.annotations.media.Schema(
+                implementation = PromptDebugForm.class)))
     @SuppressWarnings("PMD.MethodTooLongRule")
     public SseEmitter debugPromptStream(@RequestBody(required = false) PromptDebugForm form) {
         // Create SSE emitter with 5 minutes timeout

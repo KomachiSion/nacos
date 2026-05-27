@@ -85,8 +85,10 @@ import java.util.Map;
 @RestController
 @RequestMapping(Constants.Prompt.CONSOLE_PATH)
 @ExtractorManager.Extractor(httpExtractor = PromptHttpParamExtractor.class)
-@Tag(name = "nacos.console.ai.prompt.api.controller.name", description = "nacos.console.ai.prompt.api.controller.description", extensions = {
-        @Extension(name = RemoteConstants.LABEL_MODULE, properties = @ExtensionProperty(name = RemoteConstants.LABEL_MODULE, value = "ai"))})
+@Tag(name = "nacos.console.ai.prompt.api.controller.name",
+    description = "nacos.console.ai.prompt.api.controller.description", extensions = {
+        @Extension(name = RemoteConstants.LABEL_MODULE,
+            properties = @ExtensionProperty(name = RemoteConstants.LABEL_MODULE, value = "ai"))})
 public class ConsolePromptController {
     
     private final PromptProxy promptProxy;
@@ -102,12 +104,18 @@ public class ConsolePromptController {
      */
     @DeleteMapping
     @Secured(action = ActionTypes.WRITE, signType = SignType.AI, apiType = ApiType.CONSOLE_API)
-    @Operation(summary = "nacos.console.ai.prompt.api.delete.summary", description = "nacos.console.ai.prompt.api.delete.description", security = @SecurityRequirement(name = "nacos"))
-    @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE, schema = @Schema(implementation = Result.class, example = "nacos.console.ai.prompt.api.delete.example")))
+    @Operation(summary = "nacos.console.ai.prompt.api.delete.summary",
+        description = "nacos.console.ai.prompt.api.delete.description",
+        security = @SecurityRequirement(name = "nacos"))
+    @ApiResponse(responseCode = "200",
+        content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+            schema = @Schema(implementation = Result.class,
+                example = "nacos.console.ai.prompt.api.delete.example")))
     @Parameters(value = {@Parameter(name = "namespaceId", example = "public"),
-            @Parameter(name = "promptKey", required = true, example = "my-prompt"),
-            @Parameter(name = "form", hidden = true)})
-    public Result<Boolean> deletePrompt(PromptForm form, HttpServletRequest request) throws NacosException {
+        @Parameter(name = "promptKey", required = true, example = "my-prompt"),
+        @Parameter(name = "form", hidden = true)})
+    public Result<Boolean> deletePrompt(PromptForm form, HttpServletRequest request)
+        throws NacosException {
         form.validate();
         String srcUser = request.getRemoteUser();
         String srcIp = request.getRemoteAddr();
@@ -120,14 +128,21 @@ public class ConsolePromptController {
      */
     @GetMapping("/list")
     @Secured(action = ActionTypes.READ, signType = SignType.AI, apiType = ApiType.CONSOLE_API)
-    @Operation(summary = "nacos.console.ai.prompt.api.list.summary", description = "nacos.console.ai.prompt.api.list.description", security = @SecurityRequirement(name = "nacos"))
-    @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE, schema = @Schema(implementation = Result.class, example = "nacos.console.ai.prompt.api.list.example")))
+    @Operation(summary = "nacos.console.ai.prompt.api.list.summary",
+        description = "nacos.console.ai.prompt.api.list.description",
+        security = @SecurityRequirement(name = "nacos"))
+    @ApiResponse(responseCode = "200",
+        content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+            schema = @Schema(implementation = Result.class,
+                example = "nacos.console.ai.prompt.api.list.example")))
     @Parameters(value = {
-            @Parameter(name = "pageNo", required = true, schema = @Schema(type = "integer"), example = "1"),
-            @Parameter(name = "pageSize", required = true, schema = @Schema(type = "integer"), example = "10"),
-            @Parameter(name = "namespaceId", example = "public"), @Parameter(name = "promptKey"),
-            @Parameter(name = "search", example = "blur", description = "blur or accurate"),
-            @Parameter(name = "bizTags"), @Parameter(name = "form", hidden = true)})
+        @Parameter(name = "pageNo", required = true, schema = @Schema(type = "integer"),
+            example = "1"),
+        @Parameter(name = "pageSize", required = true, schema = @Schema(type = "integer"),
+            example = "10"),
+        @Parameter(name = "namespaceId", example = "public"), @Parameter(name = "promptKey"),
+        @Parameter(name = "search", example = "blur", description = "blur or accurate"),
+        @Parameter(name = "bizTags"), @Parameter(name = "form", hidden = true)})
     public Result<Page<PromptMetaSummary>> listPrompts(PromptListForm form) throws NacosException {
         form.validate();
         Page<PromptMetaSummary> result = promptProxy.listPrompts(form);
@@ -139,14 +154,22 @@ public class ConsolePromptController {
      */
     @GetMapping("/versions")
     @Secured(action = ActionTypes.READ, signType = SignType.AI, apiType = ApiType.CONSOLE_API)
-    @Operation(summary = "nacos.console.ai.prompt.api.versions.summary", description = "nacos.console.ai.prompt.api.versions.description", security = @SecurityRequirement(name = "nacos"))
-    @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE, schema = @Schema(implementation = Result.class, example = "nacos.console.ai.prompt.api.versions.example")))
+    @Operation(summary = "nacos.console.ai.prompt.api.versions.summary",
+        description = "nacos.console.ai.prompt.api.versions.description",
+        security = @SecurityRequirement(name = "nacos"))
+    @ApiResponse(responseCode = "200",
+        content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+            schema = @Schema(implementation = Result.class,
+                example = "nacos.console.ai.prompt.api.versions.example")))
     @Parameters(value = {@Parameter(name = "namespaceId", example = "public"),
-            @Parameter(name = "promptKey", required = true, example = "my-prompt"),
-            @Parameter(name = "pageNo", required = true, schema = @Schema(type = "integer"), example = "1"),
-            @Parameter(name = "pageSize", required = true, schema = @Schema(type = "integer"), example = "10"),
-            @Parameter(name = "form", hidden = true)})
-    public Result<Page<PromptVersionSummary>> listPromptVersions(PromptHistoryForm form) throws NacosException {
+        @Parameter(name = "promptKey", required = true, example = "my-prompt"),
+        @Parameter(name = "pageNo", required = true, schema = @Schema(type = "integer"),
+            example = "1"),
+        @Parameter(name = "pageSize", required = true, schema = @Schema(type = "integer"),
+            example = "10"),
+        @Parameter(name = "form", hidden = true)})
+    public Result<Page<PromptVersionSummary>> listPromptVersions(PromptHistoryForm form)
+        throws NacosException {
         form.validate();
         Page<PromptVersionSummary> result = promptProxy.listPromptVersions(form);
         return Result.success(result);
@@ -159,9 +182,20 @@ public class ConsolePromptController {
      */
     @GetMapping("/governance")
     @Secured(action = ActionTypes.READ, signType = SignType.AI, apiType = ApiType.CONSOLE_API)
+    @Operation(summary = "nacos.console.ai.prompt.api.governance.summary",
+        description = "nacos.console.ai.prompt.api.governance.description",
+        security = @SecurityRequirement(name = "nacos"))
+    @ApiResponse(responseCode = "200",
+        content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+            schema = @Schema(implementation = Result.class,
+                example = "nacos.console.ai.prompt.api.governance.example")))
+    @Parameters(value = {@Parameter(name = "namespaceId", example = "public"),
+        @Parameter(name = "promptKey", required = true, example = "my-prompt"),
+        @Parameter(name = "form", hidden = true)})
     public Result<PromptMetaInfo> getPromptGovernanceDetail(PromptForm form) throws NacosException {
         form.validate();
-        return Result.success(promptProxy.getPromptGovernanceDetail(form.getNamespaceId(), form.getPromptKey()));
+        return Result.success(
+            promptProxy.getPromptGovernanceDetail(form.getNamespaceId(), form.getPromptKey()));
     }
     
     /**
@@ -169,10 +203,22 @@ public class ConsolePromptController {
      */
     @GetMapping("/version")
     @Secured(action = ActionTypes.READ, signType = SignType.AI, apiType = ApiType.CONSOLE_API)
+    @Operation(summary = "nacos.console.ai.prompt.api.version.get.summary",
+        description = "nacos.console.ai.prompt.api.version.get.description",
+        security = @SecurityRequirement(name = "nacos"))
+    @ApiResponse(responseCode = "200",
+        content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+            schema = @Schema(implementation = Result.class,
+                example = "nacos.console.ai.prompt.api.version.get.example")))
+    @Parameters(value = {@Parameter(name = "namespaceId", example = "public"),
+        @Parameter(name = "promptKey", required = true, example = "my-prompt"),
+        @Parameter(name = "version", example = "1.0.0"),
+        @Parameter(name = "form", hidden = true)})
     public Result<PromptVersionInfo> getVersionDetail(PromptQueryForm form) throws NacosException {
         form.validate();
         return Result.success(
-                promptProxy.getVersionDetail(form.getNamespaceId(), form.getPromptKey(), form.getVersion()));
+            promptProxy.getVersionDetail(form.getNamespaceId(), form.getPromptKey(),
+                form.getVersion()));
     }
     
     /**
@@ -184,9 +230,21 @@ public class ConsolePromptController {
      */
     @GetMapping("/version/download")
     @Secured(action = ActionTypes.READ, signType = SignType.AI, apiType = ApiType.CONSOLE_API)
-    public ResponseEntity<byte[]> downloadPromptVersion(PromptQueryForm form) throws NacosException {
+    @Operation(summary = "nacos.console.ai.prompt.api.version.download.summary",
+        description = "nacos.console.ai.prompt.api.version.download.description",
+        security = @SecurityRequirement(name = "nacos"))
+    @ApiResponse(responseCode = "200",
+        content = @Content(mediaType = MediaType.APPLICATION_OCTET_STREAM_VALUE,
+            schema = @Schema(type = "string", format = "binary")))
+    @Parameters(value = {@Parameter(name = "namespaceId", example = "public"),
+        @Parameter(name = "promptKey", required = true, example = "my-prompt"),
+        @Parameter(name = "version", example = "1.0.0"),
+        @Parameter(name = "form", hidden = true)})
+    public ResponseEntity<byte[]> downloadPromptVersion(PromptQueryForm form)
+        throws NacosException {
         form.validate();
-        PromptVersionInfo info = promptProxy.downloadPromptVersion(form.getNamespaceId(), form.getPromptKey(),
+        PromptVersionInfo info =
+            promptProxy.downloadPromptVersion(form.getNamespaceId(), form.getPromptKey(),
                 form.getVersion());
         return PromptMarkdownBuilder.buildMarkdownResponse(info);
     }
@@ -196,11 +254,31 @@ public class ConsolePromptController {
      */
     @PostMapping("/draft")
     @Secured(action = ActionTypes.WRITE, signType = SignType.AI, apiType = ApiType.CONSOLE_API)
+    @Operation(summary = "nacos.console.ai.prompt.api.draft.create.summary",
+        description = "nacos.console.ai.prompt.api.draft.create.description",
+        security = @SecurityRequirement(name = "nacos"))
+    @ApiResponse(responseCode = "200",
+        content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+            schema = @Schema(implementation = Result.class,
+                example = "nacos.console.ai.prompt.api.draft.create.example")))
+    @Parameters(value = {@Parameter(name = "namespaceId", example = "public"),
+        @Parameter(name = "promptKey", required = true, example = "my-prompt"),
+        @Parameter(name = "basedOnVersion", example = "1.0.0"),
+        @Parameter(name = "targetVersion", example = "1.0.1"),
+        @Parameter(name = "template", example = "Hello {{name}}"),
+        @Parameter(name = "variables", schema = @Schema(type = "string",
+            description = "JSON array string parsed as prompt variables"),
+            example = "\"[{\\\"name\\\":\\\"name\\\"}]\""),
+        @Parameter(name = "commitMsg", example = "Create draft"),
+        @Parameter(name = "description"), @Parameter(name = "bizTags"),
+        @Parameter(name = "form", hidden = true)})
     public Result<String> createDraft(PromptDraftCreateForm form) throws NacosException {
         form.validate();
-        String version = promptProxy.createDraft(form.getNamespaceId(), form.getPromptKey(), form.getBasedOnVersion(),
-                form.getTargetVersion(), form.getTemplate(), parseVariables(form.getVariables()), form.getCommitMsg(),
-                form.getDescription(), form.getBizTags());
+        String version = promptProxy.createDraft(form.getNamespaceId(), form.getPromptKey(),
+            form.getBasedOnVersion(),
+            form.getTargetVersion(), form.getTemplate(), parseVariables(form.getVariables()),
+            form.getCommitMsg(),
+            form.getDescription(), form.getBizTags());
         return Result.success(version);
     }
     
@@ -209,10 +287,25 @@ public class ConsolePromptController {
      */
     @PutMapping("/draft")
     @Secured(action = ActionTypes.WRITE, signType = SignType.AI, apiType = ApiType.CONSOLE_API)
+    @Operation(summary = "nacos.console.ai.prompt.api.draft.update.summary",
+        description = "nacos.console.ai.prompt.api.draft.update.description",
+        security = @SecurityRequirement(name = "nacos"))
+    @ApiResponse(responseCode = "200",
+        content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+            schema = @Schema(implementation = Result.class,
+                example = "nacos.console.ai.prompt.api.draft.update.example")))
+    @Parameters(value = {@Parameter(name = "namespaceId", example = "public"),
+        @Parameter(name = "promptKey", required = true, example = "my-prompt"),
+        @Parameter(name = "template", required = true, example = "Hello {{name}}"),
+        @Parameter(name = "variables", schema = @Schema(type = "string",
+            description = "JSON array string parsed as prompt variables"),
+            example = "\"[{\\\"name\\\":\\\"name\\\"}]\""),
+        @Parameter(name = "commitMsg", example = "Update draft"),
+        @Parameter(name = "form", hidden = true)})
     public Result<String> updateDraft(PromptDraftUpdateForm form) throws NacosException {
         form.validate();
         promptProxy.updateDraft(form.getNamespaceId(), form.getPromptKey(), form.getTemplate(),
-                parseVariables(form.getVariables()), form.getCommitMsg());
+            parseVariables(form.getVariables()), form.getCommitMsg());
         return Result.success("ok");
     }
     
@@ -221,6 +314,16 @@ public class ConsolePromptController {
      */
     @DeleteMapping("/draft")
     @Secured(action = ActionTypes.WRITE, signType = SignType.AI, apiType = ApiType.CONSOLE_API)
+    @Operation(summary = "nacos.console.ai.prompt.api.draft.delete.summary",
+        description = "nacos.console.ai.prompt.api.draft.delete.description",
+        security = @SecurityRequirement(name = "nacos"))
+    @ApiResponse(responseCode = "200",
+        content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+            schema = @Schema(implementation = Result.class,
+                example = "nacos.console.ai.prompt.api.draft.delete.example")))
+    @Parameters(value = {@Parameter(name = "namespaceId", example = "public"),
+        @Parameter(name = "promptKey", required = true, example = "my-prompt"),
+        @Parameter(name = "form", hidden = true)})
     public Result<String> deleteDraft(PromptForm form) throws NacosException {
         form.validate();
         promptProxy.deleteDraft(form.getNamespaceId(), form.getPromptKey());
@@ -232,9 +335,21 @@ public class ConsolePromptController {
      */
     @PostMapping("/submit")
     @Secured(action = ActionTypes.WRITE, signType = SignType.AI, apiType = ApiType.CONSOLE_API)
+    @Operation(summary = "nacos.console.ai.prompt.api.submit.summary",
+        description = "nacos.console.ai.prompt.api.submit.description",
+        security = @SecurityRequirement(name = "nacos"))
+    @ApiResponse(responseCode = "200",
+        content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+            schema = @Schema(implementation = Result.class,
+                example = "nacos.console.ai.prompt.api.submit.example")))
+    @Parameters(value = {@Parameter(name = "namespaceId", example = "public"),
+        @Parameter(name = "promptKey", required = true, example = "my-prompt"),
+        @Parameter(name = "version", example = "1.0.0"),
+        @Parameter(name = "form", hidden = true)})
     public Result<String> submit(PromptSubmitForm form) throws NacosException {
         form.validate();
-        String result = promptProxy.submit(form.getNamespaceId(), form.getPromptKey(), form.getVersion());
+        String result =
+            promptProxy.submit(form.getNamespaceId(), form.getPromptKey(), form.getVersion());
         return Result.success(result);
     }
     
@@ -243,10 +358,24 @@ public class ConsolePromptController {
      */
     @PostMapping("/publish")
     @Secured(action = ActionTypes.WRITE, signType = SignType.AI, apiType = ApiType.CONSOLE_API)
+    @Operation(summary = "nacos.console.ai.prompt.api.version.publish.summary",
+        description = "nacos.console.ai.prompt.api.version.publish.description",
+        security = @SecurityRequirement(name = "nacos"))
+    @ApiResponse(responseCode = "200",
+        content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+            schema = @Schema(implementation = Result.class,
+                example = "nacos.console.ai.prompt.api.version.publish.example")))
+    @Parameters(value = {@Parameter(name = "namespaceId", example = "public"),
+        @Parameter(name = "promptKey", required = true, example = "my-prompt"),
+        @Parameter(name = "version", required = true, example = "1.0.0"),
+        @Parameter(name = "updateLatestLabel", schema = @Schema(type = "boolean"),
+            example = "true"),
+        @Parameter(name = "form", hidden = true)})
     public Result<String> publish(PromptVersionPublishForm form) throws NacosException {
         form.validate();
         boolean updateLatest = form.getUpdateLatestLabel() == null || form.getUpdateLatestLabel();
-        promptProxy.publish(form.getNamespaceId(), form.getPromptKey(), form.getVersion(), updateLatest);
+        promptProxy.publish(form.getNamespaceId(), form.getPromptKey(), form.getVersion(),
+            updateLatest);
         return Result.success("ok");
     }
     
@@ -255,11 +384,26 @@ public class ConsolePromptController {
      */
     @PostMapping("/force-publish")
     @Secured(resource = Constants.Prompt.CONSOLE_PATH
-            + "/force-publish", action = ActionTypes.WRITE, signType = SignType.CONSOLE, apiType = ApiType.CONSOLE_API)
+        + "/force-publish", action = ActionTypes.WRITE, signType = SignType.CONSOLE,
+        apiType = ApiType.CONSOLE_API)
+    @Operation(summary = "nacos.console.ai.prompt.api.force.publish.summary",
+        description = "nacos.console.ai.prompt.api.force.publish.description",
+        security = @SecurityRequirement(name = "nacos"))
+    @ApiResponse(responseCode = "200",
+        content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+            schema = @Schema(implementation = Result.class,
+                example = "nacos.console.ai.prompt.api.force.publish.example")))
+    @Parameters(value = {@Parameter(name = "namespaceId", example = "public"),
+        @Parameter(name = "promptKey", required = true, example = "my-prompt"),
+        @Parameter(name = "version", required = true, example = "1.0.0"),
+        @Parameter(name = "updateLatestLabel", schema = @Schema(type = "boolean"),
+            example = "true"),
+        @Parameter(name = "form", hidden = true)})
     public Result<String> forcePublish(PromptVersionPublishForm form) throws NacosException {
         form.validate();
         boolean updateLatest = form.getUpdateLatestLabel() == null || form.getUpdateLatestLabel();
-        promptProxy.forcePublish(form.getNamespaceId(), form.getPromptKey(), form.getVersion(), updateLatest);
+        promptProxy.forcePublish(form.getNamespaceId(), form.getPromptKey(), form.getVersion(),
+            updateLatest);
         return Result.success("ok");
     }
     
@@ -268,6 +412,17 @@ public class ConsolePromptController {
      */
     @PostMapping("/redraft")
     @Secured(action = ActionTypes.WRITE, signType = SignType.AI, apiType = ApiType.CONSOLE_API)
+    @Operation(summary = "nacos.console.ai.prompt.api.redraft.summary",
+        description = "nacos.console.ai.prompt.api.redraft.description",
+        security = @SecurityRequirement(name = "nacos"))
+    @ApiResponse(responseCode = "200",
+        content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+            schema = @Schema(implementation = Result.class,
+                example = "nacos.console.ai.prompt.api.redraft.example")))
+    @Parameters(value = {@Parameter(name = "namespaceId", example = "public"),
+        @Parameter(name = "promptKey", required = true, example = "my-prompt"),
+        @Parameter(name = "version", required = true, example = "1.0.0"),
+        @Parameter(name = "form", hidden = true)})
     public Result<String> redraft(PromptVersionPublishForm form) throws NacosException {
         form.validate();
         promptProxy.redraft(form.getNamespaceId(), form.getPromptKey(), form.getVersion());
@@ -279,9 +434,21 @@ public class ConsolePromptController {
      */
     @PostMapping("/online")
     @Secured(action = ActionTypes.WRITE, signType = SignType.AI, apiType = ApiType.CONSOLE_API)
+    @Operation(summary = "nacos.console.ai.prompt.api.online.summary",
+        description = "nacos.console.ai.prompt.api.online.description",
+        security = @SecurityRequirement(name = "nacos"))
+    @ApiResponse(responseCode = "200",
+        content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+            schema = @Schema(implementation = Result.class,
+                example = "nacos.console.ai.prompt.api.online.example")))
+    @Parameters(value = {@Parameter(name = "namespaceId", example = "public"),
+        @Parameter(name = "promptKey", required = true, example = "my-prompt"),
+        @Parameter(name = "version", required = true, example = "1.0.0"),
+        @Parameter(name = "form", hidden = true)})
     public Result<String> online(PromptOnlineForm form) throws NacosException {
         form.validate();
-        promptProxy.changeOnlineStatus(form.getNamespaceId(), form.getPromptKey(), form.getVersion(), true);
+        promptProxy.changeOnlineStatus(form.getNamespaceId(), form.getPromptKey(),
+            form.getVersion(), true);
         return Result.success("ok");
     }
     
@@ -290,14 +457,21 @@ public class ConsolePromptController {
      */
     @PostMapping("/offline")
     @Secured(action = ActionTypes.WRITE, signType = SignType.AI, apiType = ApiType.CONSOLE_API)
-    @Operation(summary = "nacos.console.ai.prompt.api.metadata.update.summary", description = "nacos.console.ai.prompt.api.metadata.update.description", security = @SecurityRequirement(name = "nacos"))
-    @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE, schema = @Schema(implementation = Result.class, example = "nacos.console.ai.prompt.api.metadata.update.example")))
+    @Operation(summary = "nacos.console.ai.prompt.api.offline.summary",
+        description = "nacos.console.ai.prompt.api.offline.description",
+        security = @SecurityRequirement(name = "nacos"))
+    @ApiResponse(responseCode = "200",
+        content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+            schema = @Schema(implementation = Result.class,
+                example = "nacos.console.ai.prompt.api.offline.example")))
     @Parameters(value = {@Parameter(name = "namespaceId", example = "public"),
-            @Parameter(name = "promptKey", required = true, example = "my-prompt"), @Parameter(name = "description"),
-            @Parameter(name = "bizTags"), @Parameter(name = "form", hidden = true)})
+        @Parameter(name = "promptKey", required = true, example = "my-prompt"),
+        @Parameter(name = "version", required = true, example = "1.0.0"),
+        @Parameter(name = "form", hidden = true)})
     public Result<String> offline(PromptOnlineForm form) throws NacosException {
         form.validate();
-        promptProxy.changeOnlineStatus(form.getNamespaceId(), form.getPromptKey(), form.getVersion(), false);
+        promptProxy.changeOnlineStatus(form.getNamespaceId(), form.getPromptKey(),
+            form.getVersion(), false);
         return Result.success("ok");
     }
     
@@ -306,6 +480,19 @@ public class ConsolePromptController {
      */
     @PutMapping("/labels")
     @Secured(action = ActionTypes.WRITE, signType = SignType.AI, apiType = ApiType.CONSOLE_API)
+    @Operation(summary = "nacos.console.ai.prompt.api.labels.update.summary",
+        description = "nacos.console.ai.prompt.api.labels.update.description",
+        security = @SecurityRequirement(name = "nacos"))
+    @ApiResponse(responseCode = "200",
+        content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+            schema = @Schema(implementation = Result.class,
+                example = "nacos.console.ai.prompt.api.labels.update.example")))
+    @Parameters(value = {@Parameter(name = "namespaceId", example = "public"),
+        @Parameter(name = "promptKey", required = true, example = "my-prompt"),
+        @Parameter(name = "labels", required = true, schema = @Schema(type = "string",
+            description = "JSON object string parsed as runtime labels"),
+            example = "\"{\\\"latest\\\":\\\"1.0.0\\\"}\""),
+        @Parameter(name = "form", hidden = true)})
     public Result<String> updateLabels(PromptLabelsUpdateForm form) throws NacosException {
         form.validate();
         Map<String, String> labels = JacksonUtils.toObj(form.getLabels(), Map.class);
@@ -318,9 +505,22 @@ public class ConsolePromptController {
      */
     @PutMapping("/description")
     @Secured(action = ActionTypes.WRITE, signType = SignType.AI, apiType = ApiType.CONSOLE_API)
-    public Result<String> updateDescription(PromptDescriptionUpdateForm form) throws NacosException {
+    @Operation(summary = "nacos.console.ai.prompt.api.description.update.summary",
+        description = "nacos.console.ai.prompt.api.description.update.description",
+        security = @SecurityRequirement(name = "nacos"))
+    @ApiResponse(responseCode = "200",
+        content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+            schema = @Schema(implementation = Result.class,
+                example = "nacos.console.ai.prompt.api.description.update.example")))
+    @Parameters(value = {@Parameter(name = "namespaceId", example = "public"),
+        @Parameter(name = "promptKey", required = true, example = "my-prompt"),
+        @Parameter(name = "description", required = true, example = "Prompt description"),
+        @Parameter(name = "form", hidden = true)})
+    public Result<String> updateDescription(PromptDescriptionUpdateForm form)
+        throws NacosException {
         form.validate();
-        promptProxy.updateDescription(form.getNamespaceId(), form.getPromptKey(), form.getDescription());
+        promptProxy.updateDescription(form.getNamespaceId(), form.getPromptKey(),
+            form.getDescription());
         return Result.success("ok");
     }
     
@@ -329,6 +529,19 @@ public class ConsolePromptController {
      */
     @PutMapping("/biz-tags")
     @Secured(action = ActionTypes.WRITE, signType = SignType.AI, apiType = ApiType.CONSOLE_API)
+    @Operation(summary = "nacos.console.ai.prompt.api.biz.tags.update.summary",
+        description = "nacos.console.ai.prompt.api.biz.tags.update.description",
+        security = @SecurityRequirement(name = "nacos"))
+    @ApiResponse(responseCode = "200",
+        content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+            schema = @Schema(implementation = Result.class,
+                example = "nacos.console.ai.prompt.api.biz.tags.update.example")))
+    @Parameters(value = {@Parameter(name = "namespaceId", example = "public"),
+        @Parameter(name = "promptKey", required = true, example = "my-prompt"),
+        @Parameter(name = "bizTags", schema = @Schema(type = "string",
+            description = "JSON array string parsed as biz tags"),
+            example = "\"[\\\"tag1\\\",\\\"tag2\\\"]\""),
+        @Parameter(name = "form", hidden = true)})
     public Result<String> updateBizTags(PromptBizTagsUpdateForm form) throws NacosException {
         form.validate();
         promptProxy.updateBizTags(form.getNamespaceId(), form.getPromptKey(), form.getBizTags());

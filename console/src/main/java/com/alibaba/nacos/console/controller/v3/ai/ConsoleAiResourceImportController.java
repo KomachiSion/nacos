@@ -29,10 +29,22 @@ import com.alibaba.nacos.api.annotation.NacosApi;
 import com.alibaba.nacos.api.common.ApiType;
 import com.alibaba.nacos.api.exception.NacosException;
 import com.alibaba.nacos.api.model.v2.Result;
+import com.alibaba.nacos.api.remote.RemoteConstants;
 import com.alibaba.nacos.auth.annotation.Secured;
 import com.alibaba.nacos.console.proxy.ai.AiResourceImportProxy;
 import com.alibaba.nacos.plugin.auth.constant.ActionTypes;
 import com.alibaba.nacos.plugin.auth.constant.SignType;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.Parameters;
+import io.swagger.v3.oas.annotations.extensions.Extension;
+import io.swagger.v3.oas.annotations.extensions.ExtensionProperty;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -49,6 +61,10 @@ import java.util.List;
 @NacosApi
 @RestController
 @RequestMapping(Constants.AI_RESOURCE_IMPORT_CONSOLE_PATH)
+@Tag(name = "nacos.console.ai.import.api.controller.name",
+    description = "nacos.console.ai.import.api.controller.description", extensions = {
+        @Extension(name = RemoteConstants.LABEL_MODULE,
+            properties = @ExtensionProperty(name = RemoteConstants.LABEL_MODULE, value = "ai"))})
 public class ConsoleAiResourceImportController {
     
     private final AiResourceImportProxy importProxy;
@@ -66,6 +82,15 @@ public class ConsoleAiResourceImportController {
      */
     @GetMapping("/sources")
     @Secured(action = ActionTypes.READ, signType = SignType.AI, apiType = ApiType.CONSOLE_API)
+    @Operation(summary = "nacos.console.ai.import.api.sources.summary",
+        description = "nacos.console.ai.import.api.sources.description",
+        security = @SecurityRequirement(name = "nacos"))
+    @ApiResponse(responseCode = "200",
+        content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+            schema = @Schema(implementation = Result.class,
+                example = "nacos.console.ai.import.api.sources.example")))
+    @Parameters(value = {@Parameter(name = "resourceType", example = "mcp"),
+        @Parameter(name = "form", hidden = true)})
     public Result<List<AiResourceImportSourceInfo>> listSources(
         AiResourceImportSourceListForm form) throws NacosException {
         form.validate();
@@ -81,6 +106,23 @@ public class ConsoleAiResourceImportController {
      */
     @PostMapping("/search")
     @Secured(action = ActionTypes.READ, signType = SignType.AI, apiType = ApiType.CONSOLE_API)
+    @Operation(summary = "nacos.console.ai.import.api.search.summary",
+        description = "nacos.console.ai.import.api.search.description",
+        security = @SecurityRequirement(name = "nacos"))
+    @ApiResponse(responseCode = "200",
+        content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+            schema = @Schema(implementation = Result.class,
+                example = "nacos.console.ai.import.api.search.example")))
+    @Parameters(value = {@Parameter(name = "namespaceId", example = "public"),
+        @Parameter(name = "resourceType", required = true, example = "mcp"),
+        @Parameter(name = "sourceId", required = true, example = "github"),
+        @Parameter(name = "query", example = "nacos"),
+        @Parameter(name = "cursor"),
+        @Parameter(name = "limit", schema = @Schema(type = "integer"), example = "20"),
+        @Parameter(name = "options", schema = @Schema(type = "string",
+            description = "JSON object string parsed as import options"),
+            example = "\"{\\\"owner\\\":\\\"alibaba\\\"}\""),
+        @Parameter(name = "form", hidden = true)})
     public Result<AiResourceImportSearchResponse> search(AiResourceImportSearchForm form)
         throws NacosException {
         form.validate();
@@ -96,6 +138,25 @@ public class ConsoleAiResourceImportController {
      */
     @PostMapping("/validate")
     @Secured(action = ActionTypes.WRITE, signType = SignType.AI, apiType = ApiType.CONSOLE_API)
+    @Operation(summary = "nacos.console.ai.import.api.validate.summary",
+        description = "nacos.console.ai.import.api.validate.description",
+        security = @SecurityRequirement(name = "nacos"))
+    @ApiResponse(responseCode = "200",
+        content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+            schema = @Schema(implementation = Result.class,
+                example = "nacos.console.ai.import.api.validate.example")))
+    @Parameters(value = {@Parameter(name = "namespaceId", example = "public"),
+        @Parameter(name = "resourceType", required = true, example = "mcp"),
+        @Parameter(name = "sourceId", required = true, example = "github"),
+        @Parameter(name = "selectedItems", required = true, schema = @Schema(type = "string",
+            description = "JSON array string parsed as selected import items"),
+            example = "\"[{\\\"id\\\":\\\"demo\\\"}]\""),
+        @Parameter(name = "overwriteExisting", schema = @Schema(type = "boolean"),
+            example = "false"),
+        @Parameter(name = "options", schema = @Schema(type = "string",
+            description = "JSON object string parsed as import options"),
+            example = "\"{\\\"owner\\\":\\\"alibaba\\\"}\""),
+        @Parameter(name = "form", hidden = true)})
     public Result<AiResourceImportValidateResponse> validate(AiResourceImportValidateForm form)
         throws NacosException {
         form.validate();
@@ -111,6 +172,27 @@ public class ConsoleAiResourceImportController {
      */
     @PostMapping("/execute")
     @Secured(action = ActionTypes.WRITE, signType = SignType.AI, apiType = ApiType.CONSOLE_API)
+    @Operation(summary = "nacos.console.ai.import.api.execute.summary",
+        description = "nacos.console.ai.import.api.execute.description",
+        security = @SecurityRequirement(name = "nacos"))
+    @ApiResponse(responseCode = "200",
+        content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+            schema = @Schema(implementation = Result.class,
+                example = "nacos.console.ai.import.api.execute.example")))
+    @Parameters(value = {@Parameter(name = "namespaceId", example = "public"),
+        @Parameter(name = "resourceType", required = true, example = "mcp"),
+        @Parameter(name = "sourceId", required = true, example = "github"),
+        @Parameter(name = "selectedItems", required = true, schema = @Schema(type = "string",
+            description = "JSON array string parsed as selected import items"),
+            example = "\"[{\\\"id\\\":\\\"demo\\\"}]\""),
+        @Parameter(name = "overwriteExisting", schema = @Schema(type = "boolean"),
+            example = "false"),
+        @Parameter(name = "skipInvalid", schema = @Schema(type = "boolean"), example = "false"),
+        @Parameter(name = "validationToken", example = "validation-token"),
+        @Parameter(name = "options", schema = @Schema(type = "string",
+            description = "JSON object string parsed as import options"),
+            example = "\"{\\\"owner\\\":\\\"alibaba\\\"}\""),
+        @Parameter(name = "form", hidden = true)})
     public Result<AiResourceImportExecuteResponse> execute(AiResourceImportExecuteForm form)
         throws NacosException {
         form.validate();

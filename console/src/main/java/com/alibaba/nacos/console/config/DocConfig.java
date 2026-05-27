@@ -63,7 +63,8 @@ public class DocConfig {
     @PostConstruct
     public void initSpringDocProperties() {
         springDocConfigProperties.setDefaultProducesMediaType(MediaType.APPLICATION_JSON_VALUE);
-        springDocConfigProperties.setDefaultConsumesMediaType(MediaType.APPLICATION_FORM_URLENCODED_VALUE);
+        springDocConfigProperties
+            .setDefaultConsumesMediaType(MediaType.APPLICATION_FORM_URLENCODED_VALUE);
     }
     
     @Bean
@@ -78,29 +79,36 @@ public class DocConfig {
     }
     
     @Bean
-    public OpenAPIService nacosConsoleOpenApiService(Optional<OpenAPI> openApi, SecurityService securityParser,
-            SpringDocConfigProperties springDocConfigProperties, PropertyResolverUtils propertyResolverUtils,
-            Optional<List<OpenApiBuilderCustomizer>> openApiBuilderCustomisers,
-            Optional<List<ServerBaseUrlCustomizer>> serverBaseUrlCustomisers,
-            Optional<JavadocProvider> javadocProvider) {
-        return new NacosLocaleCachedOpenApiService(openApi, securityParser, springDocConfigProperties,
-                propertyResolverUtils, openApiBuilderCustomisers, serverBaseUrlCustomisers, javadocProvider);
+    public OpenAPIService nacosConsoleOpenApiService(Optional<OpenAPI> openApi,
+        SecurityService securityParser,
+        SpringDocConfigProperties springDocConfigProperties,
+        PropertyResolverUtils propertyResolverUtils,
+        Optional<List<OpenApiBuilderCustomizer>> openApiBuilderCustomisers,
+        Optional<List<ServerBaseUrlCustomizer>> serverBaseUrlCustomisers,
+        Optional<JavadocProvider> javadocProvider) {
+        return new NacosLocaleCachedOpenApiService(openApi, securityParser,
+            springDocConfigProperties,
+            propertyResolverUtils, openApiBuilderCustomisers, serverBaseUrlCustomisers,
+            javadocProvider);
     }
     
     @Bean
-    public GlobalOpenApiCustomizer nacosConsoleBasicInfoOpenApiCustomizer(PropertyResolverUtils propertyResolverUtils) {
-        return new NacosBasicInfoOpenApiCustomizer("nacos.console.api.title", "nacos.console.api.description",
-                propertyResolverUtils);
+    public GlobalOpenApiCustomizer nacosConsoleBasicInfoOpenApiCustomizer(
+        PropertyResolverUtils propertyResolverUtils) {
+        return new NacosBasicInfoOpenApiCustomizer("nacos.console.api.title",
+            "nacos.console.api.description",
+            propertyResolverUtils);
     }
     
     @Bean
-    public GlobalOpenApiCustomizer nacosConsoleGenericSchemaOpenApiCustomizer(SchemaCache consoleSchemaCache) {
+    public GlobalOpenApiCustomizer nacosConsoleGenericSchemaOpenApiCustomizer(
+        SchemaCache consoleSchemaCache) {
         return new NacosGenericSchemaOpenApiCustomizer(consoleSchemaCache);
     }
     
     @Bean
     public GlobalOpenApiCustomizer nacosConsoleSecurityRequirementOpenApiCustomizer(
-            PropertyResolverUtils propertyResolverUtils) {
+        PropertyResolverUtils propertyResolverUtils) {
         return new NacosSecurityOpenApiCustomizer(propertyResolverUtils);
     }
     
@@ -115,7 +123,8 @@ public class DocConfig {
     }
     
     @Bean
-    public GlobalOperationCustomizer nacosConsoleGenericSchemaOperationCustomize(SchemaCache consoleSchemaCache) {
+    public GlobalOperationCustomizer nacosConsoleGenericSchemaOperationCustomize(
+        SchemaCache consoleSchemaCache) {
         return new NacosGenericSchemaOperationCustomize(consoleSchemaCache);
     }
     
@@ -125,7 +134,8 @@ public class DocConfig {
     }
     
     @Bean
-    public GlobalOperationCustomizer nacosConsoleExampleI18nOperationCustomize(PropertyResolverUtils propertyResolverUtils) {
+    public GlobalOperationCustomizer nacosConsoleExampleI18nOperationCustomize(
+        PropertyResolverUtils propertyResolverUtils) {
         return new NacosExampleI18nOperationCustomize(propertyResolverUtils);
     }
     

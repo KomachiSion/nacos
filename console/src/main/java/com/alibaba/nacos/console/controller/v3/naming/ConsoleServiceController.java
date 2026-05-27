@@ -83,9 +83,11 @@ import java.util.Optional;
 @RestController
 @RequestMapping("/v3/console/ns/service")
 @ExtractorManager.Extractor(httpExtractor = NamingDefaultHttpParamExtractor.class)
-@Tag(name = "nacos.console.naming.service.api.controller.name", description = "nacos.console.naming.service.api.controller.description", extensions = {
+@Tag(name = "nacos.console.naming.service.api.controller.name",
+    description = "nacos.console.naming.service.api.controller.description", extensions = {
         @Extension(name = RemoteConstants.LABEL_MODULE,
-                properties = @ExtensionProperty(name = RemoteConstants.LABEL_MODULE, value = RemoteConstants.LABEL_MODULE_NAMING))})
+            properties = @ExtensionProperty(name = RemoteConstants.LABEL_MODULE,
+                value = RemoteConstants.LABEL_MODULE_NAMING))})
 public class ConsoleServiceController {
     
     private final ServiceProxy serviceProxy;
@@ -103,17 +105,25 @@ public class ConsoleServiceController {
     @PostMapping()
     @TpsControl(pointName = "NamingServiceRegister", name = "HttpNamingServiceRegister")
     @Secured(action = ActionTypes.WRITE, apiType = ApiType.CONSOLE_API)
-    @Operation(summary = "nacos.console.naming.service.api.create.summary", description = "nacos.console.naming.service.api.create.description",
-            security = @SecurityRequirement(name = "nacos"))
-    @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
-            schema = @Schema(implementation = Result.class, example = "nacos.console.naming.service.api.create.example")))
+    @Operation(summary = "nacos.console.naming.service.api.create.summary",
+        description = "nacos.console.naming.service.api.create.description",
+        security = @SecurityRequirement(name = "nacos"))
+    @ApiResponse(responseCode = "200",
+        content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+            schema = @Schema(implementation = Result.class,
+                example = "nacos.console.naming.service.api.create.example")))
     @Parameters(value = {@Parameter(name = "namespaceId", example = "public"),
-            @Parameter(name = "groupName", example = "DEFAULT_GROUP"),
-            @Parameter(name = "serviceName", required = true, example = "test"),
-            @Parameter(name = "protectThreshold", schema = @Schema(type = "number"), example = "0.5"), @Parameter(name = "ephemeral", schema = @Schema(type = "boolean"), example = "false"),
-            @Parameter(name = "selector", example = "{\"type\":\"none\"}"),
-            @Parameter(name = "metadata", example = "{\"version\":\"1.0\"}"),
-            @Parameter(name = "serviceForm", hidden = true)})
+        @Parameter(name = "groupName", example = "DEFAULT_GROUP"),
+        @Parameter(name = "serviceName", required = true, example = "test"),
+        @Parameter(name = "protectThreshold", schema = @Schema(type = "number"), example = "0.5"),
+        @Parameter(name = "ephemeral", schema = @Schema(type = "boolean"), example = "false"),
+        @Parameter(name = "selector", schema = @Schema(type = "string",
+            description = "JSON object string parsed as service selector"),
+            example = "\"{\\\"type\\\":\\\"none\\\"}\""),
+        @Parameter(name = "metadata", schema = @Schema(type = "string",
+            description = "JSON object string parsed as service metadata"),
+            example = "\"{\\\"version\\\":\\\"1.0\\\"}\""),
+        @Parameter(name = "serviceForm", hidden = true)})
     public Result<String> createService(ServiceForm serviceForm) throws Exception {
         serviceForm.validate();
         ServiceMetadata serviceMetadata = new ServiceMetadata();
@@ -132,14 +142,17 @@ public class ConsoleServiceController {
     @DeleteMapping()
     @TpsControl(pointName = "NamingServiceDeregister", name = "HttpNamingServiceDeregister")
     @Secured(action = ActionTypes.WRITE, apiType = ApiType.CONSOLE_API)
-    @Operation(summary = "nacos.console.naming.service.api.delete.summary", description = "nacos.console.naming.service.api.delete.description",
-            security = @SecurityRequirement(name = "nacos"))
-    @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
-            schema = @Schema(implementation = Result.class, example = "nacos.console.naming.service.api.delete.example")))
+    @Operation(summary = "nacos.console.naming.service.api.delete.summary",
+        description = "nacos.console.naming.service.api.delete.description",
+        security = @SecurityRequirement(name = "nacos"))
+    @ApiResponse(responseCode = "200",
+        content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+            schema = @Schema(implementation = Result.class,
+                example = "nacos.console.naming.service.api.delete.example")))
     @Parameters(value = {@Parameter(name = "namespaceId", example = "public"),
-            @Parameter(name = "groupName", example = "DEFAULT_GROUP"),
-            @Parameter(name = "serviceName", required = true, example = "test"),
-            @Parameter(name = "serviceForm", hidden = true)})
+        @Parameter(name = "groupName", example = "DEFAULT_GROUP"),
+        @Parameter(name = "serviceName", required = true, example = "test"),
+        @Parameter(name = "serviceForm", hidden = true)})
     public Result<String> deleteService(ServiceForm serviceForm) throws Exception {
         serviceForm.validate();
         serviceProxy.deleteService(serviceForm.getNamespaceId(), serviceForm.getServiceName(),
@@ -153,17 +166,25 @@ public class ConsoleServiceController {
     @PutMapping()
     @TpsControl(pointName = "NamingServiceUpdate", name = "HttpNamingServiceUpdate")
     @Secured(action = ActionTypes.WRITE, apiType = ApiType.CONSOLE_API)
-    @Operation(summary = "nacos.console.naming.service.api.update.summary", description = "nacos.console.naming.service.api.update.description",
-            security = @SecurityRequirement(name = "nacos"))
-    @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
-            schema = @Schema(implementation = Result.class, example = "nacos.console.naming.service.api.update.example")))
+    @Operation(summary = "nacos.console.naming.service.api.update.summary",
+        description = "nacos.console.naming.service.api.update.description",
+        security = @SecurityRequirement(name = "nacos"))
+    @ApiResponse(responseCode = "200",
+        content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+            schema = @Schema(implementation = Result.class,
+                example = "nacos.console.naming.service.api.update.example")))
     @Parameters(value = {@Parameter(name = "namespaceId", example = "public"),
-            @Parameter(name = "groupName", example = "DEFAULT_GROUP"),
-            @Parameter(name = "serviceName", required = true, example = "test"),
-            @Parameter(name = "protectThreshold", schema = @Schema(type = "number"), example = "0.5"), @Parameter(name = "ephemeral", schema = @Schema(type = "boolean"), example = "false"),
-            @Parameter(name = "selector", example = "{\"type\":\"none\"}"),
-            @Parameter(name = "metadata", example = "{\"version\":\"1.0\"}"),
-            @Parameter(name = "serviceForm", hidden = true)})
+        @Parameter(name = "groupName", example = "DEFAULT_GROUP"),
+        @Parameter(name = "serviceName", required = true, example = "test"),
+        @Parameter(name = "protectThreshold", schema = @Schema(type = "number"), example = "0.5"),
+        @Parameter(name = "ephemeral", schema = @Schema(type = "boolean"), example = "false"),
+        @Parameter(name = "selector", schema = @Schema(type = "string",
+            description = "JSON object string parsed as service selector"),
+            example = "\"{\\\"type\\\":\\\"none\\\"}\""),
+        @Parameter(name = "metadata", schema = @Schema(type = "string",
+            description = "JSON object string parsed as service metadata"),
+            example = "\"{\\\"version\\\":\\\"1.0\\\"}\""),
+        @Parameter(name = "serviceForm", hidden = true)})
     public Result<String> updateService(ServiceForm serviceForm) throws Exception {
         serviceForm.validate();
         Map<String, String> metadata = UtilsAndCommons.parseMetadata(serviceForm.getMetadata());
@@ -184,10 +205,13 @@ public class ConsoleServiceController {
     @Secured(resource = Constants.Resource.CONSOLE_RESOURCE_NAME_PREFIX
         + "naming", action = ActionTypes.READ, apiType = ApiType.CONSOLE_API,
         tags = Constants.Tag.ONLY_IDENTITY)
-    @Operation(summary = "nacos.console.naming.service.api.selector.summary", description = "nacos.console.naming.service.api.selector.description",
-            security = @SecurityRequirement(name = "nacos"))
-    @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
-            schema = @Schema(implementation = Result.class, example = "nacos.console.naming.service.api.selector.example")))
+    @Operation(summary = "nacos.console.naming.service.api.selector.summary",
+        description = "nacos.console.naming.service.api.selector.description",
+        security = @SecurityRequirement(name = "nacos"))
+    @ApiResponse(responseCode = "200",
+        content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+            schema = @Schema(implementation = Result.class,
+                example = "nacos.console.naming.service.api.selector.example")))
     public Result<List<String>> getSelectorTypeList() throws NacosException {
         return Result.success(serviceProxy.getSelectorTypeList());
     }
@@ -204,16 +228,24 @@ public class ConsoleServiceController {
     @GetMapping("/subscribers")
     @Secured(action = ActionTypes.READ, apiType = ApiType.CONSOLE_API)
     @Operation(summary = "nacos.console.naming.service.api.subscribers.summary",
-            description = "nacos.console.naming.service.api.subscribers.description", security = @SecurityRequirement(name = "nacos"))
-    @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
-            schema = @Schema(implementation = Result.class, example = "nacos.console.naming.service.api.subscribers.example")))
-    @Parameters(value = {@Parameter(name = "pageNo", required = true, example = "1"),
-            @Parameter(name = "pageSize", required = true, example = "10"),
-            @Parameter(name = "namespaceId", example = "public"),
-            @Parameter(name = "groupName", example = "DEFAULT_GROUP"),
-            @Parameter(name = "serviceName", required = true, example = "test"),
-            @Parameter(name = "aggregation", example = "true"), @Parameter(name = "serviceForm", hidden = true),
-            @Parameter(name = "pageForm", hidden = true), @Parameter(name = "aggregationForm", hidden = true)})
+        description = "nacos.console.naming.service.api.subscribers.description",
+        security = @SecurityRequirement(name = "nacos"))
+    @ApiResponse(responseCode = "200",
+        content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+            schema = @Schema(implementation = Result.class,
+                example = "nacos.console.naming.service.api.subscribers.example")))
+    @Parameters(value = {
+        @Parameter(name = "pageNo", required = true, schema = @Schema(type = "integer"),
+            example = "1"),
+        @Parameter(name = "pageSize", required = true, schema = @Schema(type = "integer"),
+            example = "10"),
+        @Parameter(name = "namespaceId", example = "public"),
+        @Parameter(name = "groupName", example = "DEFAULT_GROUP"),
+        @Parameter(name = "serviceName", required = true, example = "test"),
+        @Parameter(name = "aggregation", schema = @Schema(type = "boolean"), example = "true"),
+        @Parameter(name = "serviceForm", hidden = true),
+        @Parameter(name = "pageForm", hidden = true),
+        @Parameter(name = "aggregationForm", hidden = true)})
     public Result<Page<SubscriberInfo>> subscribers(ServiceForm serviceForm, PageForm pageForm,
         AggregationForm aggregationForm) throws Exception {
         serviceForm.validate();
@@ -240,17 +272,25 @@ public class ConsoleServiceController {
     @Secured(action = ActionTypes.READ, apiType = ApiType.CONSOLE_API)
     @GetMapping("/list")
     @Operation(summary = "nacos.console.naming.service.api.list.summary",
-            description = "nacos.console.naming.service.api.list.description", security = @SecurityRequirement(name = "nacos"))
-    @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
-            schema = @Schema(implementation = Result.class, example = "nacos.console.naming.service.api.list.example")))
-    @Parameters(value = {@Parameter(name = "pageNo", required = true, example = "1"),
-            @Parameter(name = "pageSize", required = true, example = "10"),
-            @Parameter(name = "namespaceId", example = "public"),
-            @Parameter(name = "groupNameParam"),
-            @Parameter(name = "serviceNameParam", example = "test"),
-            @Parameter(name = "ignoreEmptyService", example = "true"),
-            @Parameter(name = "withInstances", example = "false"), @Parameter(name = "serviceListForm", hidden = true),
-            @Parameter(name = "pageForm", hidden = true)})
+        description = "nacos.console.naming.service.api.list.description",
+        security = @SecurityRequirement(name = "nacos"))
+    @ApiResponse(responseCode = "200",
+        content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+            schema = @Schema(implementation = Result.class,
+                example = "nacos.console.naming.service.api.list.example")))
+    @Parameters(value = {
+        @Parameter(name = "pageNo", required = true, schema = @Schema(type = "integer"),
+            example = "1"),
+        @Parameter(name = "pageSize", required = true, schema = @Schema(type = "integer"),
+            example = "10"),
+        @Parameter(name = "namespaceId", example = "public"),
+        @Parameter(name = "groupNameParam"),
+        @Parameter(name = "serviceNameParam", example = "test"),
+        @Parameter(name = "ignoreEmptyService", schema = @Schema(type = "boolean"),
+            example = "true"),
+        @Parameter(name = "withInstances", schema = @Schema(type = "boolean"), example = "false"),
+        @Parameter(name = "serviceListForm", hidden = true),
+        @Parameter(name = "pageForm", hidden = true)})
     public Result<Object> getServiceList(ServiceListForm serviceListForm, PageForm pageForm)
         throws NacosException {
         serviceListForm.validate();
@@ -275,14 +315,17 @@ public class ConsoleServiceController {
      */
     @Secured(action = ActionTypes.READ, apiType = ApiType.CONSOLE_API)
     @GetMapping()
-    @Operation(summary = "nacos.console.naming.service.api.get.summary", description = "nacos.console.naming.service.api.get.description",
-            security = @SecurityRequirement(name = "nacos"))
-    @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
-            schema = @Schema(implementation = Result.class, example = "nacos.console.naming.service.api.get.example")))
+    @Operation(summary = "nacos.console.naming.service.api.get.summary",
+        description = "nacos.console.naming.service.api.get.description",
+        security = @SecurityRequirement(name = "nacos"))
+    @ApiResponse(responseCode = "200",
+        content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+            schema = @Schema(implementation = Result.class,
+                example = "nacos.console.naming.service.api.get.example")))
     @Parameters(value = {@Parameter(name = "namespaceId", example = "public"),
-            @Parameter(name = "groupName", example = "DEFAULT_GROUP"),
-            @Parameter(name = "serviceName", required = true, example = "test"),
-            @Parameter(name = "serviceForm", hidden = true)})
+        @Parameter(name = "groupName", example = "DEFAULT_GROUP"),
+        @Parameter(name = "serviceName", required = true, example = "test"),
+        @Parameter(name = "serviceForm", hidden = true)})
     public Result<ServiceDetailInfo> getServiceDetail(ServiceForm serviceForm)
         throws NacosException {
         serviceForm.validate();
@@ -301,18 +344,27 @@ public class ConsoleServiceController {
     @PutMapping("/cluster")
     @Secured(action = ActionTypes.WRITE, apiType = ApiType.CONSOLE_API)
     @Operation(summary = "nacos.console.naming.service.api.update.cluster.summary",
-            description = "nacos.console.naming.service.api.update.cluster.description", security = @SecurityRequirement(name = "nacos"))
-    @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
-            schema = @Schema(implementation = Result.class, example = "nacos.console.naming.service.api.update.cluster.example")))
+        description = "nacos.console.naming.service.api.update.cluster.description",
+        security = @SecurityRequirement(name = "nacos"))
+    @ApiResponse(responseCode = "200",
+        content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+            schema = @Schema(implementation = Result.class,
+                example = "nacos.console.naming.service.api.update.cluster.example")))
     @Parameters(value = {@Parameter(name = "namespaceId", example = "public"),
-            @Parameter(name = "groupName", example = "DEFAULT_GROUP"),
-            @Parameter(name = "serviceName", required = true, example = "test"),
-            @Parameter(name = "clusterName", required = true, example = "DEFAULT"),
-            @Parameter(name = "checkPort", required = true, example = "8080"),
-            @Parameter(name = "useInstancePort4Check", required = true, example = "false"),
-            @Parameter(name = "healthChecker", required = true, example = "{\"type\":\"none\"}"),
-            @Parameter(name = "metadata", example = "{\"version\":\"1.0\"}"),
-            @Parameter(name = "updateClusterForm", hidden = true)})
+        @Parameter(name = "groupName", example = "DEFAULT_GROUP"),
+        @Parameter(name = "serviceName", required = true, example = "test"),
+        @Parameter(name = "clusterName", required = true, example = "DEFAULT"),
+        @Parameter(name = "checkPort", required = true, schema = @Schema(type = "integer"),
+            example = "8080"),
+        @Parameter(name = "useInstancePort4Check", required = true,
+            schema = @Schema(type = "boolean"), example = "false"),
+        @Parameter(name = "healthChecker", required = true, schema = @Schema(type = "string",
+            description = "JSON object string parsed as cluster health checker"),
+            example = "\"{\\\"type\\\":\\\"none\\\"}\""),
+        @Parameter(name = "metadata", schema = @Schema(type = "string",
+            description = "JSON object string parsed as cluster metadata"),
+            example = "\"{\\\"version\\\":\\\"1.0\\\"}\""),
+        @Parameter(name = "updateClusterForm", hidden = true)})
     public Result<String> updateCluster(UpdateClusterForm updateClusterForm) throws Exception {
         updateClusterForm.validate();
         final String namespaceId = updateClusterForm.getNamespaceId();

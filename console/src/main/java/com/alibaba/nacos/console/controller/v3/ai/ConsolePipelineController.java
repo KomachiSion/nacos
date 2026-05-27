@@ -57,9 +57,10 @@ import org.springframework.web.bind.annotation.RestController;
 @NacosApi
 @RestController
 @RequestMapping(Constants.Pipeline.CONSOLE_PATH)
-@Tag(name = "nacos.console.ai.pipeline.api.controller.name", description = "nacos.console.ai.pipeline.api.controller.description", extensions = {
+@Tag(name = "nacos.console.ai.pipeline.api.controller.name",
+    description = "nacos.console.ai.pipeline.api.controller.description", extensions = {
         @Extension(name = RemoteConstants.LABEL_MODULE,
-                properties = @ExtensionProperty(name = RemoteConstants.LABEL_MODULE, value = "ai"))})
+            properties = @ExtensionProperty(name = RemoteConstants.LABEL_MODULE, value = "ai"))})
 public class ConsolePipelineController {
     
     private final PipelineProxy pipelineProxy;
@@ -73,6 +74,22 @@ public class ConsolePipelineController {
      */
     @GetMapping(Constants.Pipeline.LIST_SUBPATH)
     @Secured(action = ActionTypes.READ, signType = SignType.AI, apiType = ApiType.CONSOLE_API)
+    @Operation(summary = "nacos.console.ai.pipeline.api.list.summary",
+        description = "nacos.console.ai.pipeline.api.list.description",
+        security = @SecurityRequirement(name = "nacos"))
+    @ApiResponse(responseCode = "200",
+        content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+            schema = @Schema(implementation = Result.class,
+                example = "nacos.console.ai.pipeline.api.list.example")))
+    @Parameters(value = {@Parameter(name = "resourceType", required = true, example = "skill"),
+        @Parameter(name = "resourceName", example = "my-skill"),
+        @Parameter(name = "namespaceId", example = "public"),
+        @Parameter(name = "version", example = "1.0.0"),
+        @Parameter(name = "pageNo", required = true, schema = @Schema(type = "integer"),
+            example = "1"),
+        @Parameter(name = "pageSize", required = true, schema = @Schema(type = "integer"),
+            example = "100"),
+        @Parameter(name = "form", hidden = true), @Parameter(name = "pageForm", hidden = true)})
     public Result<Page<PipelineExecution>> listPipelines(PipelineListForm form, PageForm pageForm)
         throws NacosException {
         form.validate();
@@ -88,6 +105,16 @@ public class ConsolePipelineController {
      */
     @GetMapping(Constants.Pipeline.DETAIL_SUBPATH)
     @Secured(action = ActionTypes.READ, signType = SignType.AI, apiType = ApiType.CONSOLE_API)
+    @Operation(summary = "nacos.console.ai.pipeline.api.get.summary",
+        description = "nacos.console.ai.pipeline.api.get.description",
+        security = @SecurityRequirement(name = "nacos"))
+    @ApiResponse(responseCode = "200",
+        content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+            schema = @Schema(implementation = Result.class,
+                example = "nacos.console.ai.pipeline.api.get.example")))
+    @Parameters(
+        value = {@Parameter(name = "pipelineId", required = true, example = "pipeline-id-example"),
+            @Parameter(name = "form", hidden = true)})
     public Result<PipelineExecution> getPipelineDetail(PipelineDetailForm form)
         throws NacosException {
         form.validate();
@@ -102,9 +129,15 @@ public class ConsolePipelineController {
     @Deprecated(since = "3.2.1", forRemoval = true)
     @GetMapping("/{pipelineId}")
     @Secured(action = ActionTypes.READ, signType = SignType.AI, apiType = ApiType.CONSOLE_API)
-    @Operation(summary = "nacos.console.ai.pipeline.api.get.summary", description = "nacos.console.ai.pipeline.api.get.description", security = @SecurityRequirement(name = "nacos"))
-    @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE, schema = @Schema(implementation = Result.class, example = "nacos.console.ai.pipeline.api.get.example")))
-    @Parameter(name = "pipelineId", required = true, in = ParameterIn.PATH, example = "pipeline-id-example")
+    @Operation(summary = "nacos.console.ai.pipeline.api.get.summary",
+        description = "nacos.console.ai.pipeline.api.get.description",
+        security = @SecurityRequirement(name = "nacos"))
+    @ApiResponse(responseCode = "200",
+        content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+            schema = @Schema(implementation = Result.class,
+                example = "nacos.console.ai.pipeline.api.get.example")))
+    @Parameter(name = "pipelineId", required = true, in = ParameterIn.PATH,
+        example = "pipeline-id-example")
     public Result<PipelineExecution> getPipeline(@PathVariable String pipelineId)
         throws NacosException {
         return Result.success(pipelineProxy.getPipeline(pipelineId));
@@ -118,15 +151,22 @@ public class ConsolePipelineController {
     @Deprecated(since = "3.2.1", forRemoval = true)
     @GetMapping
     @Secured(action = ActionTypes.READ, signType = SignType.AI, apiType = ApiType.CONSOLE_API)
-    @Operation(summary = "nacos.console.ai.pipeline.api.list.summary", description = "nacos.console.ai.pipeline.api.list.description", security = @SecurityRequirement(name = "nacos"))
-    @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE, schema = @Schema(implementation = Result.class, example = "nacos.console.ai.pipeline.api.list.example")))
+    @Operation(summary = "nacos.console.ai.pipeline.api.list.summary",
+        description = "nacos.console.ai.pipeline.api.list.description",
+        security = @SecurityRequirement(name = "nacos"))
+    @ApiResponse(responseCode = "200",
+        content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+            schema = @Schema(implementation = Result.class,
+                example = "nacos.console.ai.pipeline.api.list.example")))
     @Parameters(value = {@Parameter(name = "resourceType", required = true, example = "skill"),
-            @Parameter(name = "resourceName", example = "my-skill"),
-            @Parameter(name = "namespaceId", example = "public"),
-            @Parameter(name = "version", example = "1.0.0"),
-            @Parameter(name = "pageNo", required = true, schema = @Schema(type = "integer"), example = "1"),
-            @Parameter(name = "pageSize", required = true, schema = @Schema(type = "integer"), example = "100"),
-            @Parameter(name = "form", hidden = true), @Parameter(name = "pageForm", hidden = true)})
+        @Parameter(name = "resourceName", example = "my-skill"),
+        @Parameter(name = "namespaceId", example = "public"),
+        @Parameter(name = "version", example = "1.0.0"),
+        @Parameter(name = "pageNo", required = true, schema = @Schema(type = "integer"),
+            example = "1"),
+        @Parameter(name = "pageSize", required = true, schema = @Schema(type = "integer"),
+            example = "100"),
+        @Parameter(name = "form", hidden = true), @Parameter(name = "pageForm", hidden = true)})
     public Result<Page<PipelineExecution>> listPipelinesLegacy(PipelineListForm form,
         PageForm pageForm)
         throws NacosException {

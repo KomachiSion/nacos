@@ -70,12 +70,17 @@ import java.util.List;
 @RestController
 @RequestMapping(Constants.A2A.CONSOLE_PATH)
 @ExtractorManager.Extractor(httpExtractor = AgentHttpParamExtractor.class)
-@Tag(name = "nacos.console.ai.a2a.api.controller.name", description = "nacos.console.ai.a2a.api.controller.description", extensions = {
+@Tag(name = "nacos.console.ai.a2a.api.controller.name",
+    description = "nacos.console.ai.a2a.api.controller.description", extensions = {
         @Extension(name = RemoteConstants.LABEL_MODULE,
-                properties = @ExtensionProperty(name = RemoteConstants.LABEL_MODULE, value = "ai"))})
+            properties = @ExtensionProperty(name = RemoteConstants.LABEL_MODULE, value = "ai"))})
 public class ConsoleA2aController {
     
-    private static final String AGENT_CARD_EXAMPLE = "{\"protocolVersion\":\"0.2.9\",\"name\":\"GeoSpatial Route Planner Agent\",\"description\":\"Provides advanced route planning, traffic analysis, and custom map generation services. This agent can calculate optimal routes, estimate travel times considering real-time traffic, and create personalized maps with points of interest.\",\"url\":\"https://georoute-agent.example.com/a2a/v1\",\"preferredTransport\":\"JSONRPC\",\"additionalInterfaces\":[{\"url\":\"https://georoute-agent.example.com/a2a/v1\",\"transport\":\"JSONRPC\"},{\"url\":\"https://georoute-agent.example.com/a2a/grpc\",\"transport\":\"GRPC\"},{\"url\":\"https://georoute-agent.example.com/a2a/json\",\"transport\":\"HTTP+JSON\"}],\"provider\":{\"organization\":\"Example Geo Services Inc.\",\"url\":\"https://www.examplegeoservices.com\"},\"iconUrl\":\"https://georoute-agent.example.com/icon.png\",\"version\":\"1.2.0\",\"documentationUrl\":\"https://docs.examplegeoservices.com/georoute-agent/api\",\"capabilities\":{\"streaming\":true,\"pushNotifications\":true,\"stateTransitionHistory\":false},\"securitySchemes\":{\"google\":{\"type\":\"openIdConnect\",\"openIdConnectUrl\":\"https://accounts.google.com/.well-known/openid-configuration\"}},\"security\":[{\"google\":[\"openid\",\"profile\",\"email\"]}],\"defaultInputModes\":[\"application/json\",\"text/plain\"],\"defaultOutputModes\":[\"application/json\",\"image/png\"],\"skills\":[{\"id\":\"route-optimizer-traffic\",\"name\":\"Traffic-Aware Route Optimizer\",\"description\":\"Calculates the optimal driving route between two or more locations, taking into account real-time traffic conditions, road closures, and user preferences (e.g., avoid tolls, prefer highways).\",\"tags\":[\"maps\",\"routing\",\"navigation\",\"directions\",\"traffic\"],\"examples\":[\"Plan a route from '1600 Amphitheatre Parkway, Mountain View, CA' to 'San Francisco International Airport' avoiding tolls.\",\"{\\\"origin\\\": {\\\"lat\\\": 37.422, \\\"lng\\\": -122.084}, \\\"destination\\\": {\\\"lat\\\": 37.7749, \\\"lng\\\": -122.4194}, \\\"preferences\\\": [\\\"avoid_ferries\\\"]}\"],\"inputModes\":[\"application/json\",\"text/plain\"],\"outputModes\":[\"application/json\",\"application/vnd.geo+json\",\"text/html\"]},{\"id\":\"custom-map-generator\",\"name\":\"Personalized Map Generator\",\"description\":\"Creates custom map images or interactive map views based on user-defined points of interest, routes, and style preferences. Can overlay data layers.\",\"tags\":[\"maps\",\"customization\",\"visualization\",\"cartography\"],\"examples\":[\"Generate a map of my upcoming road trip with all planned stops highlighted.\",\"Show me a map visualizing all coffee shops within a 1-mile radius of my current location.\"],\"inputModes\":[\"application/json\"],\"outputModes\":[\"image/png\",\"image/jpeg\",\"application/json\",\"text/html\"]}],\"supportsAuthenticatedExtendedCard\":true,\"signatures\":[{\"protected\":\"eyJhbGciOiJFUzI1NiIsInR5cCI6IkpPU0UiLCJraWQiOiJrZXktMSIsImprdSI6Imh0dHBzOi8vZXhhbXBsZS5jb20vYWdlbnQvandrcy5qc29uIn0\",\"signature\":\"QFdkNLNszlGj3z3u0YQGt_T9LixY3qtdQpZmsTdDHDe3fXV9y9-B3m2-XgCpzuhiLt8E0tV6HXoZKHv4GtHgKQ\"}]}";
+    private static final String AGENT_CARD_EXAMPLE =
+        "{\"protocolVersion\":\"0.2.9\",\"name\":\"GeoSpatial Route Planner Agent\",\"description\":\"Provides advanced route planning, traffic analysis, and custom map generation services. This agent can calculate optimal routes, estimate travel times considering real-time traffic, and create personalized maps with points of interest.\",\"url\":\"https://georoute-agent.example.com/a2a/v1\",\"preferredTransport\":\"JSONRPC\",\"additionalInterfaces\":[{\"url\":\"https://georoute-agent.example.com/a2a/v1\",\"transport\":\"JSONRPC\"},{\"url\":\"https://georoute-agent.example.com/a2a/grpc\",\"transport\":\"GRPC\"},{\"url\":\"https://georoute-agent.example.com/a2a/json\",\"transport\":\"HTTP+JSON\"}],\"provider\":{\"organization\":\"Example Geo Services Inc.\",\"url\":\"https://www.examplegeoservices.com\"},\"iconUrl\":\"https://georoute-agent.example.com/icon.png\",\"version\":\"1.2.0\",\"documentationUrl\":\"https://docs.examplegeoservices.com/georoute-agent/api\",\"capabilities\":{\"streaming\":true,\"pushNotifications\":true,\"stateTransitionHistory\":false},\"securitySchemes\":{\"google\":{\"type\":\"openIdConnect\",\"openIdConnectUrl\":\"https://accounts.google.com/.well-known/openid-configuration\"}},\"security\":[{\"google\":[\"openid\",\"profile\",\"email\"]}],\"defaultInputModes\":[\"application/json\",\"text/plain\"],\"defaultOutputModes\":[\"application/json\",\"image/png\"],\"skills\":[{\"id\":\"route-optimizer-traffic\",\"name\":\"Traffic-Aware Route Optimizer\",\"description\":\"Calculates the optimal driving route between two or more locations, taking into account real-time traffic conditions, road closures, and user preferences (e.g., avoid tolls, prefer highways).\",\"tags\":[\"maps\",\"routing\",\"navigation\",\"directions\",\"traffic\"],\"examples\":[\"Plan a route from '1600 Amphitheatre Parkway, Mountain View, CA' to 'San Francisco International Airport' avoiding tolls.\",\"{\\\"origin\\\": {\\\"lat\\\": 37.422, \\\"lng\\\": -122.084}, \\\"destination\\\": {\\\"lat\\\": 37.7749, \\\"lng\\\": -122.4194}, \\\"preferences\\\": [\\\"avoid_ferries\\\"]}\"],\"inputModes\":[\"application/json\",\"text/plain\"],\"outputModes\":[\"application/json\",\"application/vnd.geo+json\",\"text/html\"]},{\"id\":\"custom-map-generator\",\"name\":\"Personalized Map Generator\",\"description\":\"Creates custom map images or interactive map views based on user-defined points of interest, routes, and style preferences. Can overlay data layers.\",\"tags\":[\"maps\",\"customization\",\"visualization\",\"cartography\"],\"examples\":[\"Generate a map of my upcoming road trip with all planned stops highlighted.\",\"Show me a map visualizing all coffee shops within a 1-mile radius of my current location.\"],\"inputModes\":[\"application/json\"],\"outputModes\":[\"image/png\",\"image/jpeg\",\"application/json\",\"text/html\"]}],\"supportsAuthenticatedExtendedCard\":true,\"signatures\":[{\"protected\":\"eyJhbGciOiJFUzI1NiIsInR5cCI6IkpPU0UiLCJraWQiOiJrZXktMSIsImprdSI6Imh0dHBzOi8vZXhhbXBsZS5jb20vYWdlbnQvandrcy5qc29uIn0\",\"signature\":\"QFdkNLNszlGj3z3u0YQGt_T9LixY3qtdQpZmsTdDHDe3fXV9y9-B3m2-XgCpzuhiLt8E0tV6HXoZKHv4GtHgKQ\"}]}";
+    
+    private static final String AGENT_CARD_TEXT_EXAMPLE =
+        "\"{\\\"protocolVersion\\\":\\\"0.2.9\\\",\\\"name\\\":\\\"GeoSpatial Route Planner Agent\\\",\\\"url\\\":\\\"https://georoute-agent.example.com/a2a/v1\\\",\\\"version\\\":\\\"1.2.0\\\"}\"";
     
     private final A2aProxy a2aProxy;
     
@@ -92,15 +97,20 @@ public class ConsoleA2aController {
      */
     @PostMapping
     @Secured(action = ActionTypes.WRITE, signType = SignType.AI, apiType = ApiType.CONSOLE_API)
-    @Operation(summary = "nacos.console.ai.a2a.api.create.summary", description = "nacos.console.ai.a2a.api.create.description",
-            security = @SecurityRequirement(name = "nacos"))
-    @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
-            schema = @Schema(implementation = Result.class, example = "nacos.console.ai.a2a.api.create.example")))
+    @Operation(summary = "nacos.console.ai.a2a.api.create.summary",
+        description = "nacos.console.ai.a2a.api.create.description",
+        security = @SecurityRequirement(name = "nacos"))
+    @ApiResponse(responseCode = "200",
+        content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+            schema = @Schema(implementation = Result.class,
+                example = "nacos.console.ai.a2a.api.create.example")))
     @Parameters(value = {@Parameter(name = "namespaceId", example = "public"),
-            @Parameter(name = "agentCard", required = true,
-                    schema = @Schema(implementation = AgentCard.class), example = AGENT_CARD_EXAMPLE),
-            @Parameter(name = "registrationType", example = AiConstants.A2a.A2A_ENDPOINT_TYPE_SERVICE),
-            @Parameter(name = "form", hidden = true)})
+        @Parameter(name = "agentCard", required = true,
+            schema = @Schema(type = "string",
+                description = "JSON object string parsed as AgentCard"),
+            example = AGENT_CARD_TEXT_EXAMPLE),
+        @Parameter(name = "registrationType", example = AiConstants.A2a.A2A_ENDPOINT_TYPE_SERVICE),
+        @Parameter(name = "form", hidden = true)})
     public Result<String> registerAgent(AgentCardForm form) throws NacosException {
         form.validate();
         AgentCard agentCard = AgentRequestUtil.parseAgentCard(form);
@@ -117,14 +127,17 @@ public class ConsoleA2aController {
      */
     @GetMapping
     @Secured(action = ActionTypes.READ, signType = SignType.AI, apiType = ApiType.CONSOLE_API)
-    @Operation(summary = "nacos.console.ai.a2a.api.get.summary", description = "nacos.console.ai.a2a.api.get.description",
-            security = @SecurityRequirement(name = "nacos"))
-    @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
-            schema = @Schema(implementation = Result.class, example = "nacos.console.ai.a2a.api.get.example")))
+    @Operation(summary = "nacos.console.ai.a2a.api.get.summary",
+        description = "nacos.console.ai.a2a.api.get.description",
+        security = @SecurityRequirement(name = "nacos"))
+    @ApiResponse(responseCode = "200",
+        content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+            schema = @Schema(implementation = Result.class,
+                example = "nacos.console.ai.a2a.api.get.example")))
     @Parameters(value = {@Parameter(name = "namespaceId", example = "public"),
-            @Parameter(name = "agentName", example = "GeoSpatial Route Planner Agent", required = true),
-            @Parameter(name = "version", example = "1.0.0"), @Parameter(name = "form", hidden = true),
-            @Parameter(name = "registrationType", example = AiConstants.A2a.A2A_ENDPOINT_TYPE_SERVICE)})
+        @Parameter(name = "agentName", example = "GeoSpatial Route Planner Agent", required = true),
+        @Parameter(name = "version", example = "1.0.0"), @Parameter(name = "form", hidden = true),
+        @Parameter(name = "registrationType", example = AiConstants.A2a.A2A_ENDPOINT_TYPE_SERVICE)})
     public Result<AgentCardDetailInfo> getAgentCard(AgentForm form) throws NacosException {
         form.validate();
         return Result.success(a2aProxy.getAgentCard(form));
@@ -139,16 +152,21 @@ public class ConsoleA2aController {
      */
     @PutMapping
     @Secured(action = ActionTypes.WRITE, signType = SignType.AI, apiType = ApiType.CONSOLE_API)
-    @Operation(summary = "nacos.console.ai.a2a.api.update.summary", description = "nacos.console.ai.a2a.api.update.description",
-            security = @SecurityRequirement(name = "nacos"))
-    @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
-            schema = @Schema(implementation = Result.class, example = "nacos.console.ai.a2a.api.update.example")))
+    @Operation(summary = "nacos.console.ai.a2a.api.update.summary",
+        description = "nacos.console.ai.a2a.api.update.description",
+        security = @SecurityRequirement(name = "nacos"))
+    @ApiResponse(responseCode = "200",
+        content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+            schema = @Schema(implementation = Result.class,
+                example = "nacos.console.ai.a2a.api.update.example")))
     @Parameters(value = {@Parameter(name = "namespaceId", example = "public"),
-            @Parameter(name = "agentCard", required = true,
-                    schema = @Schema(implementation = AgentCard.class), example = AGENT_CARD_EXAMPLE),
-            @Parameter(name = "registrationType", example = AiConstants.A2a.A2A_ENDPOINT_TYPE_SERVICE),
-            @Parameter(name = "setAsLatest", schema = @Schema(type = "boolean"), example = "true"),
-            @Parameter(name = "form", hidden = true)})
+        @Parameter(name = "agentCard", required = true,
+            schema = @Schema(type = "string",
+                description = "JSON object string parsed as AgentCard"),
+            example = AGENT_CARD_TEXT_EXAMPLE),
+        @Parameter(name = "registrationType", example = AiConstants.A2a.A2A_ENDPOINT_TYPE_SERVICE),
+        @Parameter(name = "setAsLatest", schema = @Schema(type = "boolean"), example = "true"),
+        @Parameter(name = "form", hidden = true)})
     public Result<String> updateAgentCard(AgentCardUpdateForm form) throws NacosException {
         form.validate();
         AgentCard agentCard = AgentRequestUtil.parseAgentCard(form);
@@ -165,13 +183,16 @@ public class ConsoleA2aController {
      */
     @DeleteMapping
     @Secured(action = ActionTypes.WRITE, signType = SignType.AI, apiType = ApiType.CONSOLE_API)
-    @Operation(summary = "nacos.console.ai.a2a.api.delete.summary", description = "nacos.console.ai.a2a.api.delete.description",
-            security = @SecurityRequirement(name = "nacos"))
-    @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
-            schema = @Schema(implementation = Result.class, example = "nacos.console.ai.a2a.api.delete.example")))
+    @Operation(summary = "nacos.console.ai.a2a.api.delete.summary",
+        description = "nacos.console.ai.a2a.api.delete.description",
+        security = @SecurityRequirement(name = "nacos"))
+    @ApiResponse(responseCode = "200",
+        content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+            schema = @Schema(implementation = Result.class,
+                example = "nacos.console.ai.a2a.api.delete.example")))
     @Parameters(value = {@Parameter(name = "namespaceId", example = "public"),
-            @Parameter(name = "agentName", example = "GeoSpatial Route Planner Agent", required = true),
-            @Parameter(name = "version", example = "1.0.0"), @Parameter(name = "form", hidden = true)})
+        @Parameter(name = "agentName", example = "GeoSpatial Route Planner Agent", required = true),
+        @Parameter(name = "version", example = "1.0.0"), @Parameter(name = "form", hidden = true)})
     public Result<String> deleteAgent(AgentForm form) throws NacosException {
         form.validate();
         a2aProxy.deleteAgent(form);
@@ -188,15 +209,23 @@ public class ConsoleA2aController {
      */
     @GetMapping("/list")
     @Secured(action = ActionTypes.READ, signType = SignType.AI, apiType = ApiType.CONSOLE_API)
-    @Operation(summary = "nacos.console.ai.a2a.api.list.summary", description = "nacos.console.ai.a2a.api.list.description",
-            security = @SecurityRequirement(name = "nacos"))
-    @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
-            schema = @Schema(implementation = Result.class, example = "nacos.console.ai.a2a.api.list.example")))
-    @Parameters(value = {@Parameter(name = "pageNo", required = true, schema = @Schema(type = "integer"), example = "1"),
-            @Parameter(name = "pageSize", required = true, schema = @Schema(type = "integer"), example = "100"),
-            @Parameter(name = "namespaceId", example = "public"), @Parameter(name = "agentName"),
-            @Parameter(name = "search", example = "blur", description = "blur or accurate", required = true),
-            @Parameter(name = "agentListForm", hidden = true), @Parameter(name = "pageForm", hidden = true)})
+    @Operation(summary = "nacos.console.ai.a2a.api.list.summary",
+        description = "nacos.console.ai.a2a.api.list.description",
+        security = @SecurityRequirement(name = "nacos"))
+    @ApiResponse(responseCode = "200",
+        content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+            schema = @Schema(implementation = Result.class,
+                example = "nacos.console.ai.a2a.api.list.example")))
+    @Parameters(value = {
+        @Parameter(name = "pageNo", required = true, schema = @Schema(type = "integer"),
+            example = "1"),
+        @Parameter(name = "pageSize", required = true, schema = @Schema(type = "integer"),
+            example = "100"),
+        @Parameter(name = "namespaceId", example = "public"), @Parameter(name = "agentName"),
+        @Parameter(name = "search", example = "blur", description = "blur or accurate",
+            required = true),
+        @Parameter(name = "agentListForm", hidden = true),
+        @Parameter(name = "pageForm", hidden = true)})
     public Result<Page<AgentCardVersionInfo>> listAgents(AgentListForm agentListForm,
         PageForm pageForm)
         throws NacosException {
@@ -214,13 +243,16 @@ public class ConsoleA2aController {
      */
     @GetMapping("/version/list")
     @Secured(action = ActionTypes.READ, signType = SignType.AI, apiType = ApiType.ADMIN_API)
-    @Operation(summary = "nacos.console.ai.a2a.api.version.list.summary", description = "nacos.console.ai.a2a.api.version.list.description",
-            security = @SecurityRequirement(name = "nacos"))
-    @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
-            schema = @Schema(implementation = Result.class, example = "nacos.console.ai.a2a.api.version.list.example")))
+    @Operation(summary = "nacos.console.ai.a2a.api.version.list.summary",
+        description = "nacos.console.ai.a2a.api.version.list.description",
+        security = @SecurityRequirement(name = "nacos"))
+    @ApiResponse(responseCode = "200",
+        content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+            schema = @Schema(implementation = Result.class,
+                example = "nacos.console.ai.a2a.api.version.list.example")))
     @Parameters(value = {@Parameter(name = "namespaceId", example = "public"),
-            @Parameter(name = "agentName", example = "GeoSpatial Route Planner Agent", required = true),
-            @Parameter(name = "agentForm", hidden = true)})
+        @Parameter(name = "agentName", example = "GeoSpatial Route Planner Agent", required = true),
+        @Parameter(name = "agentForm", hidden = true)})
     public Result<List<AgentVersionDetail>> listAgentVersions(AgentForm agentForm)
         throws NacosException {
         agentForm.validate();
