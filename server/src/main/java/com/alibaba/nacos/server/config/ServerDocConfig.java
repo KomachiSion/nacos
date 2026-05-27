@@ -22,6 +22,7 @@ import com.alibaba.nacos.springdoc.openapi.NacosOnlyTagControllerOpenApiBuilderC
 import com.alibaba.nacos.springdoc.openapi.NacosSecurityOpenApiCustomizer;
 import com.alibaba.nacos.springdoc.openapi.NacosTagSorterOpenApiCustomizer;
 import com.alibaba.nacos.springdoc.operation.NacosExampleI18nOperationCustomize;
+import com.alibaba.nacos.springdoc.operation.NacosOperationExtensionCustomizer;
 import com.alibaba.nacos.springdoc.operation.NacosRequestBodyHiddenOperationCustomizer;
 import io.swagger.v3.oas.models.OpenAPI;
 import org.springdoc.core.customizers.GlobalOpenApiCustomizer;
@@ -59,7 +60,8 @@ public class ServerDocConfig {
     @PostConstruct
     public void initSpringDocProperties() {
         springDocConfigProperties.setDefaultProducesMediaType(MediaType.APPLICATION_JSON_VALUE);
-        springDocConfigProperties.setDefaultConsumesMediaType(MediaType.APPLICATION_FORM_URLENCODED_VALUE);
+        springDocConfigProperties
+            .setDefaultConsumesMediaType(MediaType.APPLICATION_FORM_URLENCODED_VALUE);
     }
     
     @Bean
@@ -68,18 +70,22 @@ public class ServerDocConfig {
     }
     
     @Bean
-    public OpenAPIService nacosServerOpenApiService(Optional<OpenAPI> openApi, SecurityService securityParser,
-            SpringDocConfigProperties springDocConfigProperties, PropertyResolverUtils propertyResolverUtils,
-            Optional<List<OpenApiBuilderCustomizer>> openApiBuilderCustomisers,
-            Optional<List<ServerBaseUrlCustomizer>> serverBaseUrlCustomisers,
-            Optional<JavadocProvider> javadocProvider) {
-        return new NacosLocaleCachedOpenApiService(openApi, securityParser, springDocConfigProperties,
-                propertyResolverUtils, openApiBuilderCustomisers, serverBaseUrlCustomisers, javadocProvider);
+    public OpenAPIService nacosServerOpenApiService(Optional<OpenAPI> openApi,
+        SecurityService securityParser,
+        SpringDocConfigProperties springDocConfigProperties,
+        PropertyResolverUtils propertyResolverUtils,
+        Optional<List<OpenApiBuilderCustomizer>> openApiBuilderCustomisers,
+        Optional<List<ServerBaseUrlCustomizer>> serverBaseUrlCustomisers,
+        Optional<JavadocProvider> javadocProvider) {
+        return new NacosLocaleCachedOpenApiService(openApi, securityParser,
+            springDocConfigProperties,
+            propertyResolverUtils, openApiBuilderCustomisers, serverBaseUrlCustomisers,
+            javadocProvider);
     }
     
     @Bean
     public GlobalOpenApiCustomizer nacosServerSecurityRequirementOpenApiCustomizer(
-            PropertyResolverUtils propertyResolverUtils) {
+        PropertyResolverUtils propertyResolverUtils) {
         return new NacosSecurityOpenApiCustomizer(propertyResolverUtils);
     }
     
@@ -94,7 +100,14 @@ public class ServerDocConfig {
     }
     
     @Bean
-    public GlobalOperationCustomizer nacosServerExampleI18nOperationCustomize(PropertyResolverUtils propertyResolverUtils) {
+    public GlobalOperationCustomizer nacosServerExampleI18nOperationCustomize(
+        PropertyResolverUtils propertyResolverUtils) {
         return new NacosExampleI18nOperationCustomize(propertyResolverUtils);
+    }
+    
+    @Bean
+    public GlobalOperationCustomizer nacosServerOperationExtensionCustomizer(
+        PropertyResolverUtils propertyResolverUtils) {
+        return new NacosOperationExtensionCustomizer(propertyResolverUtils);
     }
 }

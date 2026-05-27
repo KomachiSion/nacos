@@ -23,6 +23,7 @@ import com.alibaba.nacos.springdoc.operation.NacosExampleI18nOperationCustomize;
 import com.alibaba.nacos.springdoc.operation.NacosGenericSchemaOperationCustomize;
 import com.alibaba.nacos.springdoc.openapi.NacosLocaleCachedOpenApiService;
 import com.alibaba.nacos.springdoc.openapi.NacosOnlyTagControllerOpenApiBuilderCustomizer;
+import com.alibaba.nacos.springdoc.operation.NacosOperationExtensionCustomizer;
 import com.alibaba.nacos.springdoc.operation.NacosRequestBodyHiddenOperationCustomizer;
 import com.alibaba.nacos.springdoc.openapi.NacosGenericSchemaOpenApiCustomizer;
 import com.alibaba.nacos.springdoc.openapi.NacosSecurityOpenApiCustomizer;
@@ -137,6 +138,12 @@ public class DocConfig {
     public GlobalOperationCustomizer nacosConsoleExampleI18nOperationCustomize(
         PropertyResolverUtils propertyResolverUtils) {
         return new NacosExampleI18nOperationCustomize(propertyResolverUtils);
+    }
+    
+    @Bean
+    public GlobalOperationCustomizer nacosConsoleOperationExtensionCustomizer(
+        PropertyResolverUtils propertyResolverUtils) {
+        return new NacosOperationExtensionCustomizer(propertyResolverUtils);
     }
     
 }
