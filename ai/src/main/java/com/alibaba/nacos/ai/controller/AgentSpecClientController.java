@@ -59,9 +59,10 @@ import static com.alibaba.nacos.plugin.auth.constant.Constants.Tag.ALLOW_ANONYMO
 @RestController
 @RequestMapping(Constants.AgentSpecs.CLIENT_PATH)
 @ExtractorManager.Extractor(httpExtractor = ExtractorManager.DefaultHttpExtractor.class)
-@Tag(name = "nacos.admin.ai.agentspec.client.api.controller.name", description = "nacos.admin.ai.agentspec.client.api.controller.description", extensions = {
+@Tag(name = "nacos.admin.ai.agentspec.client.api.controller.name",
+    description = "nacos.admin.ai.agentspec.client.api.controller.description", extensions = {
         @Extension(name = RemoteConstants.LABEL_MODULE,
-                properties = @ExtensionProperty(name = RemoteConstants.LABEL_MODULE, value = "ai"))})
+            properties = @ExtensionProperty(name = RemoteConstants.LABEL_MODULE, value = "ai"))})
 public class AgentSpecClientController {
     
     private final AgentSpecOperationService agentSpecOperationService;
@@ -75,13 +76,22 @@ public class AgentSpecClientController {
      */
     @GetMapping("/search")
     @Secured(action = ActionTypes.READ, signType = SignType.AI, apiType = ApiType.OPEN_API)
-    @Operation(summary = "nacos.admin.ai.agentspec.client.api.search.summary", description = "nacos.admin.ai.agentspec.client.api.search.description", security = @SecurityRequirement(name = "nacos"))
-    @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE, schema = @Schema(implementation = Result.class, example = "nacos.admin.ai.agentspec.client.api.search.example")))
+    @Operation(summary = "nacos.admin.ai.agentspec.client.api.search.summary",
+        description = "nacos.admin.ai.agentspec.client.api.search.description",
+        security = @SecurityRequirement(name = "nacos"), extensions = {
+            @Extension(name = "nacos-api-since",
+                properties = @ExtensionProperty(name = "version", value = "3.2.0"))})
+    @ApiResponse(responseCode = "200",
+        content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+            schema = @Schema(implementation = Result.class,
+                example = "nacos.admin.ai.agentspec.client.api.search.example")))
     @Parameters(value = {@Parameter(name = "namespaceId", example = "public"),
-            @Parameter(name = "keyword", example = "my-agentspec"),
-            @Parameter(name = "pageNo", required = true, schema = @Schema(type = "integer"), example = "1"),
-            @Parameter(name = "pageSize", required = true, schema = @Schema(type = "integer"), example = "100"),
-            @Parameter(name = "form", hidden = true), @Parameter(name = "pageForm", hidden = true)})
+        @Parameter(name = "keyword", example = "my-agentspec"),
+        @Parameter(name = "pageNo", required = true, schema = @Schema(type = "integer"),
+            example = "1"),
+        @Parameter(name = "pageSize", required = true, schema = @Schema(type = "integer"),
+            example = "100"),
+        @Parameter(name = "form", hidden = true), @Parameter(name = "pageForm", hidden = true)})
     public Result<Page<AgentSpecBasicInfo>> search(AgentSpecSearchForm form, PageForm pageForm)
         throws NacosException {
         form.validate();
@@ -97,13 +107,20 @@ public class AgentSpecClientController {
     @GetMapping
     @Secured(action = ActionTypes.READ, signType = SignType.AI, apiType = ApiType.OPEN_API,
         tags = {ALLOW_ANONYMOUS})
-    @Operation(summary = "nacos.admin.ai.agentspec.client.api.get.summary", description = "nacos.admin.ai.agentspec.client.api.get.description", security = @SecurityRequirement(name = "nacos"))
-    @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE, schema = @Schema(implementation = Result.class, example = "nacos.admin.ai.agentspec.client.api.get.example")))
+    @Operation(summary = "nacos.admin.ai.agentspec.client.api.get.summary",
+        description = "nacos.admin.ai.agentspec.client.api.get.description",
+        security = @SecurityRequirement(name = "nacos"), extensions = {
+            @Extension(name = "nacos-api-since",
+                properties = @ExtensionProperty(name = "version", value = "3.2.0"))})
+    @ApiResponse(responseCode = "200",
+        content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+            schema = @Schema(implementation = Result.class,
+                example = "nacos.admin.ai.agentspec.client.api.get.example")))
     @Parameters(value = {@Parameter(name = "namespaceId", example = "public"),
-            @Parameter(name = "name", required = true, example = "my-agentspec"),
-            @Parameter(name = "version", example = "1.0.0"),
-            @Parameter(name = "label"),
-            @Parameter(name = "form", hidden = true)})
+        @Parameter(name = "name", required = true, example = "my-agentspec"),
+        @Parameter(name = "version", example = "1.0.0"),
+        @Parameter(name = "label"),
+        @Parameter(name = "form", hidden = true)})
     public Result<AgentSpec> get(AgentSpecQueryForm form) throws NacosException {
         form.validate();
         return Result.success(

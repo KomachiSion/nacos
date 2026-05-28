@@ -111,7 +111,9 @@ public class InstanceOpenApiController {
     @Secured(action = ActionTypes.WRITE, apiType = ApiType.OPEN_API)
     @Operation(summary = "nacos.client.naming.instance.api.register.summary",
         description = "nacos.client.naming.instance.api.register.description",
-        security = @SecurityRequirement(name = "nacos"))
+        security = @SecurityRequirement(name = "nacos"), extensions = {
+            @Extension(name = "nacos-api-since",
+                properties = @ExtensionProperty(name = "version", value = "3.0.0"))})
     @ApiResponse(responseCode = "200",
         content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
             schema = @Schema(implementation = Result.class,
@@ -159,7 +161,9 @@ public class InstanceOpenApiController {
     @Secured(action = ActionTypes.WRITE, apiType = ApiType.OPEN_API)
     @Operation(summary = "nacos.client.naming.instance.api.deregister.summary",
         description = "nacos.client.naming.instance.api.deregister.description",
-        security = @SecurityRequirement(name = "nacos"))
+        security = @SecurityRequirement(name = "nacos"), extensions = {
+            @Extension(name = "nacos-api-since",
+                properties = @ExtensionProperty(name = "version", value = "3.0.0"))})
     @ApiResponse(responseCode = "200",
         content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
             schema = @Schema(implementation = Result.class,
@@ -207,7 +211,9 @@ public class InstanceOpenApiController {
     @ExtractorManager.Extractor(httpExtractor = NamingInstanceListHttpParamExtractor.class)
     @Operation(summary = "nacos.client.naming.instance.api.list.summary",
         description = "nacos.client.naming.instance.api.list.description",
-        security = @SecurityRequirement(name = "nacos"))
+        security = @SecurityRequirement(name = "nacos"), extensions = {
+            @Extension(name = "nacos-api-since",
+                properties = @ExtensionProperty(name = "version", value = "3.0.0"))})
     @ApiResponse(responseCode = "200",
         content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
             schema = @Schema(implementation = Result.class,

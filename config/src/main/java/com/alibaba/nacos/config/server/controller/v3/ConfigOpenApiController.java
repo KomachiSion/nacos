@@ -78,9 +78,11 @@ import static com.alibaba.nacos.config.server.constant.Constants.ENCODE_UTF8;
 @RestController
 @RequestMapping(Constants.CONFIG_V3_CLIENT_API_PATH)
 @ExtractorManager.Extractor(httpExtractor = ConfigDefaultHttpParamExtractor.class)
-@Tag(name = "nacos.client.config.config.api.controller.name", description = "nacos.client.config.config.api.controller.description", extensions = {
+@Tag(name = "nacos.client.config.config.api.controller.name",
+    description = "nacos.client.config.config.api.controller.description", extensions = {
         @Extension(name = RemoteConstants.LABEL_MODULE,
-                properties = @ExtensionProperty(name = RemoteConstants.LABEL_MODULE, value = RemoteConstants.LABEL_MODULE_CONFIG))})
+            properties = @ExtensionProperty(name = RemoteConstants.LABEL_MODULE,
+                value = RemoteConstants.LABEL_MODULE_CONFIG))})
 public class ConfigOpenApiController {
     
     private final ConfigQueryChainService configQueryChainService;
@@ -92,13 +94,19 @@ public class ConfigOpenApiController {
     @GetMapping
     @TpsControl(pointName = "ConfigQuery")
     @Secured(action = ActionTypes.READ, signType = SignType.CONFIG, apiType = ApiType.OPEN_API)
-    @Operation(summary = "nacos.client.config.config.api.get.summary", description = "nacos.client.config.config.api.get.description",
-            security = @SecurityRequirement(name = "nacos"))
-    @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
-            schema = @Schema(implementation = Result.class, example = "nacos.client.config.config.api.get.example")))
+    @Operation(summary = "nacos.client.config.config.api.get.summary",
+        description = "nacos.client.config.config.api.get.description",
+        security = @SecurityRequirement(name = "nacos"), extensions = {
+            @Extension(name = "nacos-api-since",
+                properties = @ExtensionProperty(name = "version", value = "3.0.0"))})
+    @ApiResponse(responseCode = "200",
+        content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+            schema = @Schema(implementation = Result.class,
+                example = "nacos.client.config.config.api.get.example")))
     @Parameters(value = {@Parameter(name = "namespaceId", example = "public"),
-            @Parameter(name = "groupName", required = true, example = "DEFAULT_GROUP"),
-            @Parameter(name = "dataId", required = true, example = "test"), @Parameter(name = "configForm", hidden = true)})
+        @Parameter(name = "groupName", required = true, example = "DEFAULT_GROUP"),
+        @Parameter(name = "dataId", required = true, example = "test"),
+        @Parameter(name = "configForm", hidden = true)})
     public Result<ConfigQueryResponse> getConfig(ConfigFormV3 configForm)
         throws NacosApiException, UnsupportedEncodingException {
         configForm.validate();

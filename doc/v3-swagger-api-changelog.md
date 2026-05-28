@@ -4,6 +4,14 @@
 
 ### Existing Annotation Checks
 
+- `GET /v3/client/cs/config`: added `x-nacos-api-since.version=3.0.0` based on the first 3.x tag containing the v3 client config API path.
+- `POST /v3/client/ns/instance`: added `x-nacos-api-since.version=3.0.0` based on the first 3.x tag containing the v3 client naming instance API path.
+- `DELETE /v3/client/ns/instance`: added `x-nacos-api-since.version=3.0.0` based on the first 3.x tag containing the v3 client naming instance API path.
+- `GET /v3/client/ns/instance/list`: added `x-nacos-api-since.version=3.0.0` based on the first 3.x tag containing the v3 client naming instance list API path.
+- `GET /v3/client/ai/prompt`: added `x-nacos-api-since.version=3.2.0` based on the first 3.x tag containing the prompt client controller and normalized to the `x.y.z` version prefix.
+- `GET /v3/client/ai/skills`: added `x-nacos-api-since.version=3.2.0` based on the first 3.x tag containing the skill client controller.
+- `GET /v3/client/ai/agentspecs`: added `x-nacos-api-since.version=3.2.0` based on the first 3.x tag containing the AgentSpec client controller.
+- `GET /v3/client/ai/agentspecs/search`: added `x-nacos-api-since.version=3.2.0` based on the first 3.x tag containing the AgentSpec client controller.
 - `GET /v3/client/ai/prompt`: corrected the Swagger i18n descriptions to match the current query priority `version > label > latest`.
 - `POST /v3/client/ns/instance`: clarified the `metadata` query parameter as a JSON object string parsed into the metadata map.
 - `POST /v3/admin/ns/service`: clarified `selector` and `metadata` as JSON object string query parameters.
