@@ -71,9 +71,11 @@ import java.util.stream.Collectors;
 @RestController
 @RequestMapping(Constants.HISTORY_ADMIN_V3_PATH)
 @ExtractorManager.Extractor(httpExtractor = ConfigDefaultHttpParamExtractor.class)
-@Tag(name = "nacos.admin.config.history.api.controller.name", description = "nacos.admin.config.history.api.controller.description", extensions = {
+@Tag(name = "nacos.admin.config.history.api.controller.name",
+    description = "nacos.admin.config.history.api.controller.description", extensions = {
         @Extension(name = RemoteConstants.LABEL_MODULE,
-                properties = @ExtensionProperty(name = RemoteConstants.LABEL_MODULE, value = RemoteConstants.LABEL_MODULE_CONFIG))})
+            properties = @ExtensionProperty(name = RemoteConstants.LABEL_MODULE,
+                value = RemoteConstants.LABEL_MODULE_CONFIG))})
 public class HistoryControllerV3 {
     
     private final HistoryService historyService;
@@ -87,15 +89,25 @@ public class HistoryControllerV3 {
      */
     @GetMapping("/list")
     @Secured(action = ActionTypes.READ, signType = SignType.CONFIG, apiType = ApiType.ADMIN_API)
-    @Operation(summary = "nacos.admin.config.history.api.list.summary", description = "nacos.admin.config.history.api.list.description",
-            security = @SecurityRequirement(name = "nacos"))
-    @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
-            schema = @Schema(implementation = Result.class, example = "nacos.admin.config.history.api.list.example")))
-    @Parameters(value = {@Parameter(name = "pageNo", required = true, schema = @Schema(type = "integer"), example = "1"),
-            @Parameter(name = "pageSize", required = true, schema = @Schema(type = "integer"), example = "100"),
-            @Parameter(name = "namespaceId", example = "public"), @Parameter(name = "groupName", required = true),
-            @Parameter(name = "dataId", required = true), @Parameter(name = "configForm", hidden = true),
-            @Parameter(name = "pageForm", hidden = true)})
+    @Operation(summary = "nacos.admin.config.history.api.list.summary",
+        description = "nacos.admin.config.history.api.list.description",
+        security = @SecurityRequirement(name = "nacos"),
+        extensions = {@Extension(name = "nacos-api-since",
+            properties = @ExtensionProperty(name = "version", value = "3.0.0"))})
+    @ApiResponse(responseCode = "200",
+        content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+            schema = @Schema(implementation = Result.class,
+                example = "nacos.admin.config.history.api.list.example")))
+    @Parameters(value = {
+        @Parameter(name = "pageNo", required = true, schema = @Schema(type = "integer"),
+            example = "1"),
+        @Parameter(name = "pageSize", required = true, schema = @Schema(type = "integer"),
+            example = "100"),
+        @Parameter(name = "namespaceId", example = "public"),
+        @Parameter(name = "groupName", required = true),
+        @Parameter(name = "dataId", required = true),
+        @Parameter(name = "configForm", hidden = true),
+        @Parameter(name = "pageForm", hidden = true)})
     public Result<Page<ConfigHistoryBasicInfo>> listConfigHistory(ConfigFormV3 configForm,
         PageForm pageForm)
         throws NacosApiException {
@@ -125,14 +137,21 @@ public class HistoryControllerV3 {
      */
     @GetMapping
     @Secured(action = ActionTypes.READ, signType = SignType.CONFIG, apiType = ApiType.ADMIN_API)
-    @Operation(summary = "nacos.admin.config.history.api.get.summary", description = "nacos.admin.config.history.api.get.description",
-            security = @SecurityRequirement(name = "nacos"))
-    @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
-            schema = @Schema(implementation = Result.class, example = "nacos.admin.config.history.api.get.example")))
+    @Operation(summary = "nacos.admin.config.history.api.get.summary",
+        description = "nacos.admin.config.history.api.get.description",
+        security = @SecurityRequirement(name = "nacos"),
+        extensions = {@Extension(name = "nacos-api-since",
+            properties = @ExtensionProperty(name = "version", value = "3.0.0"))})
+    @ApiResponse(responseCode = "200",
+        content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+            schema = @Schema(implementation = Result.class,
+                example = "nacos.admin.config.history.api.get.example")))
     @Parameters(value = {@Parameter(name = "namespaceId", example = "public"),
-            @Parameter(name = "groupName", required = true, example = "DEFAULT_GROUP"),
-            @Parameter(name = "dataId", required = true, example = "test"),
-            @Parameter(name = "nid", required = true, schema = @Schema(type = "integer"), example = "1"), @Parameter(name = "configForm", hidden = true)})
+        @Parameter(name = "groupName", required = true, example = "DEFAULT_GROUP"),
+        @Parameter(name = "dataId", required = true, example = "test"),
+        @Parameter(name = "nid", required = true, schema = @Schema(type = "integer"),
+            example = "1"),
+        @Parameter(name = "configForm", hidden = true)})
     public Result<ConfigHistoryDetailInfo> getConfigHistoryInfo(ConfigFormV3 configForm,
         @RequestParam("nid") Long nid)
         throws AccessException, NacosApiException {
@@ -158,14 +177,20 @@ public class HistoryControllerV3 {
      */
     @GetMapping(value = "/previous")
     @Secured(action = ActionTypes.READ, signType = SignType.CONFIG, apiType = ApiType.ADMIN_API)
-    @Operation(summary = "nacos.admin.config.history.api.previous.summary", description = "nacos.admin.config.history.api.previous.description",
-            security = @SecurityRequirement(name = "nacos"))
-    @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
-            schema = @Schema(implementation = Result.class, example = "nacos.admin.config.history.api.previous.example")))
+    @Operation(summary = "nacos.admin.config.history.api.previous.summary",
+        description = "nacos.admin.config.history.api.previous.description",
+        security = @SecurityRequirement(name = "nacos"),
+        extensions = {@Extension(name = "nacos-api-since",
+            properties = @ExtensionProperty(name = "version", value = "3.0.0"))})
+    @ApiResponse(responseCode = "200",
+        content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+            schema = @Schema(implementation = Result.class,
+                example = "nacos.admin.config.history.api.previous.example")))
     @Parameters(value = {@Parameter(name = "namespaceId", example = "public"),
-            @Parameter(name = "groupName", required = true, example = "DEFAULT_GROUP"),
-            @Parameter(name = "dataId", required = true, example = "test"),
-            @Parameter(name = "id", required = true, schema = @Schema(type = "integer"), example = "1"), @Parameter(name = "configForm", hidden = true)})
+        @Parameter(name = "groupName", required = true, example = "DEFAULT_GROUP"),
+        @Parameter(name = "dataId", required = true, example = "test"),
+        @Parameter(name = "id", required = true, schema = @Schema(type = "integer"), example = "1"),
+        @Parameter(name = "configForm", hidden = true)})
     public Result<ConfigHistoryDetailInfo> getPreviousConfigHistoryInfo(ConfigFormV3 configForm,
         @RequestParam("id") Long id) throws AccessException, NacosApiException {
         ConfigHistoryInfo configHistoryInfo;
@@ -191,10 +216,15 @@ public class HistoryControllerV3 {
      */
     @GetMapping(value = "/configs")
     @Secured(action = ActionTypes.READ, signType = SignType.CONFIG, apiType = ApiType.ADMIN_API)
-    @Operation(summary = "nacos.admin.config.history.api.names.summary", description = "nacos.admin.config.history.api.names.description",
-            security = @SecurityRequirement(name = "nacos"))
-    @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
-            schema = @Schema(implementation = Result.class, example = "nacos.admin.config.history.api.names.example")))
+    @Operation(summary = "nacos.admin.config.history.api.names.summary",
+        description = "nacos.admin.config.history.api.names.description",
+        security = @SecurityRequirement(name = "nacos"),
+        extensions = {@Extension(name = "nacos-api-since",
+            properties = @ExtensionProperty(name = "version", value = "3.0.0"))})
+    @ApiResponse(responseCode = "200",
+        content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+            schema = @Schema(implementation = Result.class,
+                example = "nacos.admin.config.history.api.names.example")))
     @Parameters(value = {@Parameter(name = "namespaceId", required = true, example = "public")})
     public Result<List<ConfigBasicInfo>> getConfigsByNamespace(
         @RequestParam("namespaceId") String namespaceId)

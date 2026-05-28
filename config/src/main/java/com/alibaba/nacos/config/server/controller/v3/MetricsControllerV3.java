@@ -86,9 +86,11 @@ import static com.alibaba.nacos.api.config.remote.request.ClientConfigMetricRequ
 @RestController
 @RequestMapping(Constants.METRICS_CONTROLLER_V3_ADMIN_PATH)
 @ExtractorManager.Extractor(httpExtractor = ConfigDefaultHttpParamExtractor.class)
-@Tag(name = "nacos.admin.config.metrics.api.controller.name", description = "nacos.admin.config.metrics.api.controller.description", extensions = {
+@Tag(name = "nacos.admin.config.metrics.api.controller.name",
+    description = "nacos.admin.config.metrics.api.controller.description", extensions = {
         @Extension(name = RemoteConstants.LABEL_MODULE,
-                properties = @ExtensionProperty(name = RemoteConstants.LABEL_MODULE, value = RemoteConstants.LABEL_MODULE_CONFIG))})
+            properties = @ExtensionProperty(name = RemoteConstants.LABEL_MODULE,
+                value = RemoteConstants.LABEL_MODULE_CONFIG))})
 public class MetricsControllerV3 {
     
     private final ServerMemberManager serverMemberManager;
@@ -107,14 +109,19 @@ public class MetricsControllerV3 {
     @GetMapping("/cluster")
     @Secured(resource = Constants.METRICS_CONTROLLER_V3_ADMIN_PATH, action = ActionTypes.READ,
         signType = SignType.CONFIG, apiType = ApiType.ADMIN_API)
-    @Operation(summary = "nacos.admin.config.metrics.api.cluster.summary", description = "nacos.admin.config.metrics.api.cluster.description",
-            security = @SecurityRequirement(name = "nacos"))
-    @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
-            schema = @Schema(implementation = Result.class, example = "nacos.admin.config.metrics.api.cluster.example")))
+    @Operation(summary = "nacos.admin.config.metrics.api.cluster.summary",
+        description = "nacos.admin.config.metrics.api.cluster.description",
+        security = @SecurityRequirement(name = "nacos"),
+        extensions = {@Extension(name = "nacos-api-since",
+            properties = @ExtensionProperty(name = "version", value = "3.0.0"))})
+    @ApiResponse(responseCode = "200",
+        content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+            schema = @Schema(implementation = Result.class,
+                example = "nacos.admin.config.metrics.api.cluster.example")))
     @Parameters(value = {@Parameter(name = "ip", required = true, example = "127.0.0.1"),
-            @Parameter(name = "dataId", example = "test"),
-            @Parameter(name = "groupName", example = "DEFAULT_GROUP"),
-            @Parameter(name = "namespaceId", example = "public")})
+        @Parameter(name = "dataId", example = "test"),
+        @Parameter(name = "groupName", example = "DEFAULT_GROUP"),
+        @Parameter(name = "namespaceId", example = "public")})
     public Result<Map<String, Object>> metric(@RequestParam("ip") String ip,
         @RequestParam(value = "dataId", required = false) String dataId,
         @RequestParam(value = "groupName", required = false) String groupName,
@@ -229,14 +236,19 @@ public class MetricsControllerV3 {
     @GetMapping("/ip")
     @Secured(resource = Constants.METRICS_CONTROLLER_V3_ADMIN_PATH, action = ActionTypes.READ,
         signType = SignType.CONFIG, apiType = ApiType.ADMIN_API)
-    @Operation(summary = "nacos.admin.config.metrics.api.ip.summary", description = "nacos.admin.config.metrics.api.ip.description",
-            security = @SecurityRequirement(name = "nacos"))
-    @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
-            schema = @Schema(implementation = Result.class, example = "nacos.admin.config.metrics.api.ip.example")))
+    @Operation(summary = "nacos.admin.config.metrics.api.ip.summary",
+        description = "nacos.admin.config.metrics.api.ip.description",
+        security = @SecurityRequirement(name = "nacos"),
+        extensions = {@Extension(name = "nacos-api-since",
+            properties = @ExtensionProperty(name = "version", value = "3.0.0"))})
+    @ApiResponse(responseCode = "200",
+        content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+            schema = @Schema(implementation = Result.class,
+                example = "nacos.admin.config.metrics.api.ip.example")))
     @Parameters(value = {@Parameter(name = "ip", required = true, example = "127.0.0.1"),
-            @Parameter(name = "dataId", example = "test"),
-            @Parameter(name = "groupName", example = "DEFAULT_GROUP"),
-            @Parameter(name = "namespaceId", example = "public")})
+        @Parameter(name = "dataId", example = "test"),
+        @Parameter(name = "groupName", example = "DEFAULT_GROUP"),
+        @Parameter(name = "namespaceId", example = "public")})
     public Result<Map<String, Object>> getClientMetrics(@RequestParam("ip") String ip,
         @RequestParam(value = "dataId", required = false) String dataId,
         @RequestParam(value = "groupName", required = false) String groupName,

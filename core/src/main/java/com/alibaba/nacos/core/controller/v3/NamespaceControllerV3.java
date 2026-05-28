@@ -66,8 +66,11 @@ import static com.alibaba.nacos.core.utils.Commons.NACOS_ADMIN_CORE_CONTEXT_V3;
 @NacosApi
 @RestController
 @RequestMapping(NACOS_ADMIN_CORE_CONTEXT_V3 + "/namespace")
-@Tag(name = "nacos.admin.core.namespace.api.controller.name", description = "nacos.admin.core.namespace.api.controller.description", extensions = {
-        @Extension(name = RemoteConstants.LABEL_MODULE, properties = @ExtensionProperty(name = RemoteConstants.LABEL_MODULE, value = "common"))})
+@Tag(name = "nacos.admin.core.namespace.api.controller.name",
+    description = "nacos.admin.core.namespace.api.controller.description", extensions = {
+        @Extension(name = RemoteConstants.LABEL_MODULE,
+            properties = @ExtensionProperty(name = RemoteConstants.LABEL_MODULE,
+                value = "common"))})
 public class NamespaceControllerV3 {
     
     private final NamespaceOperationService namespaceOperationService;
@@ -95,10 +98,15 @@ public class NamespaceControllerV3 {
     @Secured(resource = Commons.NACOS_ADMIN_CORE_CONTEXT_V3
         + "/namespace", action = ActionTypes.READ, signType = SignType.CONSOLE,
         apiType = ApiType.ADMIN_API)
-    @Operation(summary = "nacos.admin.core.namespace.api.list.summary", description = "nacos.admin.core.namespace.api.list.description",
-            security = @SecurityRequirement(name = "nacos"))
-    @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
-            schema = @Schema(implementation = Result.class, example = "nacos.admin.core.namespace.api.list.example")))
+    @Operation(summary = "nacos.admin.core.namespace.api.list.summary",
+        description = "nacos.admin.core.namespace.api.list.description",
+        security = @SecurityRequirement(name = "nacos"),
+        extensions = {@Extension(name = "nacos-api-since",
+            properties = @ExtensionProperty(name = "version", value = "3.0.0"))})
+    @ApiResponse(responseCode = "200",
+        content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+            schema = @Schema(implementation = Result.class,
+                example = "nacos.admin.core.namespace.api.list.example")))
     public Result<List<Namespace>> getNamespaceList() {
         return Result.success(namespaceOperationService.getNamespaceList());
     }
@@ -113,10 +121,15 @@ public class NamespaceControllerV3 {
     @Secured(resource = Commons.NACOS_ADMIN_CORE_CONTEXT_V3
         + "namespaces", action = ActionTypes.READ, signType = SignType.CONSOLE,
         apiType = ApiType.ADMIN_API)
-    @Operation(summary = "nacos.admin.core.namespace.api.get.summary", description = "nacos.admin.core.namespace.api.get.description",
-            security = @SecurityRequirement(name = "nacos", scopes = "ADMIN:READ"))
-    @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
-            schema = @Schema(implementation = Result.class, example = "nacos.admin.core.namespace.api.get.example")))
+    @Operation(summary = "nacos.admin.core.namespace.api.get.summary",
+        description = "nacos.admin.core.namespace.api.get.description",
+        security = @SecurityRequirement(name = "nacos", scopes = "ADMIN:READ"),
+        extensions = {@Extension(name = "nacos-api-since",
+            properties = @ExtensionProperty(name = "version", value = "3.0.0"))})
+    @ApiResponse(responseCode = "200",
+        content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+            schema = @Schema(implementation = Result.class,
+                example = "nacos.admin.core.namespace.api.get.example")))
     @Parameters(value = @Parameter(name = "namespaceId", required = true, example = "public"))
     public Result<Namespace> getNamespace(@RequestParam("namespaceId") String namespaceId)
         throws NacosException {
@@ -133,13 +146,19 @@ public class NamespaceControllerV3 {
     @Secured(resource = Commons.NACOS_ADMIN_CORE_CONTEXT_V3
         + "namespaces", action = ActionTypes.WRITE, signType = SignType.CONSOLE,
         apiType = ApiType.ADMIN_API)
-    @Operation(summary = "nacos.admin.core.namespace.api.create.summary", description = "nacos.admin.core.namespace.api.create.description",
-            security = @SecurityRequirement(name = "nacos"))
-    @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
-            schema = @Schema(implementation = Result.class, example = "nacos.admin.core.namespace.api.create.example")))
+    @Operation(summary = "nacos.admin.core.namespace.api.create.summary",
+        description = "nacos.admin.core.namespace.api.create.description",
+        security = @SecurityRequirement(name = "nacos"),
+        extensions = {@Extension(name = "nacos-api-since",
+            properties = @ExtensionProperty(name = "version", value = "3.0.0"))})
+    @ApiResponse(responseCode = "200",
+        content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+            schema = @Schema(implementation = Result.class,
+                example = "nacos.admin.core.namespace.api.create.example")))
     @Parameters(value = {@Parameter(name = "namespaceId"),
-            @Parameter(name = "namespaceName", required = true, example = "test"),
-            @Parameter(name = "namespaceDesc", example = "test"), @Parameter(name = "namespaceForm", hidden = true)})
+        @Parameter(name = "namespaceName", required = true, example = "test"),
+        @Parameter(name = "namespaceDesc", example = "test"),
+        @Parameter(name = "namespaceForm", hidden = true)})
     public Result<Boolean> createNamespace(NamespaceForm namespaceForm) throws Exception {
         namespaceForm.validate();
         
@@ -182,13 +201,19 @@ public class NamespaceControllerV3 {
     @Secured(resource = Commons.NACOS_ADMIN_CORE_CONTEXT_V3
         + "namespaces", action = ActionTypes.WRITE, signType = SignType.CONSOLE,
         apiType = ApiType.ADMIN_API)
-    @Operation(summary = "nacos.admin.core.namespace.api.update.summary", description = "nacos.admin.core.namespace.api.update.description",
-            security = @SecurityRequirement(name = "nacos"))
-    @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
-            schema = @Schema(implementation = Result.class, example = "nacos.admin.core.namespace.api.update.example")))
+    @Operation(summary = "nacos.admin.core.namespace.api.update.summary",
+        description = "nacos.admin.core.namespace.api.update.description",
+        security = @SecurityRequirement(name = "nacos"),
+        extensions = {@Extension(name = "nacos-api-since",
+            properties = @ExtensionProperty(name = "version", value = "3.0.0"))})
+    @ApiResponse(responseCode = "200",
+        content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+            schema = @Schema(implementation = Result.class,
+                example = "nacos.admin.core.namespace.api.update.example")))
     @Parameters(value = {@Parameter(name = "namespaceId", required = true, example = "test"),
-            @Parameter(name = "namespaceName", required = true, example = "test"),
-            @Parameter(name = "namespaceDesc", example = "test"), @Parameter(name = "namespaceForm", hidden = true)})
+        @Parameter(name = "namespaceName", required = true, example = "test"),
+        @Parameter(name = "namespaceDesc", example = "test"),
+        @Parameter(name = "namespaceForm", hidden = true)})
     public Result<Boolean> updateNamespace(NamespaceForm namespaceForm) throws NacosException {
         namespaceForm.validate();
         // contains illegal chars
@@ -211,10 +236,15 @@ public class NamespaceControllerV3 {
     @Secured(resource = Commons.NACOS_ADMIN_CORE_CONTEXT_V3
         + "namespaces", action = ActionTypes.WRITE, signType = SignType.CONSOLE,
         apiType = ApiType.ADMIN_API)
-    @Operation(summary = "nacos.admin.core.namespace.api.delete.summary", description = "nacos.admin.core.namespace.api.delete.description",
-            security = @SecurityRequirement(name = "nacos"))
-    @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
-            schema = @Schema(implementation = Result.class, example = "nacos.admin.core.namespace.api.delete.example")))
+    @Operation(summary = "nacos.admin.core.namespace.api.delete.summary",
+        description = "nacos.admin.core.namespace.api.delete.description",
+        security = @SecurityRequirement(name = "nacos"),
+        extensions = {@Extension(name = "nacos-api-since",
+            properties = @ExtensionProperty(name = "version", value = "3.0.0"))})
+    @ApiResponse(responseCode = "200",
+        content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+            schema = @Schema(implementation = Result.class,
+                example = "nacos.admin.core.namespace.api.delete.example")))
     @Parameters(value = @Parameter(name = "namespaceId", required = true, example = "test"))
     public Result<Boolean> deleteNamespace(@RequestParam("namespaceId") String namespaceId) {
         return Result.success(namespaceOperationService.removeNamespace(namespaceId));
@@ -230,10 +260,15 @@ public class NamespaceControllerV3 {
     @Secured(resource = Commons.NACOS_ADMIN_CORE_CONTEXT_V3
         + "namespaces", action = ActionTypes.READ, signType = SignType.CONSOLE,
         apiType = ApiType.ADMIN_API)
-    @Operation(summary = "nacos.admin.core.namespace.api.check.summary", description = "nacos.admin.core.namespace.api.check.description",
-            security = @SecurityRequirement(name = "nacos"))
-    @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
-            schema = @Schema(implementation = Result.class, example = "nacos.admin.core.namespace.api.check.example")))
+    @Operation(summary = "nacos.admin.core.namespace.api.check.summary",
+        description = "nacos.admin.core.namespace.api.check.description",
+        security = @SecurityRequirement(name = "nacos"),
+        extensions = {@Extension(name = "nacos-api-since",
+            properties = @ExtensionProperty(name = "version", value = "3.0.0"))})
+    @ApiResponse(responseCode = "200",
+        content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+            schema = @Schema(implementation = Result.class,
+                example = "nacos.admin.core.namespace.api.check.example")))
     @Parameters(value = @Parameter(name = "namespaceId", required = true, example = "public"))
     public Result<Integer> checkNamespaceIdExist(@RequestParam("namespaceId") String namespaceId) {
         return Result.success(namespacePersistService.tenantInfoCountByTenantId(namespaceId));

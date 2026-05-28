@@ -58,9 +58,11 @@ import java.util.Map;
 @RestController
 @RequestMapping(Constants.LISTENER_CONTROLLER_V3_ADMIN_PATH)
 @ExtractorManager.Extractor(httpExtractor = ConfigDefaultHttpParamExtractor.class)
-@Tag(name = "nacos.admin.config.config.api.controller.name", description = "nacos.admin.config.config.api.controller.description", extensions = {
+@Tag(name = "nacos.admin.config.config.api.controller.name",
+    description = "nacos.admin.config.config.api.controller.description", extensions = {
         @Extension(name = RemoteConstants.LABEL_MODULE,
-                properties = @ExtensionProperty(name = RemoteConstants.LABEL_MODULE, value = RemoteConstants.LABEL_MODULE_CONFIG))})
+            properties = @ExtensionProperty(name = RemoteConstants.LABEL_MODULE,
+                value = RemoteConstants.LABEL_MODULE_CONFIG))})
 public class ListenerControllerV3 {
     
     private final ConfigListenerStateDelegate configListenerStateDelegate;
@@ -75,13 +77,19 @@ public class ListenerControllerV3 {
     @GetMapping
     @Secured(signType = SignType.CONFIG, apiType = ApiType.ADMIN_API)
     @Operation(summary = "nacos.admin.config.config.api.listener.ip.summary",
-            description = "nacos.admin.config.config.api.listener.ip.description", security = @SecurityRequirement(name = "nacos"))
-    @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
-            schema = @Schema(implementation = Result.class, example = "nacos.admin.config.config.api.listener.ip.example")))
+        description = "nacos.admin.config.config.api.listener.ip.description",
+        security = @SecurityRequirement(name = "nacos"),
+        extensions = {@Extension(name = "nacos-api-since",
+            properties = @ExtensionProperty(name = "version", value = "3.0.0"))})
+    @ApiResponse(responseCode = "200",
+        content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+            schema = @Schema(implementation = Result.class,
+                example = "nacos.admin.config.config.api.listener.ip.example")))
     @Parameters(value = {@Parameter(name = "ip", required = true, example = "127.0.0.1"),
-            @Parameter(name = "all", schema = @Schema(type = "boolean"), example = "false"),
-            @Parameter(name = "namespaceId", example = "public"), @Parameter(name = "aggregation", schema = @Schema(type = "boolean"), example = "true"),
-            @Parameter(name = "aggregationForm", hidden = true)})
+        @Parameter(name = "all", schema = @Schema(type = "boolean"), example = "false"),
+        @Parameter(name = "namespaceId", example = "public"),
+        @Parameter(name = "aggregation", schema = @Schema(type = "boolean"), example = "true"),
+        @Parameter(name = "aggregationForm", hidden = true)})
     public Result<ConfigListenerInfo> getAllSubClientConfigByIp(@RequestParam("ip") String ip,
         @RequestParam(value = "all", required = false) boolean all,
         @RequestParam(value = "namespaceId", required = false) String namespaceId,

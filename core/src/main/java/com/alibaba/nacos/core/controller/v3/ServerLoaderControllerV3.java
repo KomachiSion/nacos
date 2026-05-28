@@ -60,8 +60,11 @@ import static com.alibaba.nacos.core.utils.Commons.NACOS_ADMIN_CORE_CONTEXT_V3;
 @NacosApi
 @RestController
 @RequestMapping(NACOS_ADMIN_CORE_CONTEXT_V3 + "/loader")
-@Tag(name = "nacos.admin.core.loader.api.controller.name", description = "nacos.admin.core.loader.api.controller.description", extensions = {
-        @Extension(name = RemoteConstants.LABEL_MODULE, properties = @ExtensionProperty(name = RemoteConstants.LABEL_MODULE, value = "common"))})
+@Tag(name = "nacos.admin.core.loader.api.controller.name",
+    description = "nacos.admin.core.loader.api.controller.description", extensions = {
+        @Extension(name = RemoteConstants.LABEL_MODULE,
+            properties = @ExtensionProperty(name = RemoteConstants.LABEL_MODULE,
+                value = "common"))})
 public class ServerLoaderControllerV3 {
     
     private static final Logger LOGGER = LoggerFactory.getLogger(ServerLoaderControllerV3.class);
@@ -80,8 +83,15 @@ public class ServerLoaderControllerV3 {
     @GetMapping("/current")
     @Secured(resource = NACOS_ADMIN_CORE_CONTEXT_V3 + "/loader", action = ActionTypes.READ,
         apiType = ApiType.ADMIN_API)
-    @Operation(summary = "nacos.admin.core.loader.api.list.summary", description = "nacos.admin.core.loader.api.list.description", security = @SecurityRequirement(name = "nacos"))
-    @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE, schema = @Schema(implementation = Result.class, example = "nacos.admin.core.loader.api.list.example")))
+    @Operation(summary = "nacos.admin.core.loader.api.list.summary",
+        description = "nacos.admin.core.loader.api.list.description",
+        security = @SecurityRequirement(name = "nacos"),
+        extensions = {@Extension(name = "nacos-api-since",
+            properties = @ExtensionProperty(name = "version", value = "3.0.0"))})
+    @ApiResponse(responseCode = "200",
+        content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+            schema = @Schema(implementation = Result.class,
+                example = "nacos.admin.core.loader.api.list.example")))
     public Result<Map<String, Connection>> currentClients() {
         return Result.success(serverLoaderService.getAllClients());
     }
@@ -94,10 +104,19 @@ public class ServerLoaderControllerV3 {
     @Secured(resource = NACOS_ADMIN_CORE_CONTEXT_V3
         + "/loader", action = ActionTypes.WRITE, apiType = ApiType.ADMIN_API)
     @PostMapping("/reloadCurrent")
-    @Operation(summary = "nacos.admin.core.loader.api.reload.batch.summary", description = "nacos.admin.core.loader.api.reload.batch.description", security = @SecurityRequirement(name = "nacos"))
-    @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE, schema = @Schema(implementation = Result.class, example = "nacos.admin.core.loader.api.reload.batch.example")))
-    @Parameters(value = {@Parameter(name = "count", required = true, schema = @Schema(type = "integer"), example = "100"),
-            @Parameter(name = "redirectAddress", example = "127.0.0.1:8848")})
+    @Operation(summary = "nacos.admin.core.loader.api.reload.batch.summary",
+        description = "nacos.admin.core.loader.api.reload.batch.description",
+        security = @SecurityRequirement(name = "nacos"),
+        extensions = {@Extension(name = "nacos-api-since",
+            properties = @ExtensionProperty(name = "version", value = "3.0.0"))})
+    @ApiResponse(responseCode = "200",
+        content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+            schema = @Schema(implementation = Result.class,
+                example = "nacos.admin.core.loader.api.reload.batch.example")))
+    @Parameters(value = {
+        @Parameter(name = "count", required = true, schema = @Schema(type = "integer"),
+            example = "100"),
+        @Parameter(name = "redirectAddress", example = "127.0.0.1:8848")})
     public Result<String> reloadCount(@RequestParam Integer count,
         @RequestParam(value = "redirectAddress", required = false) String redirectAddress) {
         serverLoaderService.reloadCount(count, redirectAddress);
@@ -113,9 +132,17 @@ public class ServerLoaderControllerV3 {
     @PostMapping("/smartReloadCluster")
     @Secured(resource = NACOS_ADMIN_CORE_CONTEXT_V3
         + "/loader", action = ActionTypes.WRITE, apiType = ApiType.ADMIN_API)
-    @Operation(summary = "nacos.admin.core.loader.api.reload.smart.summary", description = "nacos.admin.core.loader.api.reload.smart.description", security = @SecurityRequirement(name = "nacos"))
-    @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE, schema = @Schema(implementation = Result.class, example = "nacos.admin.core.loader.api.reload.smart.example")))
-    @Parameters(value = {@Parameter(name = "loaderFactor", schema = @Schema(type = "number"), example = "0.1f")})
+    @Operation(summary = "nacos.admin.core.loader.api.reload.smart.summary",
+        description = "nacos.admin.core.loader.api.reload.smart.description",
+        security = @SecurityRequirement(name = "nacos"),
+        extensions = {@Extension(name = "nacos-api-since",
+            properties = @ExtensionProperty(name = "version", value = "3.0.0"))})
+    @ApiResponse(responseCode = "200",
+        content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+            schema = @Schema(implementation = Result.class,
+                example = "nacos.admin.core.loader.api.reload.smart.example")))
+    @Parameters(value = {
+        @Parameter(name = "loaderFactor", schema = @Schema(type = "number"), example = "0.1f")})
     public Result<String> smartReload(HttpServletRequest request,
         @RequestParam(value = "loaderFactor", defaultValue = "0.1f") String loaderFactorStr) {
         LOGGER.info("Smart reload request receive,requestIp={}", WebUtils.getRemoteIp(request));
@@ -135,10 +162,18 @@ public class ServerLoaderControllerV3 {
     @PostMapping("/reloadClient")
     @Secured(resource = NACOS_ADMIN_CORE_CONTEXT_V3
         + "/loader", action = ActionTypes.WRITE, apiType = ApiType.ADMIN_API)
-    @Operation(summary = "nacos.admin.core.loader.api.reload.single.summary", description = "nacos.admin.core.loader.api.reload.single.description", security = @SecurityRequirement(name = "nacos"))
-    @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE, schema = @Schema(implementation = Result.class, example = "nacos.admin.core.loader.api.reload.single.example")))
-    @Parameters(value = {@Parameter(name = "connectionId", required = true, example = "111111111_127.0.0.1_30000"),
-            @Parameter(name = "redirectAddress", example = "127.0.0.1:8848")})
+    @Operation(summary = "nacos.admin.core.loader.api.reload.single.summary",
+        description = "nacos.admin.core.loader.api.reload.single.description",
+        security = @SecurityRequirement(name = "nacos"),
+        extensions = {@Extension(name = "nacos-api-since",
+            properties = @ExtensionProperty(name = "version", value = "3.0.0"))})
+    @ApiResponse(responseCode = "200",
+        content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+            schema = @Schema(implementation = Result.class,
+                example = "nacos.admin.core.loader.api.reload.single.example")))
+    @Parameters(value = {
+        @Parameter(name = "connectionId", required = true, example = "111111111_127.0.0.1_30000"),
+        @Parameter(name = "redirectAddress", example = "127.0.0.1:8848")})
     public Result<String> reloadSingle(@RequestParam String connectionId,
         @RequestParam(value = "redirectAddress", required = false) String redirectAddress) {
         serverLoaderService.reloadClient(connectionId, redirectAddress);
@@ -153,8 +188,15 @@ public class ServerLoaderControllerV3 {
     @GetMapping("/cluster")
     @Secured(resource = NACOS_ADMIN_CORE_CONTEXT_V3 + "/loader", action = ActionTypes.READ,
         apiType = ApiType.ADMIN_API)
-    @Operation(summary = "nacos.admin.core.loader.api.metrics.summary", description = "nacos.admin.core.loader.api.metrics.description", security = @SecurityRequirement(name = "nacos"))
-    @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE, schema = @Schema(implementation = Result.class, example = "nacos.admin.core.loader.api.metrics.example")))
+    @Operation(summary = "nacos.admin.core.loader.api.metrics.summary",
+        description = "nacos.admin.core.loader.api.metrics.description",
+        security = @SecurityRequirement(name = "nacos"),
+        extensions = {@Extension(name = "nacos-api-since",
+            properties = @ExtensionProperty(name = "version", value = "3.0.0"))})
+    @ApiResponse(responseCode = "200",
+        content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+            schema = @Schema(implementation = Result.class,
+                example = "nacos.admin.core.loader.api.metrics.example")))
     public Result<ServerLoaderMetrics> loaderMetrics() {
         return Result.success(serverLoaderService.getServerLoaderMetrics());
     }

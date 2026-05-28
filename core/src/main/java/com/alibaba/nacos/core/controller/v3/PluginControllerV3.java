@@ -65,8 +65,11 @@ import static com.alibaba.nacos.core.utils.Commons.NACOS_ADMIN_CORE_CONTEXT_V3;
 @NacosApi
 @RestController
 @RequestMapping(NACOS_ADMIN_CORE_CONTEXT_V3 + "/plugin")
-@Tag(name = "nacos.admin.core.plugin.api.controller.name", description = "nacos.admin.core.plugin.api.controller.description", extensions = {
-        @Extension(name = RemoteConstants.LABEL_MODULE, properties = @ExtensionProperty(name = RemoteConstants.LABEL_MODULE, value = "common"))})
+@Tag(name = "nacos.admin.core.plugin.api.controller.name",
+    description = "nacos.admin.core.plugin.api.controller.description", extensions = {
+        @Extension(name = RemoteConstants.LABEL_MODULE,
+            properties = @ExtensionProperty(name = RemoteConstants.LABEL_MODULE,
+                value = "common"))})
 public class PluginControllerV3 {
     
     private final PluginManager unifiedPluginManager;
@@ -85,8 +88,15 @@ public class PluginControllerV3 {
     @Secured(resource = Commons.NACOS_ADMIN_CORE_CONTEXT_V3
         + "/plugin", action = ActionTypes.READ, signType = SignType.CONSOLE,
         apiType = ApiType.ADMIN_API)
-    @Operation(summary = "nacos.admin.core.plugin.api.list.summary", description = "nacos.admin.core.plugin.api.list.description", security = @SecurityRequirement(name = "nacos"))
-    @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE, schema = @Schema(implementation = Result.class, example = "nacos.admin.core.plugin.api.list.example")))
+    @Operation(summary = "nacos.admin.core.plugin.api.list.summary",
+        description = "nacos.admin.core.plugin.api.list.description",
+        security = @SecurityRequirement(name = "nacos"),
+        extensions = {@Extension(name = "nacos-api-since",
+            properties = @ExtensionProperty(name = "version", value = "3.2.0"))})
+    @ApiResponse(responseCode = "200",
+        content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+            schema = @Schema(implementation = Result.class,
+                example = "nacos.admin.core.plugin.api.list.example")))
     @Parameters(value = @Parameter(name = "pluginType", example = "auth"))
     public Result<List<PluginInfoVO>> getPluginList(
         @RequestParam(value = "pluginType", required = false) String pluginType) {
@@ -113,10 +123,17 @@ public class PluginControllerV3 {
     @Secured(resource = Commons.NACOS_ADMIN_CORE_CONTEXT_V3
         + "/plugin", action = ActionTypes.READ, signType = SignType.CONSOLE,
         apiType = ApiType.ADMIN_API)
-    @Operation(summary = "nacos.admin.core.plugin.api.detail.summary", description = "nacos.admin.core.plugin.api.detail.description", security = @SecurityRequirement(name = "nacos"))
-    @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE, schema = @Schema(implementation = Result.class, example = "nacos.admin.core.plugin.api.detail.example")))
+    @Operation(summary = "nacos.admin.core.plugin.api.detail.summary",
+        description = "nacos.admin.core.plugin.api.detail.description",
+        security = @SecurityRequirement(name = "nacos"),
+        extensions = {@Extension(name = "nacos-api-since",
+            properties = @ExtensionProperty(name = "version", value = "3.2.0"))})
+    @ApiResponse(responseCode = "200",
+        content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+            schema = @Schema(implementation = Result.class,
+                example = "nacos.admin.core.plugin.api.detail.example")))
     @Parameters(value = {@Parameter(name = "pluginType", required = true, example = "auth"),
-            @Parameter(name = "pluginName", required = true, example = "nacos-default-auth-plugin")})
+        @Parameter(name = "pluginName", required = true, example = "nacos-default-auth-plugin")})
     public Result<PluginDetailVO> getPluginDetail(@RequestParam("pluginType") String pluginType,
         @RequestParam("pluginName") String pluginName) throws NacosApiException {
         
@@ -142,12 +159,20 @@ public class PluginControllerV3 {
     @Secured(resource = Commons.NACOS_ADMIN_CORE_CONTEXT_V3
         + "/plugin", action = ActionTypes.WRITE, signType = SignType.CONSOLE,
         apiType = ApiType.ADMIN_API)
-    @Operation(summary = "nacos.admin.core.plugin.api.status.summary", description = "nacos.admin.core.plugin.api.status.description", security = @SecurityRequirement(name = "nacos"))
-    @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE, schema = @Schema(implementation = Result.class, example = "nacos.admin.core.plugin.api.status.example")))
+    @Operation(summary = "nacos.admin.core.plugin.api.status.summary",
+        description = "nacos.admin.core.plugin.api.status.description",
+        security = @SecurityRequirement(name = "nacos"),
+        extensions = {@Extension(name = "nacos-api-since",
+            properties = @ExtensionProperty(name = "version", value = "3.2.0"))})
+    @ApiResponse(responseCode = "200",
+        content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+            schema = @Schema(implementation = Result.class,
+                example = "nacos.admin.core.plugin.api.status.example")))
     @Parameters(value = {@Parameter(name = "pluginType", required = true, example = "auth"),
-            @Parameter(name = "pluginName", required = true, example = "nacos-default-auth-plugin"),
-            @Parameter(name = "enabled", required = true, schema = @Schema(type = "boolean"), example = "true"),
-            @Parameter(name = "localOnly", schema = @Schema(type = "boolean"), example = "false")})
+        @Parameter(name = "pluginName", required = true, example = "nacos-default-auth-plugin"),
+        @Parameter(name = "enabled", required = true, schema = @Schema(type = "boolean"),
+            example = "true"),
+        @Parameter(name = "localOnly", schema = @Schema(type = "boolean"), example = "false")})
     public Result<String> updatePluginStatus(@RequestParam("pluginType") String pluginType,
         @RequestParam("pluginName") String pluginName, @RequestParam("enabled") boolean enabled,
         @RequestParam(value = "localOnly", defaultValue = "false") boolean localOnly)
@@ -171,14 +196,22 @@ public class PluginControllerV3 {
     @Secured(resource = Commons.NACOS_ADMIN_CORE_CONTEXT_V3
         + "/plugin", action = ActionTypes.WRITE, signType = SignType.CONSOLE,
         apiType = ApiType.ADMIN_API)
-    @Operation(summary = "nacos.admin.core.plugin.api.config.summary", description = "nacos.admin.core.plugin.api.config.description", security = @SecurityRequirement(name = "nacos"))
-    @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE, schema = @Schema(implementation = Result.class, example = "nacos.admin.core.plugin.api.config.example")))
+    @Operation(summary = "nacos.admin.core.plugin.api.config.summary",
+        description = "nacos.admin.core.plugin.api.config.description",
+        security = @SecurityRequirement(name = "nacos"),
+        extensions = {@Extension(name = "nacos-api-since",
+            properties = @ExtensionProperty(name = "version", value = "3.2.0"))})
+    @ApiResponse(responseCode = "200",
+        content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+            schema = @Schema(implementation = Result.class,
+                example = "nacos.admin.core.plugin.api.config.example")))
     @Parameters(value = {@Parameter(name = "pluginType", required = true, example = "auth"),
-            @Parameter(name = "pluginName", required = true, example = "nacos-default-auth-plugin"),
-            @Parameter(name = "config", required = true,
-                    schema = @Schema(type = "string", description = "JSON object string parsed as plugin config map"),
-                    example = "\"{\\\"key\\\":\\\"value\\\"}\""),
-            @Parameter(name = "localOnly", schema = @Schema(type = "boolean"), example = "false")})
+        @Parameter(name = "pluginName", required = true, example = "nacos-default-auth-plugin"),
+        @Parameter(name = "config", required = true,
+            schema = @Schema(type = "string",
+                description = "JSON object string parsed as plugin config map"),
+            example = "\"{\\\"key\\\":\\\"value\\\"}\""),
+        @Parameter(name = "localOnly", schema = @Schema(type = "boolean"), example = "false")})
     public Result<String> updatePluginConfig(@RequestParam("pluginType") String pluginType,
         @RequestParam("pluginName") String pluginName, @RequestParam("config") String configJson,
         @RequestParam(value = "localOnly", defaultValue = "false") boolean localOnly)

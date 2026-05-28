@@ -63,9 +63,11 @@ import static com.alibaba.nacos.config.server.constant.Constants.CAPACITY_CONTRO
 @RestController
 @RequestMapping(CAPACITY_CONTROLLER_V3_ADMIN_PATH)
 @ExtractorManager.Extractor(httpExtractor = ConfigDefaultHttpParamExtractor.class)
-@Tag(name = "nacos.admin.config.capacity.api.controller.name", description = "nacos.admin.config.capacity.api.controller.description", extensions = {
+@Tag(name = "nacos.admin.config.capacity.api.controller.name",
+    description = "nacos.admin.config.capacity.api.controller.description", extensions = {
         @Extension(name = RemoteConstants.LABEL_MODULE,
-                properties = @ExtensionProperty(name = RemoteConstants.LABEL_MODULE, value = RemoteConstants.LABEL_MODULE_CONFIG))})
+            properties = @ExtensionProperty(name = RemoteConstants.LABEL_MODULE,
+                value = RemoteConstants.LABEL_MODULE_CONFIG))})
 public class CapacityControllerV3 {
     
     private static final Logger LOGGER = LoggerFactory.getLogger(CapacityControllerV3.class);
@@ -82,12 +84,17 @@ public class CapacityControllerV3 {
     @GetMapping
     @Secured(resource = Constants.CAPACITY_CONTROLLER_V3_ADMIN_PATH, action = ActionTypes.READ,
         signType = SignType.CONFIG, apiType = ApiType.ADMIN_API)
-    @Operation(summary = "nacos.admin.config.capacity.api.get.summary", description = "nacos.admin.config.capacity.api.get.description",
-            security = @SecurityRequirement(name = "nacos"))
-    @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
-            schema = @Schema(implementation = Result.class, example = "nacos.admin.config.capacity.api.get.example")))
+    @Operation(summary = "nacos.admin.config.capacity.api.get.summary",
+        description = "nacos.admin.config.capacity.api.get.description",
+        security = @SecurityRequirement(name = "nacos"),
+        extensions = {@Extension(name = "nacos-api-since",
+            properties = @ExtensionProperty(name = "version", value = "3.0.0"))})
+    @ApiResponse(responseCode = "200",
+        content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+            schema = @Schema(implementation = Result.class,
+                example = "nacos.admin.config.capacity.api.get.example")))
     @Parameters(value = {@Parameter(name = "namespaceId", example = "public"),
-            @Parameter(name = "groupName")})
+        @Parameter(name = "groupName")})
     public Result<Capacity> getCapacity(@RequestParam(required = false) String groupName,
         @RequestParam(required = false) String namespaceId) throws NacosApiException {
         if (StringUtils.isBlank(groupName) && StringUtils.isBlank(namespaceId)) {
@@ -121,16 +128,22 @@ public class CapacityControllerV3 {
     @PostMapping
     @Secured(resource = Constants.CAPACITY_CONTROLLER_V3_ADMIN_PATH, action = ActionTypes.WRITE,
         signType = SignType.CONFIG, apiType = ApiType.ADMIN_API)
-    @Operation(summary = "nacos.admin.config.capacity.api.update.summary", description = "nacos.admin.config.capacity.api.update.description",
-            security = @SecurityRequirement(name = "nacos"))
-    @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
-            schema = @Schema(implementation = Result.class, example = "nacos.admin.config.capacity.api.update.example")))
+    @Operation(summary = "nacos.admin.config.capacity.api.update.summary",
+        description = "nacos.admin.config.capacity.api.update.description",
+        security = @SecurityRequirement(name = "nacos"),
+        extensions = {@Extension(name = "nacos-api-since",
+            properties = @ExtensionProperty(name = "version", value = "3.0.0"))})
+    @ApiResponse(responseCode = "200",
+        content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+            schema = @Schema(implementation = Result.class,
+                example = "nacos.admin.config.capacity.api.update.example")))
     @Parameters(value = {@Parameter(name = "namespaceId", example = "public"),
-            @Parameter(name = "groupName", required = true), @Parameter(name = "quota", schema = @Schema(type = "integer"), example = "100"),
-            @Parameter(name = "maxSize", schema = @Schema(type = "integer"), example = "102400"),
-            @Parameter(name = "maxAggrCount", schema = @Schema(type = "integer"), example = "10"),
-            @Parameter(name = "maxAggrSize", schema = @Schema(type = "integer"), example = "1024"),
-            @Parameter(name = "updateCapacityForm", hidden = true)})
+        @Parameter(name = "groupName", required = true),
+        @Parameter(name = "quota", schema = @Schema(type = "integer"), example = "100"),
+        @Parameter(name = "maxSize", schema = @Schema(type = "integer"), example = "102400"),
+        @Parameter(name = "maxAggrCount", schema = @Schema(type = "integer"), example = "10"),
+        @Parameter(name = "maxAggrSize", schema = @Schema(type = "integer"), example = "1024"),
+        @Parameter(name = "updateCapacityForm", hidden = true)})
     public Result<Boolean> updateCapacity(UpdateCapacityForm updateCapacityForm)
         throws NacosApiException {
         updateCapacityForm.checkNamespaceIdAndGroupName(capacityService);

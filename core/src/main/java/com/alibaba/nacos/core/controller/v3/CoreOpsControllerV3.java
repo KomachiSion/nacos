@@ -62,8 +62,11 @@ import static com.alibaba.nacos.core.utils.Commons.NACOS_ADMIN_CORE_CONTEXT_V3;
 @NacosApi
 @RestController
 @RequestMapping(NACOS_ADMIN_CORE_CONTEXT_V3 + "/ops")
-@Tag(name = "nacos.admin.core.ops.api.controller.name", description = "nacos.admin.core.ops.api.controller.description", extensions = {
-        @Extension(name = RemoteConstants.LABEL_MODULE, properties = @ExtensionProperty(name = RemoteConstants.LABEL_MODULE, value = "common"))})
+@Tag(name = "nacos.admin.core.ops.api.controller.name",
+    description = "nacos.admin.core.ops.api.controller.description", extensions = {
+        @Extension(name = RemoteConstants.LABEL_MODULE,
+            properties = @ExtensionProperty(name = RemoteConstants.LABEL_MODULE,
+                value = "common"))})
 public class CoreOpsControllerV3 {
     
     private final ProtocolManager protocolManager;
@@ -90,9 +93,19 @@ public class CoreOpsControllerV3 {
     @Secured(resource = Commons.NACOS_ADMIN_CORE_CONTEXT_V3
         + "/ops", action = ActionTypes.WRITE, signType = SignType.CONSOLE,
         apiType = ApiType.ADMIN_API)
-    @Operation(summary = "nacos.admin.core.ops.api.raft.summary", description = "nacos.admin.core.ops.api.raft.description", security = @SecurityRequirement(name = "nacos"))
-    @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE, schema = @Schema(implementation = Result.class, example = "nacos.admin.core.ops.api.raft.example")))
-    @io.swagger.v3.oas.annotations.parameters.RequestBody(description = "nacos.admin.core.ops.api.raft.body.description", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE, schema = @Schema(implementation = RaftCommandForm.class)))
+    @Operation(summary = "nacos.admin.core.ops.api.raft.summary",
+        description = "nacos.admin.core.ops.api.raft.description",
+        security = @SecurityRequirement(name = "nacos"),
+        extensions = {@Extension(name = "nacos-api-since",
+            properties = @ExtensionProperty(name = "version", value = "3.0.0"))})
+    @ApiResponse(responseCode = "200",
+        content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+            schema = @Schema(implementation = Result.class,
+                example = "nacos.admin.core.ops.api.raft.example")))
+    @io.swagger.v3.oas.annotations.parameters.RequestBody(
+        description = "nacos.admin.core.ops.api.raft.body.description",
+        content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+            schema = @Schema(implementation = RaftCommandForm.class)))
     public Result<String> raftOps(@RequestBody RaftCommandForm form) throws NacosApiException {
         form.validate();
         return Result.success(protocolManager.getCpProtocol().execute(form.toMap()).getData());
@@ -107,8 +120,15 @@ public class CoreOpsControllerV3 {
     @Secured(resource = Commons.NACOS_ADMIN_CORE_CONTEXT_V3
         + "/ops", action = ActionTypes.WRITE, signType = SignType.CONSOLE,
         apiType = ApiType.ADMIN_API)
-    @Operation(summary = "nacos.admin.core.ops.api.ids.summary", description = "nacos.admin.core.ops.api.ids.description", security = @SecurityRequirement(name = "nacos"))
-    @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE, schema = @Schema(implementation = Result.class, example = "nacos.admin.core.ops.api.ids.example")))
+    @Operation(summary = "nacos.admin.core.ops.api.ids.summary",
+        description = "nacos.admin.core.ops.api.ids.description",
+        security = @SecurityRequirement(name = "nacos"),
+        extensions = {@Extension(name = "nacos-api-since",
+            properties = @ExtensionProperty(name = "version", value = "3.0.0"))})
+    @ApiResponse(responseCode = "200",
+        content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+            schema = @Schema(implementation = Result.class,
+                example = "nacos.admin.core.ops.api.ids.example")))
     public Result<List<IdGeneratorInfo>> ids() {
         List<IdGeneratorInfo> result = new ArrayList<>();
         idGeneratorManager.getGeneratorMap().forEach((resource, idGenerator) -> {
@@ -137,9 +157,19 @@ public class CoreOpsControllerV3 {
     @Secured(resource = Commons.NACOS_ADMIN_CORE_CONTEXT_V3
         + "/ops", action = ActionTypes.WRITE, signType = SignType.CONSOLE,
         apiType = ApiType.ADMIN_API)
-    @Operation(summary = "nacos.admin.core.ops.api.log.summary", description = "nacos.admin.core.ops.api.log.description", security = @SecurityRequirement(name = "nacos"))
-    @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE, schema = @Schema(implementation = Result.class, example = "nacos.admin.core.ops.api.log.example")))
-    @io.swagger.v3.oas.annotations.parameters.RequestBody(description = "nacos.admin.core.ops.api.log.body.description", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE, schema = @Schema(implementation = LogUpdateRequest.class)))
+    @Operation(summary = "nacos.admin.core.ops.api.log.summary",
+        description = "nacos.admin.core.ops.api.log.description",
+        security = @SecurityRequirement(name = "nacos"),
+        extensions = {@Extension(name = "nacos-api-since",
+            properties = @ExtensionProperty(name = "version", value = "3.0.0"))})
+    @ApiResponse(responseCode = "200",
+        content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+            schema = @Schema(implementation = Result.class,
+                example = "nacos.admin.core.ops.api.log.example")))
+    @io.swagger.v3.oas.annotations.parameters.RequestBody(
+        description = "nacos.admin.core.ops.api.log.body.description",
+        content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+            schema = @Schema(implementation = LogUpdateRequest.class)))
     public Result<Void> updateLog(@RequestBody LogUpdateRequest logUpdateRequest)
         throws NacosApiException {
         logUpdateRequest.validate();

@@ -54,9 +54,11 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping(UtilsAndCommons.CLUSTER_CONTROLLER_V3_ADMIN_PATH)
 @ExtractorManager.Extractor(httpExtractor = NamingDefaultHttpParamExtractor.class)
-@Tag(name = "nacos.admin.naming.service.api.controller.name", description = "nacos.admin.naming.service.api.controller.description", extensions = {
+@Tag(name = "nacos.admin.naming.service.api.controller.name",
+    description = "nacos.admin.naming.service.api.controller.description", extensions = {
         @Extension(name = RemoteConstants.LABEL_MODULE,
-                properties = @ExtensionProperty(name = RemoteConstants.LABEL_MODULE, value = RemoteConstants.LABEL_MODULE_NAMING))})
+            properties = @ExtensionProperty(name = RemoteConstants.LABEL_MODULE,
+                value = RemoteConstants.LABEL_MODULE_NAMING))})
 public class ClusterControllerV3 {
     
     private final ClusterOperatorV2Impl clusterOperatorV2;
@@ -71,21 +73,30 @@ public class ClusterControllerV3 {
     @PutMapping
     @Secured(action = ActionTypes.WRITE, apiType = ApiType.ADMIN_API)
     @Operation(summary = "nacos.admin.naming.service.api.update.cluster.summary",
-            description = "nacos.admin.naming.service.api.update.cluster.description", security = @SecurityRequirement(name = "nacos"))
-    @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
-            schema = @Schema(implementation = Result.class, example = "nacos.console.naming.service.api.update.cluster.example")))
+        description = "nacos.admin.naming.service.api.update.cluster.description",
+        security = @SecurityRequirement(name = "nacos"),
+        extensions = {@Extension(name = "nacos-api-since",
+            properties = @ExtensionProperty(name = "version", value = "3.0.0"))})
+    @ApiResponse(responseCode = "200",
+        content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+            schema = @Schema(implementation = Result.class,
+                example = "nacos.console.naming.service.api.update.cluster.example")))
     @Parameters(value = {@Parameter(name = "namespaceId", example = "public"),
-            @Parameter(name = "groupName", example = "DEFAULT_GROUP"),
-            @Parameter(name = "serviceName", required = true, example = "test"),
-            @Parameter(name = "clusterName", required = true, example = "DEFAULT"),
-            @Parameter(name = "checkPort", schema = @Schema(type = "integer"), example = "8080"), @Parameter(name = "useInstancePort4Check", schema = @Schema(type = "boolean"), example = "false"),
-            @Parameter(name = "healthChecker",
-                    schema = @Schema(type = "string", description = "JSON object string parsed as health checker"),
-                    example = "\"{\\\"type\\\":\\\"none\\\"}\""),
-            @Parameter(name = "metadata",
-                    schema = @Schema(type = "string", description = "JSON object string parsed as metadata map"),
-                    example = "\"{\\\"version\\\":\\\"1.0\\\"}\""),
-            @Parameter(name = "updateClusterForm", hidden = true)})
+        @Parameter(name = "groupName", example = "DEFAULT_GROUP"),
+        @Parameter(name = "serviceName", required = true, example = "test"),
+        @Parameter(name = "clusterName", required = true, example = "DEFAULT"),
+        @Parameter(name = "checkPort", schema = @Schema(type = "integer"), example = "8080"),
+        @Parameter(name = "useInstancePort4Check", schema = @Schema(type = "boolean"),
+            example = "false"),
+        @Parameter(name = "healthChecker",
+            schema = @Schema(type = "string",
+                description = "JSON object string parsed as health checker"),
+            example = "\"{\\\"type\\\":\\\"none\\\"}\""),
+        @Parameter(name = "metadata",
+            schema = @Schema(type = "string",
+                description = "JSON object string parsed as metadata map"),
+            example = "\"{\\\"version\\\":\\\"1.0\\\"}\""),
+        @Parameter(name = "updateClusterForm", hidden = true)})
     public Result<String> update(UpdateClusterForm updateClusterForm) throws Exception {
         updateClusterForm.validate();
         

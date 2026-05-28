@@ -47,8 +47,11 @@ import static com.alibaba.nacos.core.utils.Commons.NACOS_ADMIN_CORE_CONTEXT_V3;
 @NacosApi
 @RestController
 @RequestMapping(NACOS_ADMIN_CORE_CONTEXT_V3 + "/state")
-@Tag(name = "nacos.admin.core.state.api.controller.name", description = "nacos.admin.core.state.api.controller.description", extensions = {
-        @Extension(name = RemoteConstants.LABEL_MODULE, properties = @ExtensionProperty(name = RemoteConstants.LABEL_MODULE, value = "common"))})
+@Tag(name = "nacos.admin.core.state.api.controller.name",
+    description = "nacos.admin.core.state.api.controller.description", extensions = {
+        @Extension(name = RemoteConstants.LABEL_MODULE,
+            properties = @ExtensionProperty(name = RemoteConstants.LABEL_MODULE,
+                value = "common"))})
 public class ServerStateController {
     
     private final NacosServerStateService stateService;
@@ -63,9 +66,14 @@ public class ServerStateController {
      * @return state key-value map.
      */
     @GetMapping()
-    @Operation(summary = "nacos.admin.core.state.api.state.summary", description = "nacos.admin.core.state.api.state.description")
-    @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
-            schema = @Schema(implementation = Result.class, example = "nacos.admin.core.state.api.state.example")))
+    @Operation(summary = "nacos.admin.core.state.api.state.summary",
+        description = "nacos.admin.core.state.api.state.description",
+        extensions = {@Extension(name = "nacos-api-since",
+            properties = @ExtensionProperty(name = "version", value = "3.0.0"))})
+    @ApiResponse(responseCode = "200",
+        content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+            schema = @Schema(implementation = Result.class,
+                example = "nacos.admin.core.state.api.state.example")))
     public Result<Map<String, String>> serverState() {
         return Result.success(stateService.getServerState());
     }
@@ -77,9 +85,14 @@ public class ServerStateController {
      * Nacos is in broken states.
      */
     @GetMapping("/liveness")
-    @Operation(summary = "nacos.admin.core.state.api.liveness.summary", description = "nacos.admin.core.state.api.liveness.description")
-    @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
-            schema = @Schema(implementation = Result.class, example = "nacos.admin.core.state.api.liveness.example")))
+    @Operation(summary = "nacos.admin.core.state.api.liveness.summary",
+        description = "nacos.admin.core.state.api.liveness.description",
+        extensions = {@Extension(name = "nacos-api-since",
+            properties = @ExtensionProperty(name = "version", value = "3.0.0"))})
+    @ApiResponse(responseCode = "200",
+        content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+            schema = @Schema(implementation = Result.class,
+                example = "nacos.admin.core.state.api.liveness.example")))
     public Result<String> liveness() {
         return Result.success("ok");
     }
@@ -91,9 +104,14 @@ public class ServerStateController {
      * ready.
      */
     @GetMapping("/readiness")
-    @Operation(summary = "nacos.admin.core.state.api.readiness.summary", description = "nacos.admin.core.state.api.readiness.description")
-    @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
-            schema = @Schema(implementation = Result.class, example = "nacos.admin.core.state.api.readiness.example")))
+    @Operation(summary = "nacos.admin.core.state.api.readiness.summary",
+        description = "nacos.admin.core.state.api.readiness.description",
+        extensions = {@Extension(name = "nacos-api-since",
+            properties = @ExtensionProperty(name = "version", value = "3.0.0"))})
+    @ApiResponse(responseCode = "200",
+        content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+            schema = @Schema(implementation = Result.class,
+                example = "nacos.admin.core.state.api.readiness.example")))
     public Result<String> readiness() throws NacosException {
         ReadinessResult result = ModuleHealthCheckerHolder.getInstance().checkReadiness();
         if (result.isSuccess()) {

@@ -87,9 +87,11 @@ import static com.alibaba.nacos.naming.misc.UtilsAndCommons.DEFAULT_CLUSTER_NAME
 @RestController
 @RequestMapping(UtilsAndCommons.INSTANCE_CONTROLLER_V3_ADMIN_PATH)
 @ExtractorManager.Extractor(httpExtractor = NamingDefaultHttpParamExtractor.class)
-@Tag(name = "nacos.admin.naming.instance.api.controller.name", description = "nacos.admin.naming.instance.api.controller.description", extensions = {
+@Tag(name = "nacos.admin.naming.instance.api.controller.name",
+    description = "nacos.admin.naming.instance.api.controller.description", extensions = {
         @Extension(name = RemoteConstants.LABEL_MODULE,
-                properties = @ExtensionProperty(name = RemoteConstants.LABEL_MODULE, value = RemoteConstants.LABEL_MODULE_NAMING))})
+            properties = @ExtensionProperty(name = RemoteConstants.LABEL_MODULE,
+                value = RemoteConstants.LABEL_MODULE_NAMING))})
 public class InstanceControllerV3 {
     
     private final SwitchDomain switchDomain;
@@ -113,21 +115,31 @@ public class InstanceControllerV3 {
     @PostMapping
     @TpsControl(pointName = "NamingInstanceRegister", name = "HttpNamingInstanceRegister")
     @Secured(action = ActionTypes.WRITE, apiType = ApiType.ADMIN_API)
-    @Operation(summary = "nacos.admin.naming.instance.api.register.summary", description = "nacos.admin.naming.instance.api.register.description",
-            security = @SecurityRequirement(name = "nacos"))
-    @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
-            schema = @Schema(implementation = Result.class, example = "nacos.admin.naming.instance.api.register.example")))
+    @Operation(summary = "nacos.admin.naming.instance.api.register.summary",
+        description = "nacos.admin.naming.instance.api.register.description",
+        security = @SecurityRequirement(name = "nacos"),
+        extensions = {@Extension(name = "nacos-api-since",
+            properties = @ExtensionProperty(name = "version", value = "3.0.0"))})
+    @ApiResponse(responseCode = "200",
+        content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+            schema = @Schema(implementation = Result.class,
+                example = "nacos.admin.naming.instance.api.register.example")))
     @Parameters(value = {@Parameter(name = "namespaceId", example = "public"),
-            @Parameter(name = "groupName", example = "DEFAULT_GROUP"),
-            @Parameter(name = "serviceName", required = true, example = "test"),
-            @Parameter(name = "clusterName", example = "DEFAULT"), @Parameter(name = "ip", required = true, example = "127.0.0.1"),
-            @Parameter(name = "port", required = true, schema = @Schema(type = "integer"), example = "8080"), @Parameter(name = "weight", schema = @Schema(type = "number"), example = "1.0"),
-            @Parameter(name = "healthy", schema = @Schema(type = "boolean"), example = "true"), @Parameter(name = "ephemeral", schema = @Schema(type = "boolean"), example = "true"),
-            @Parameter(name = "enabled", schema = @Schema(type = "boolean"), example = "true"),
-            @Parameter(name = "metadata",
-                    schema = @Schema(type = "string", description = "JSON object string parsed as metadata map"),
-                    example = "\"{\\\"zone\\\":\\\"a\\\"}\""),
-            @Parameter(name = "instanceForm", hidden = true)})
+        @Parameter(name = "groupName", example = "DEFAULT_GROUP"),
+        @Parameter(name = "serviceName", required = true, example = "test"),
+        @Parameter(name = "clusterName", example = "DEFAULT"),
+        @Parameter(name = "ip", required = true, example = "127.0.0.1"),
+        @Parameter(name = "port", required = true, schema = @Schema(type = "integer"),
+            example = "8080"),
+        @Parameter(name = "weight", schema = @Schema(type = "number"), example = "1.0"),
+        @Parameter(name = "healthy", schema = @Schema(type = "boolean"), example = "true"),
+        @Parameter(name = "ephemeral", schema = @Schema(type = "boolean"), example = "true"),
+        @Parameter(name = "enabled", schema = @Schema(type = "boolean"), example = "true"),
+        @Parameter(name = "metadata",
+            schema = @Schema(type = "string",
+                description = "JSON object string parsed as metadata map"),
+            example = "\"{\\\"zone\\\":\\\"a\\\"}\""),
+        @Parameter(name = "instanceForm", hidden = true)})
     public Result<String> register(InstanceForm instanceForm) throws NacosException {
         // check param
         instanceForm.validate();
@@ -154,17 +166,23 @@ public class InstanceControllerV3 {
     @DeleteMapping
     @TpsControl(pointName = "NamingInstanceDeregister", name = "HttpNamingInstanceDeregister")
     @Secured(action = ActionTypes.WRITE, apiType = ApiType.ADMIN_API)
-    @Operation(summary = "nacos.admin.naming.instance.api.deregister.summary", description = "nacos.admin.naming.instance.api.deregister.description",
-            security = @SecurityRequirement(name = "nacos"))
-    @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
-            schema = @Schema(implementation = Result.class, example = "nacos.admin.naming.instance.api.deregister.example")))
+    @Operation(summary = "nacos.admin.naming.instance.api.deregister.summary",
+        description = "nacos.admin.naming.instance.api.deregister.description",
+        security = @SecurityRequirement(name = "nacos"),
+        extensions = {@Extension(name = "nacos-api-since",
+            properties = @ExtensionProperty(name = "version", value = "3.0.0"))})
+    @ApiResponse(responseCode = "200",
+        content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+            schema = @Schema(implementation = Result.class,
+                example = "nacos.admin.naming.instance.api.deregister.example")))
     @Parameters(value = {@Parameter(name = "namespaceId", example = "public"),
-            @Parameter(name = "groupName", example = "DEFAULT_GROUP"),
-            @Parameter(name = "serviceName", required = true, example = "test"),
-            @Parameter(name = "clusterName", example = "DEFAULT"),
-            @Parameter(name = "ip", required = true, example = "127.0.0.1"),
-            @Parameter(name = "port", required = true, schema = @Schema(type = "integer"), example = "8080"),
-            @Parameter(name = "instanceForm", hidden = true)})
+        @Parameter(name = "groupName", example = "DEFAULT_GROUP"),
+        @Parameter(name = "serviceName", required = true, example = "test"),
+        @Parameter(name = "clusterName", example = "DEFAULT"),
+        @Parameter(name = "ip", required = true, example = "127.0.0.1"),
+        @Parameter(name = "port", required = true, schema = @Schema(type = "integer"),
+            example = "8080"),
+        @Parameter(name = "instanceForm", hidden = true)})
     public Result<String> deregister(InstanceForm instanceForm) throws NacosException {
         // check param
         instanceForm.validate();
@@ -190,21 +208,31 @@ public class InstanceControllerV3 {
     @PutMapping
     @TpsControl(pointName = "NamingInstanceUpdate", name = "HttpNamingInstanceUpdate")
     @Secured(action = ActionTypes.WRITE, apiType = ApiType.ADMIN_API)
-    @Operation(summary = "nacos.admin.naming.instance.api.update.summary", description = "nacos.admin.naming.instance.api.update.description",
-            security = @SecurityRequirement(name = "nacos"))
-    @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
-            schema = @Schema(implementation = Result.class, example = "nacos.admin.naming.instance.api.update.example")))
+    @Operation(summary = "nacos.admin.naming.instance.api.update.summary",
+        description = "nacos.admin.naming.instance.api.update.description",
+        security = @SecurityRequirement(name = "nacos"),
+        extensions = {@Extension(name = "nacos-api-since",
+            properties = @ExtensionProperty(name = "version", value = "3.0.0"))})
+    @ApiResponse(responseCode = "200",
+        content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+            schema = @Schema(implementation = Result.class,
+                example = "nacos.admin.naming.instance.api.update.example")))
     @Parameters(value = {@Parameter(name = "namespaceId", example = "public"),
-            @Parameter(name = "groupName", example = "DEFAULT_GROUP"),
-            @Parameter(name = "serviceName", required = true, example = "test"),
-            @Parameter(name = "clusterName", example = "DEFAULT"), @Parameter(name = "ip", required = true, example = "127.0.0.1"),
-            @Parameter(name = "port", required = true, schema = @Schema(type = "integer"), example = "8080"), @Parameter(name = "weight", schema = @Schema(type = "number"), example = "1.0"),
-            @Parameter(name = "healthy", schema = @Schema(type = "boolean"), example = "true"), @Parameter(name = "ephemeral", schema = @Schema(type = "boolean"), example = "true"),
-            @Parameter(name = "enabled", schema = @Schema(type = "boolean"), example = "true"),
-            @Parameter(name = "metadata",
-                    schema = @Schema(type = "string", description = "JSON object string parsed as metadata map"),
-                    example = "\"{\\\"zone\\\":\\\"a\\\"}\""),
-            @Parameter(name = "instanceForm", hidden = true)})
+        @Parameter(name = "groupName", example = "DEFAULT_GROUP"),
+        @Parameter(name = "serviceName", required = true, example = "test"),
+        @Parameter(name = "clusterName", example = "DEFAULT"),
+        @Parameter(name = "ip", required = true, example = "127.0.0.1"),
+        @Parameter(name = "port", required = true, schema = @Schema(type = "integer"),
+            example = "8080"),
+        @Parameter(name = "weight", schema = @Schema(type = "number"), example = "1.0"),
+        @Parameter(name = "healthy", schema = @Schema(type = "boolean"), example = "true"),
+        @Parameter(name = "ephemeral", schema = @Schema(type = "boolean"), example = "true"),
+        @Parameter(name = "enabled", schema = @Schema(type = "boolean"), example = "true"),
+        @Parameter(name = "metadata",
+            schema = @Schema(type = "string",
+                description = "JSON object string parsed as metadata map"),
+            example = "\"{\\\"zone\\\":\\\"a\\\"}\""),
+        @Parameter(name = "instanceForm", hidden = true)})
     public Result<String> update(InstanceForm instanceForm) throws NacosException {
         // check param
         instanceForm.validate();
@@ -234,19 +262,27 @@ public class InstanceControllerV3 {
     @ExtractorManager.Extractor(httpExtractor = NamingInstanceMetadataBatchHttpParamExtractor.class)
     @Secured(action = ActionTypes.WRITE, apiType = ApiType.ADMIN_API)
     @Operation(summary = "nacos.admin.naming.instance.api.update.batch.summary",
-            description = "nacos.admin.naming.instance.api.update.batch.description", security = @SecurityRequirement(name = "nacos"))
-    @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
-            schema = @Schema(implementation = Result.class, example = "nacos.admin.naming.instance.api.update.batch.example")))
+        description = "nacos.admin.naming.instance.api.update.batch.description",
+        security = @SecurityRequirement(name = "nacos"),
+        extensions = {@Extension(name = "nacos-api-since",
+            properties = @ExtensionProperty(name = "version", value = "3.0.0"))})
+    @ApiResponse(responseCode = "200",
+        content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+            schema = @Schema(implementation = Result.class,
+                example = "nacos.admin.naming.instance.api.update.batch.example")))
     @Parameters(value = {@Parameter(name = "namespaceId", example = "public"),
-            @Parameter(name = "groupName", example = "DEFAULT_GROUP"),
-            @Parameter(name = "serviceName", required = true, example = "test"),
-            @Parameter(name = "consistencyType", example = "ephemeral"),
-            @Parameter(name = "metadata", required = true,
-                    schema = @Schema(type = "string", description = "JSON object string parsed as metadata map"),
-                    example = "\"{\\\"zone\\\":\\\"a\\\"}\""),
-            @Parameter(name = "instances",
-                    schema = @Schema(type = "string", description = "JSON array string parsed as instance list"),
-                    example = "\"[]\""), @Parameter(name = "form", hidden = true)})
+        @Parameter(name = "groupName", example = "DEFAULT_GROUP"),
+        @Parameter(name = "serviceName", required = true, example = "test"),
+        @Parameter(name = "consistencyType", example = "ephemeral"),
+        @Parameter(name = "metadata", required = true,
+            schema = @Schema(type = "string",
+                description = "JSON object string parsed as metadata map"),
+            example = "\"{\\\"zone\\\":\\\"a\\\"}\""),
+        @Parameter(name = "instances",
+            schema = @Schema(type = "string",
+                description = "JSON array string parsed as instance list"),
+            example = "\"[]\""),
+        @Parameter(name = "form", hidden = true)})
     public Result<InstanceMetadataBatchResult> batchUpdateInstanceMetadata(
         InstanceMetadataBatchOperationForm form)
         throws NacosException {
@@ -275,19 +311,27 @@ public class InstanceControllerV3 {
     @ExtractorManager.Extractor(httpExtractor = NamingInstanceMetadataBatchHttpParamExtractor.class)
     @Secured(action = ActionTypes.WRITE, apiType = ApiType.ADMIN_API)
     @Operation(summary = "nacos.admin.naming.instance.api.delete.batch.summary",
-            description = "nacos.admin.naming.instance.api.delete.batch.description", security = @SecurityRequirement(name = "nacos"))
-    @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
-            schema = @Schema(implementation = Result.class, example = "nacos.admin.naming.instance.api.delete.batch.example")))
+        description = "nacos.admin.naming.instance.api.delete.batch.description",
+        security = @SecurityRequirement(name = "nacos"),
+        extensions = {@Extension(name = "nacos-api-since",
+            properties = @ExtensionProperty(name = "version", value = "3.0.0"))})
+    @ApiResponse(responseCode = "200",
+        content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+            schema = @Schema(implementation = Result.class,
+                example = "nacos.admin.naming.instance.api.delete.batch.example")))
     @Parameters(value = {@Parameter(name = "namespaceId", example = "public"),
-            @Parameter(name = "groupName", example = "DEFAULT_GROUP"),
-            @Parameter(name = "serviceName", required = true, example = "test"),
-            @Parameter(name = "consistencyType", example = "ephemeral"),
-            @Parameter(name = "metadata", required = true,
-                    schema = @Schema(type = "string", description = "JSON object string parsed as metadata map"),
-                    example = "\"{\\\"zone\\\":\\\"a\\\"}\""),
-            @Parameter(name = "instances",
-                    schema = @Schema(type = "string", description = "JSON array string parsed as instance list"),
-                    example = "\"[]\""), @Parameter(name = "form", hidden = true)})
+        @Parameter(name = "groupName", example = "DEFAULT_GROUP"),
+        @Parameter(name = "serviceName", required = true, example = "test"),
+        @Parameter(name = "consistencyType", example = "ephemeral"),
+        @Parameter(name = "metadata", required = true,
+            schema = @Schema(type = "string",
+                description = "JSON object string parsed as metadata map"),
+            example = "\"{\\\"zone\\\":\\\"a\\\"}\""),
+        @Parameter(name = "instances",
+            schema = @Schema(type = "string",
+                description = "JSON array string parsed as instance list"),
+            example = "\"[]\""),
+        @Parameter(name = "form", hidden = true)})
     public Result<InstanceMetadataBatchResult> batchDeleteInstanceMetadata(
         InstanceMetadataBatchOperationForm form)
         throws NacosException {
@@ -333,21 +377,31 @@ public class InstanceControllerV3 {
     @CanDistro
     @PutMapping(value = "/partial")
     @Secured(action = ActionTypes.WRITE, apiType = ApiType.ADMIN_API)
-    @Operation(summary = "nacos.admin.naming.instance.api.partial.summary", description = "nacos.admin.naming.instance.api.partial.description",
-            security = @SecurityRequirement(name = "nacos"))
-    @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
-            schema = @Schema(implementation = Result.class, example = "nacos.admin.naming.instance.api.partial.example")))
+    @Operation(summary = "nacos.admin.naming.instance.api.partial.summary",
+        description = "nacos.admin.naming.instance.api.partial.description",
+        security = @SecurityRequirement(name = "nacos"),
+        extensions = {@Extension(name = "nacos-api-since",
+            properties = @ExtensionProperty(name = "version", value = "3.0.0"))})
+    @ApiResponse(responseCode = "200",
+        content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+            schema = @Schema(implementation = Result.class,
+                example = "nacos.admin.naming.instance.api.partial.example")))
     @Parameters(value = {@Parameter(name = "namespaceId", example = "public"),
-            @Parameter(name = "groupName", example = "DEFAULT_GROUP"),
-            @Parameter(name = "serviceName", required = true, example = "test"),
-            @Parameter(name = "clusterName", example = "DEFAULT"), @Parameter(name = "ip", required = true, example = "127.0.0.1"),
-            @Parameter(name = "port", required = true, schema = @Schema(type = "integer"), example = "8080"), @Parameter(name = "weight", schema = @Schema(type = "number"), example = "1.0"),
-            @Parameter(name = "healthy", schema = @Schema(type = "boolean"), example = "true"), @Parameter(name = "ephemeral", schema = @Schema(type = "boolean"), example = "true"),
-            @Parameter(name = "enabled", schema = @Schema(type = "boolean"), example = "true"),
-            @Parameter(name = "metadata",
-                    schema = @Schema(type = "string", description = "JSON object string parsed as metadata map"),
-                    example = "\"{\\\"zone\\\":\\\"a\\\"}\""),
-            @Parameter(name = "instanceForm", hidden = true)})
+        @Parameter(name = "groupName", example = "DEFAULT_GROUP"),
+        @Parameter(name = "serviceName", required = true, example = "test"),
+        @Parameter(name = "clusterName", example = "DEFAULT"),
+        @Parameter(name = "ip", required = true, example = "127.0.0.1"),
+        @Parameter(name = "port", required = true, schema = @Schema(type = "integer"),
+            example = "8080"),
+        @Parameter(name = "weight", schema = @Schema(type = "number"), example = "1.0"),
+        @Parameter(name = "healthy", schema = @Schema(type = "boolean"), example = "true"),
+        @Parameter(name = "ephemeral", schema = @Schema(type = "boolean"), example = "true"),
+        @Parameter(name = "enabled", schema = @Schema(type = "boolean"), example = "true"),
+        @Parameter(name = "metadata",
+            schema = @Schema(type = "string",
+                description = "JSON object string parsed as metadata map"),
+            example = "\"{\\\"zone\\\":\\\"a\\\"}\""),
+        @Parameter(name = "instanceForm", hidden = true)})
     public Result<String> partialUpdateInstance(InstanceForm instanceForm) throws Exception {
         instanceForm.validate();
         InstancePatchObject patchObject =
@@ -378,16 +432,21 @@ public class InstanceControllerV3 {
     @TpsControl(pointName = "NamingServiceSubscribe", name = "HttpNamingServiceSubscribe")
     @ExtractorManager.Extractor(httpExtractor = NamingInstanceListHttpParamExtractor.class)
     @Secured(action = ActionTypes.READ, apiType = ApiType.ADMIN_API)
-    @Operation(summary = "nacos.admin.naming.instance.api.list.summary", description = "nacos.admin.naming.instance.api.list.description",
-            security = @SecurityRequirement(name = "nacos"))
-    @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
-            schema = @Schema(implementation = Result.class, example = "nacos.admin.naming.instance.api.list.example")))
+    @Operation(summary = "nacos.admin.naming.instance.api.list.summary",
+        description = "nacos.admin.naming.instance.api.list.description",
+        security = @SecurityRequirement(name = "nacos"),
+        extensions = {@Extension(name = "nacos-api-since",
+            properties = @ExtensionProperty(name = "version", value = "3.0.0"))})
+    @ApiResponse(responseCode = "200",
+        content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+            schema = @Schema(implementation = Result.class,
+                example = "nacos.admin.naming.instance.api.list.example")))
     @Parameters(value = {@Parameter(name = "namespaceId", example = "public"),
-            @Parameter(name = "groupName", example = "DEFAULT_GROUP"),
-            @Parameter(name = "serviceName", required = true, example = "test"),
-            @Parameter(name = "clusterName", example = "DEFAULT"),
-            @Parameter(name = "healthyOnly", schema = @Schema(type = "boolean"), example = "false"),
-            @Parameter(name = "instanceListForm", hidden = true)})
+        @Parameter(name = "groupName", example = "DEFAULT_GROUP"),
+        @Parameter(name = "serviceName", required = true, example = "test"),
+        @Parameter(name = "clusterName", example = "DEFAULT"),
+        @Parameter(name = "healthyOnly", schema = @Schema(type = "boolean"), example = "false"),
+        @Parameter(name = "instanceListForm", hidden = true)})
     public Result<List<? extends Instance>> list(InstanceListForm instanceListForm)
         throws NacosException {
         instanceListForm.validate();
@@ -407,17 +466,23 @@ public class InstanceControllerV3 {
     @GetMapping
     @TpsControl(pointName = "NamingInstanceQuery", name = "HttpNamingInstanceQuery")
     @Secured(action = ActionTypes.READ, apiType = ApiType.ADMIN_API)
-    @Operation(summary = "nacos.admin.naming.instance.api.get.summary", description = "nacos.admin.naming.instance.api.get.description",
-            security = @SecurityRequirement(name = "nacos"))
-    @ApiResponse(responseCode = "200", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
-            schema = @Schema(implementation = Result.class, example = "nacos.admin.naming.instance.api.get.example")))
+    @Operation(summary = "nacos.admin.naming.instance.api.get.summary",
+        description = "nacos.admin.naming.instance.api.get.description",
+        security = @SecurityRequirement(name = "nacos"),
+        extensions = {@Extension(name = "nacos-api-since",
+            properties = @ExtensionProperty(name = "version", value = "3.0.0"))})
+    @ApiResponse(responseCode = "200",
+        content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+            schema = @Schema(implementation = Result.class,
+                example = "nacos.admin.naming.instance.api.get.example")))
     @Parameters(value = {@Parameter(name = "namespaceId", example = "public"),
-            @Parameter(name = "groupName", example = "DEFAULT_GROUP"),
-            @Parameter(name = "serviceName", required = true, example = "test"),
-            @Parameter(name = "clusterName", example = "DEFAULT"),
-            @Parameter(name = "ip", required = true, example = "127.0.0.1"),
-            @Parameter(name = "port", required = true, schema = @Schema(type = "integer"), example = "8080"),
-            @Parameter(name = "instanceForm", hidden = true)})
+        @Parameter(name = "groupName", example = "DEFAULT_GROUP"),
+        @Parameter(name = "serviceName", required = true, example = "test"),
+        @Parameter(name = "clusterName", example = "DEFAULT"),
+        @Parameter(name = "ip", required = true, example = "127.0.0.1"),
+        @Parameter(name = "port", required = true, schema = @Schema(type = "integer"),
+            example = "8080"),
+        @Parameter(name = "instanceForm", hidden = true)})
     public Result<Instance> detail(InstanceForm instanceForm) throws NacosException {
         instanceForm.validate();
         String namespaceId = instanceForm.getNamespaceId();
