@@ -16,6 +16,7 @@
 
 package com.alibaba.nacos.naming.controllers.v3;
 
+import com.alibaba.nacos.api.annotation.Since;
 import com.alibaba.nacos.api.annotation.NacosApi;
 import com.alibaba.nacos.api.common.ApiType;
 import com.alibaba.nacos.api.exception.api.NacosApiException;
@@ -75,6 +76,7 @@ public class OperatorControllerV3 {
     /**
      * Get switch information.
      */
+    @Since("3.0.0")
     @GetMapping("/switches")
     @Secured(resource = UtilsAndCommons.OPERATOR_CONTROLLER_V3_ADMIN_PATH,
         action = ActionTypes.READ, apiType = ApiType.ADMIN_API)
@@ -94,6 +96,7 @@ public class OperatorControllerV3 {
     /**
      * Update switch information.
      */
+    @Since("3.0.0")
     @PutMapping("/switches")
     @Secured(resource = UtilsAndCommons.OPERATOR_CONTROLLER_V3_ADMIN_PATH,
         action = ActionTypes.WRITE, apiType = ApiType.ADMIN_API)
@@ -127,6 +130,7 @@ public class OperatorControllerV3 {
     /**
      * Get metrics information.
      */
+    @Since("3.0.0")
     @GetMapping("/metrics")
     @Secured(resource = UtilsAndCommons.OPERATOR_CONTROLLER_V3_ADMIN_PATH,
         action = ActionTypes.READ, apiType = ApiType.ADMIN_API)
@@ -150,6 +154,7 @@ public class OperatorControllerV3 {
     /**
      * Set log level.
      */
+    @Since("3.0.0")
     @PutMapping("/log")
     @Secured(resource = UtilsAndCommons.OPERATOR_CONTROLLER_V3_ADMIN_PATH,
         action = ActionTypes.WRITE, apiType = ApiType.ADMIN_API)

@@ -16,6 +16,7 @@
 
 package com.alibaba.nacos.ai.controller;
 
+import com.alibaba.nacos.api.annotation.Since;
 import com.alibaba.nacos.ai.constant.Constants;
 import com.alibaba.nacos.ai.form.prompt.PromptQueryForm;
 import com.alibaba.nacos.ai.param.PromptHttpParamExtractor;
@@ -72,6 +73,7 @@ public class PromptClientController {
     /**
      * Query prompt by version/label/latest with priority version > label > latest.
      */
+    @Since("3.2.0")
     @GetMapping
     @Secured(action = ActionTypes.READ, signType = SignType.AI, apiType = ApiType.OPEN_API)
     @Operation(summary = "nacos.admin.ai.prompt.client.api.query.summary",

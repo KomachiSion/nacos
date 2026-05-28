@@ -209,6 +209,25 @@ public interface AgentSpecOperationService {
         throws NacosException;
     
     /**
+     * Query agentspec for client listener path with MD5-based not-modified semantics.
+     *
+     * <p>When {@code clientMd5} is non-blank and equals the published content MD5 of the
+     * resolved version, the returned result has {@link AgentSpecQueryResult#isNotModified()}
+     * set to {@code true} and {@link AgentSpecQueryResult#getAgentSpec()} left {@code null},
+     * so the controller can return HTTP 304 without loading content.
+     *
+     * @param namespaceId namespace ID
+     * @param name        agentspec name
+     * @param version     explicit version (optional)
+     * @param label       route label (optional)
+     * @param clientMd5   MD5 carried by the listener; may be null or blank for first poll
+     * @return resolved agentspec plus its content MD5 and resolved version, or a not-modified marker
+     * @throws NacosException if resolution or load fails
+     */
+    AgentSpecQueryResult queryAgentSpecForClient(String namespaceId, String name,
+        String version, String label, String clientMd5) throws NacosException;
+    
+    /**
      * Create a new draft version based on latest or specified version.
      *
      * @param namespaceId namespace ID

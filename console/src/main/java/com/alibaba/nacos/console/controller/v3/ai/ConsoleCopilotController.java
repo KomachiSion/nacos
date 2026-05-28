@@ -16,6 +16,7 @@
 
 package com.alibaba.nacos.console.controller.v3.ai;
 
+import com.alibaba.nacos.api.annotation.Since;
 import com.alibaba.nacos.api.ai.model.skills.Skill;
 import com.alibaba.nacos.api.ai.model.skills.SkillResource;
 import com.alibaba.nacos.api.annotation.NacosApi;
@@ -109,6 +110,7 @@ public class ConsoleCopilotController {
      * @return SSE emitter for stream response
      * @throws NacosException if validation fails
      */
+    @Since("3.2.0")
     @PostMapping(value = CopilotConstants.SKILL_OPTIMIZE_PATH,
         produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     @Secured(action = ActionTypes.WRITE, signType = SignType.AI, apiType = ApiType.CONSOLE_API)
@@ -283,6 +285,7 @@ public class ConsoleCopilotController {
      * @return SSE emitter for stream response
      * @throws NacosException if validation fails
      */
+    @Since("3.2.0")
     @PostMapping(value = CopilotConstants.SKILL_GENERATE_PATH,
         produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     @Secured(action = ActionTypes.WRITE, signType = SignType.AI, apiType = ApiType.CONSOLE_API)
@@ -402,6 +405,7 @@ public class ConsoleCopilotController {
      * @return SSE emitter for stream response
      * @throws NacosException if validation fails
      */
+    @Since("3.2.0")
     @PostMapping(value = CopilotConstants.PROMPT_OPTIMIZE_PATH,
         produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     @Secured(action = ActionTypes.WRITE, signType = SignType.AI, apiType = ApiType.CONSOLE_API)
@@ -523,6 +527,7 @@ public class ConsoleCopilotController {
      * @return SSE emitter for stream response
      * @throws NacosException if validation fails
      */
+    @Since("3.2.0")
     @PostMapping(value = CopilotConstants.PROMPT_DEBUG_PATH,
         produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     @Secured(action = ActionTypes.WRITE, signType = SignType.AI, apiType = ApiType.CONSOLE_API)

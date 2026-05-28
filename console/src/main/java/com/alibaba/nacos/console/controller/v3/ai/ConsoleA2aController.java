@@ -16,6 +16,7 @@
 
 package com.alibaba.nacos.console.controller.v3.ai;
 
+import com.alibaba.nacos.api.annotation.Since;
 import com.alibaba.nacos.ai.constant.Constants;
 import com.alibaba.nacos.ai.form.a2a.admin.AgentCardForm;
 import com.alibaba.nacos.ai.form.a2a.admin.AgentCardUpdateForm;
@@ -95,6 +96,7 @@ public class ConsoleA2aController {
      * @return result of the registration operation
      * @throws NacosException if the agent registration fails due to invalid input or internal error
      */
+    @Since("3.1.0")
     @PostMapping
     @Secured(action = ActionTypes.WRITE, signType = SignType.AI, apiType = ApiType.CONSOLE_API)
     @Operation(summary = "nacos.console.ai.a2a.api.create.summary",
@@ -127,6 +129,7 @@ public class ConsoleA2aController {
      * @return result of the get operation
      * @throws NacosApiException if the agent get fails due to invalid input or internal error
      */
+    @Since("3.1.0")
     @GetMapping
     @Secured(action = ActionTypes.READ, signType = SignType.AI, apiType = ApiType.CONSOLE_API)
     @Operation(summary = "nacos.console.ai.a2a.api.get.summary",
@@ -154,6 +157,7 @@ public class ConsoleA2aController {
      * @return result of the update operation
      * @throws NacosException if the agent update fails due to invalid input or internal error
      */
+    @Since("3.1.0")
     @PutMapping
     @Secured(action = ActionTypes.WRITE, signType = SignType.AI, apiType = ApiType.CONSOLE_API)
     @Operation(summary = "nacos.console.ai.a2a.api.update.summary",
@@ -187,6 +191,7 @@ public class ConsoleA2aController {
      * @return result of the deletion operation
      * @throws NacosException if the agent deletion fails due to invalid input or internal error
      */
+    @Since("3.1.0")
     @DeleteMapping
     @Secured(action = ActionTypes.WRITE, signType = SignType.AI, apiType = ApiType.CONSOLE_API)
     @Operation(summary = "nacos.console.ai.a2a.api.delete.summary",
@@ -215,6 +220,7 @@ public class ConsoleA2aController {
      * @return result of the list operation
      * @throws NacosException if the agent list fails due to invalid input or internal error
      */
+    @Since("3.1.0")
     @GetMapping("/list")
     @Secured(action = ActionTypes.READ, signType = SignType.AI, apiType = ApiType.CONSOLE_API)
     @Operation(summary = "nacos.console.ai.a2a.api.list.summary",
@@ -251,6 +257,7 @@ public class ConsoleA2aController {
      * @return all version for target agent.
      * @throws NacosException nacos exception
      */
+    @Since("3.1.0")
     @GetMapping("/version/list")
     @Secured(action = ActionTypes.READ, signType = SignType.AI, apiType = ApiType.ADMIN_API)
     @Operation(summary = "nacos.console.ai.a2a.api.version.list.summary",

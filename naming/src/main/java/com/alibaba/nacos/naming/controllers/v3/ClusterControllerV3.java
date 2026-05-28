@@ -16,6 +16,7 @@
 
 package com.alibaba.nacos.naming.controllers.v3;
 
+import com.alibaba.nacos.api.annotation.Since;
 import com.alibaba.nacos.api.annotation.NacosApi;
 import com.alibaba.nacos.api.common.ApiType;
 import com.alibaba.nacos.api.model.v2.Result;
@@ -70,6 +71,7 @@ public class ClusterControllerV3 {
     /**
      * Update cluster.
      */
+    @Since("3.0.0")
     @PutMapping
     @Secured(action = ActionTypes.WRITE, apiType = ApiType.ADMIN_API)
     @Operation(summary = "nacos.admin.naming.service.api.update.cluster.summary",

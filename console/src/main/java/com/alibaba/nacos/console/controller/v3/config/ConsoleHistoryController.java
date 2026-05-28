@@ -17,6 +17,7 @@
 
 package com.alibaba.nacos.console.controller.v3.config;
 
+import com.alibaba.nacos.api.annotation.Since;
 import com.alibaba.nacos.api.annotation.NacosApi;
 import com.alibaba.nacos.api.common.ApiType;
 import com.alibaba.nacos.api.config.model.ConfigBasicInfo;
@@ -84,6 +85,7 @@ public class ConsoleHistoryController {
      * @param configForm config form
      * @return history config info
      */
+    @Since("3.0.0")
     @GetMapping
     @Secured(action = ActionTypes.READ, signType = SignType.CONFIG, apiType = ApiType.CONSOLE_API)
     @Operation(summary = "nacos.console.config.history.api.get.summary",
@@ -119,6 +121,7 @@ public class ConsoleHistoryController {
      * @param pageForm   page form
      * @return the page of history config.
      */
+    @Since("3.0.0")
     @GetMapping("/list")
     @Secured(action = ActionTypes.READ, signType = SignType.CONFIG, apiType = ApiType.CONSOLE_API)
     @Operation(summary = "nacos.console.config.history.api.list.summary",
@@ -161,6 +164,7 @@ public class ConsoleHistoryController {
      * @param configForm config form
      * @return history config info
      */
+    @Since("3.0.0")
     @GetMapping(value = "/previous")
     @Secured(action = ActionTypes.READ, signType = SignType.CONFIG, apiType = ApiType.CONSOLE_API)
     @Operation(summary = "nacos.console.config.history.api.previous.summary",
@@ -193,6 +197,7 @@ public class ConsoleHistoryController {
      * @param namespaceId config_info namespace
      * @return list
      */
+    @Since("3.0.0")
     @GetMapping(value = "/configs")
     @Secured(action = ActionTypes.READ, signType = SignType.CONFIG, apiType = ApiType.CONSOLE_API)
     @Operation(summary = "nacos.console.config.history.api.names.summary",

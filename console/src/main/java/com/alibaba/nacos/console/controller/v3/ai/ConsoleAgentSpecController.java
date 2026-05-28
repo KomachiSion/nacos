@@ -16,6 +16,7 @@
 
 package com.alibaba.nacos.console.controller.v3.ai;
 
+import com.alibaba.nacos.api.annotation.Since;
 import com.alibaba.nacos.ai.constant.Constants;
 import com.alibaba.nacos.ai.form.AiResourceFilterableForm;
 import com.alibaba.nacos.ai.form.agentspecs.admin.AgentSpecBizTagsUpdateForm;
@@ -98,6 +99,7 @@ public class ConsoleAgentSpecController {
      * @return result of the get operation
      * @throws NacosException if the operation fails
      */
+    @Since("3.2.0")
     @GetMapping
     @Secured(action = ActionTypes.READ, signType = SignType.AI, apiType = ApiType.CONSOLE_API)
     @Operation(summary = "nacos.console.ai.agentspec.api.get.summary",
@@ -125,6 +127,7 @@ public class ConsoleAgentSpecController {
      * @return full agentspec content for the specified version
      * @throws NacosException if the agentspec or version not found
      */
+    @Since("3.2.0")
     @GetMapping("/version")
     @Secured(action = ActionTypes.READ, signType = SignType.AI, apiType = ApiType.CONSOLE_API)
     @Operation(summary = "nacos.console.ai.agentspec.api.get.version.summary",
@@ -152,6 +155,7 @@ public class ConsoleAgentSpecController {
      * @return result of the deletion operation
      * @throws NacosException if the operation fails
      */
+    @Since("3.2.0")
     @DeleteMapping
     @Secured(action = ActionTypes.WRITE, signType = SignType.AI, apiType = ApiType.CONSOLE_API)
     @Operation(summary = "nacos.console.ai.agentspec.api.delete.summary",
@@ -180,6 +184,7 @@ public class ConsoleAgentSpecController {
      * @return result of the list operation
      * @throws NacosException if the operation fails
      */
+    @Since("3.2.1")
     @GetMapping("/list")
     @Secured(action = ActionTypes.READ, signType = SignType.AI, apiType = ApiType.CONSOLE_API)
     @Operation(summary = "nacos.console.ai.agentspec.api.list.summary",
@@ -220,6 +225,7 @@ public class ConsoleAgentSpecController {
      * @return result of the upload operation
      * @throws NacosException if the upload fails
      */
+    @Since("3.2.0")
     @PostMapping(value = "/upload", consumes = "multipart/form-data")
     @Secured(action = ActionTypes.WRITE, signType = SignType.AI, apiType = ApiType.CONSOLE_API)
     @ExtractorManager.Extractor(httpExtractor = ExtractorManager.DefaultHttpExtractor.class)
@@ -260,6 +266,7 @@ public class ConsoleAgentSpecController {
      * @return created draft version
      * @throws NacosException if the operation fails
      */
+    @Since("3.2.0")
     @PostMapping("/draft")
     @Secured(action = ActionTypes.WRITE, signType = SignType.AI, apiType = ApiType.CONSOLE_API)
     @Operation(summary = "nacos.console.ai.agentspec.api.draft.create.summary",
@@ -287,6 +294,7 @@ public class ConsoleAgentSpecController {
      * @return result of the update operation
      * @throws NacosException if the operation fails
      */
+    @Since("3.2.0")
     @PutMapping("/draft")
     @Secured(action = ActionTypes.WRITE, signType = SignType.AI, apiType = ApiType.CONSOLE_API)
     @Operation(summary = "nacos.console.ai.agentspec.api.draft.update.summary",
@@ -316,6 +324,7 @@ public class ConsoleAgentSpecController {
      * @return result of the deletion operation
      * @throws NacosException if the operation fails
      */
+    @Since("3.2.0")
     @DeleteMapping("/draft")
     @Secured(action = ActionTypes.WRITE, signType = SignType.AI, apiType = ApiType.CONSOLE_API)
     @Operation(summary = "nacos.console.ai.agentspec.api.draft.delete.summary",
@@ -343,6 +352,7 @@ public class ConsoleAgentSpecController {
      * @return submit result
      * @throws NacosException if the operation fails
      */
+    @Since("3.2.0")
     @PostMapping("/submit")
     @Secured(action = ActionTypes.WRITE, signType = SignType.AI, apiType = ApiType.CONSOLE_API)
     @Operation(summary = "nacos.console.ai.agentspec.api.submit.summary",
@@ -370,6 +380,7 @@ public class ConsoleAgentSpecController {
      * @return result of the publish operation
      * @throws NacosException if the operation fails
      */
+    @Since("3.2.0")
     @PostMapping("/publish")
     @Secured(action = ActionTypes.WRITE, signType = SignType.AI, apiType = ApiType.CONSOLE_API)
     @Operation(summary = "nacos.console.ai.agentspec.api.publish.summary",
@@ -398,6 +409,7 @@ public class ConsoleAgentSpecController {
      * reviewing (pipeline in-progress) versions. Restricted to admin users only (apiType = ADMIN_API enforces global
      * admin check).
      */
+    @Since("3.2.1")
     @PostMapping("/force-publish")
     @Secured(resource = CONSOLE_RESOURCE_NAME_PREFIX
         + "agentspecs", action = ActionTypes.WRITE, signType = SignType.CONSOLE,
@@ -430,6 +442,7 @@ public class ConsoleAgentSpecController {
      * @return result of the redraft operation
      * @throws NacosException if the operation fails
      */
+    @Since("3.2.2")
     @PostMapping("/redraft")
     @Secured(action = ActionTypes.WRITE, signType = SignType.AI, apiType = ApiType.CONSOLE_API)
     @Operation(summary = "nacos.console.ai.agentspec.api.redraft.summary",
@@ -458,6 +471,7 @@ public class ConsoleAgentSpecController {
      * @return result of the update operation
      * @throws NacosException if the operation fails
      */
+    @Since("3.2.0")
     @PutMapping("/labels")
     @Secured(action = ActionTypes.WRITE, signType = SignType.AI, apiType = ApiType.CONSOLE_API)
     @Operation(summary = "nacos.console.ai.agentspec.api.labels.update.summary",
@@ -484,6 +498,7 @@ public class ConsoleAgentSpecController {
     /**
      * Update agentspec biz tags without changing version status.
      */
+    @Since("3.2.0")
     @PutMapping("/biz-tags")
     @Secured(action = ActionTypes.WRITE, signType = SignType.AI, apiType = ApiType.CONSOLE_API)
     @Operation(summary = "nacos.console.ai.agentspec.api.biz.tags.update.summary",
@@ -514,6 +529,7 @@ public class ConsoleAgentSpecController {
      * @return result of the operation
      * @throws NacosException if the operation fails
      */
+    @Since("3.2.0")
     @PostMapping("/online")
     @Secured(action = ActionTypes.WRITE, signType = SignType.AI, apiType = ApiType.CONSOLE_API)
     @Operation(summary = "nacos.console.ai.agentspec.api.online.summary",
@@ -544,6 +560,7 @@ public class ConsoleAgentSpecController {
      * @return result of the update operation
      * @throws NacosException if the operation fails
      */
+    @Since("3.2.0")
     @PutMapping("/scope")
     @Secured(action = ActionTypes.WRITE, signType = SignType.AI, apiType = ApiType.CONSOLE_API)
     @Operation(summary = "nacos.console.ai.agentspec.api.scope.update.summary",
@@ -573,6 +590,7 @@ public class ConsoleAgentSpecController {
      * @return result of the operation
      * @throws NacosException if the operation fails
      */
+    @Since("3.2.0")
     @PostMapping("/offline")
     @Secured(action = ActionTypes.WRITE, signType = SignType.AI, apiType = ApiType.CONSOLE_API)
     @Operation(summary = "nacos.console.ai.agentspec.api.offline.summary",

@@ -17,6 +17,7 @@
 
 package com.alibaba.nacos.console.controller.v3.config;
 
+import com.alibaba.nacos.api.annotation.Since;
 import com.alibaba.nacos.api.annotation.NacosApi;
 import com.alibaba.nacos.api.common.ApiType;
 import com.alibaba.nacos.api.config.ConfigType;
@@ -110,6 +111,7 @@ public class ConsoleConfigController {
      * @return Result containing detailed configuration information.
      * @throws NacosException If a Nacos-specific error occurs.
      */
+    @Since("3.0.0")
     @GetMapping
     @Secured(action = ActionTypes.READ, signType = SignType.CONFIG, apiType = ApiType.CONSOLE_API)
     @Operation(summary = "nacos.console.config.config.api.get.summary",
@@ -141,6 +143,7 @@ public class ConsoleConfigController {
      * @return Result containing success status.
      * @throws NacosException If a Nacos-specific error occurs.
      */
+    @Since("3.0.0")
     @PostMapping()
     @Secured(action = ActionTypes.WRITE, signType = SignType.CONFIG, apiType = ApiType.CONSOLE_API)
     @Operation(summary = "nacos.console.config.config.api.publish.summary",
@@ -201,6 +204,7 @@ public class ConsoleConfigController {
      * @return Result containing success status.
      * @throws NacosException If a Nacos-specific error occurs.
      */
+    @Since("3.0.0")
     @DeleteMapping
     @Secured(action = ActionTypes.WRITE, signType = SignType.CONFIG, apiType = ApiType.CONSOLE_API)
     @Operation(summary = "nacos.console.config.config.api.delete.summary",
@@ -241,6 +245,7 @@ public class ConsoleConfigController {
      * @return Result containing success status.
      * @throws NacosException If a Nacos-specific error occurs.
      */
+    @Since("3.0.0")
     @DeleteMapping("/batchDelete")
     @Secured(action = ActionTypes.WRITE, signType = SignType.CONFIG, apiType = ApiType.CONSOLE_API)
     @Operation(summary = "nacos.console.config.config.api.batchDelete.summary",
@@ -273,6 +278,7 @@ public class ConsoleConfigController {
      * @throws IOException      If an I/O error occurs.
      * @throws NacosException   If a Nacos-specific error occurs.
      */
+    @Since("3.0.0")
     @GetMapping("/list")
     @Secured(action = ActionTypes.READ, signType = SignType.CONFIG, apiType = ApiType.CONSOLE_API)
     @ExtractorManager.Extractor(httpExtractor = ConfigBlurSearchHttpParamExtractor.class)
@@ -333,6 +339,7 @@ public class ConsoleConfigController {
      * @return Result containing the configuration list by content.
      * @throws NacosException If a Nacos-specific error occurs.
      */
+    @Since("3.0.0")
     @GetMapping("/searchDetail")
     @Secured(action = ActionTypes.READ, signType = SignType.CONFIG, apiType = ApiType.CONSOLE_API)
     @ExtractorManager.Extractor(httpExtractor = ConfigBlurSearchHttpParamExtractor.class)
@@ -397,6 +404,7 @@ public class ConsoleConfigController {
      * @return Result containing listener status.
      * @throws Exception If an error occurs during the operation.
      */
+    @Since("3.0.0")
     @GetMapping("/listener")
     @Secured(action = ActionTypes.READ, signType = SignType.CONFIG, apiType = ApiType.CONSOLE_API)
     @Operation(summary = "nacos.console.config.config.api.listener.summary",
@@ -430,6 +438,7 @@ public class ConsoleConfigController {
     /**
      * Get subscribe information from client side.
      */
+    @Since("3.0.0")
     @GetMapping("/listener/ip")
     @Secured(resource = Constants.LISTENER_CONTROLLER_PATH, action = ActionTypes.READ,
         signType = SignType.CONFIG, apiType = ApiType.CONSOLE_API)
@@ -466,6 +475,7 @@ public class ConsoleConfigController {
      * @return ResponseEntity containing the exported configuration.
      * @throws Exception If an error occurs during the export.
      */
+    @Since("3.0.0")
     @GetMapping("/export2")
     @Secured(action = ActionTypes.READ, signType = SignType.CONFIG, apiType = ApiType.CONSOLE_API)
     @Operation(summary = "nacos.console.config.config.api.export.summary",
@@ -506,6 +516,7 @@ public class ConsoleConfigController {
      * @return Result containing a map of the import status.
      * @throws NacosException If a Nacos-specific error occurs.
      */
+    @Since("3.0.0")
     @PostMapping("/import")
     @Secured(action = ActionTypes.WRITE, signType = SignType.CONFIG, apiType = ApiType.CONSOLE_API)
     @Operation(summary = "nacos.console.config.config.api.import.summary",
@@ -602,6 +613,7 @@ public class ConsoleConfigController {
      * @return Result indicating the outcome of the operation.
      * @throws NacosException If a Nacos-specific error occurs.
      */
+    @Since("3.0.0")
     @DeleteMapping("/beta")
     @Secured(action = ActionTypes.WRITE, signType = SignType.CONFIG)
     @Operation(summary = "nacos.console.config.config.api.delete.beta.summary",
@@ -642,6 +654,7 @@ public class ConsoleConfigController {
      * @return Result containing the ConfigInfo4Beta details.
      * @throws NacosException If a Nacos-specific error occurs.
      */
+    @Since("3.0.0")
     @GetMapping("/beta")
     @Secured(action = ActionTypes.READ, signType = SignType.CONFIG)
     @Operation(summary = "nacos.console.config.config.api.get.beta.summary",

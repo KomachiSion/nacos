@@ -16,6 +16,7 @@
 
 package com.alibaba.nacos.console.controller.v3.ai;
 
+import com.alibaba.nacos.api.annotation.Since;
 import com.alibaba.nacos.ai.constant.Constants;
 import com.alibaba.nacos.ai.form.importer.AiResourceImportExecuteForm;
 import com.alibaba.nacos.ai.form.importer.AiResourceImportSearchForm;
@@ -80,6 +81,7 @@ public class ConsoleAiResourceImportController {
      * @return source list
      * @throws NacosException if source configuration is invalid
      */
+    @Since("3.2.2")
     @GetMapping("/sources")
     @Secured(action = ActionTypes.READ, signType = SignType.AI, apiType = ApiType.CONSOLE_API)
     @Operation(summary = "nacos.console.ai.import.api.sources.summary",
@@ -106,6 +108,7 @@ public class ConsoleAiResourceImportController {
      * @return candidate page
      * @throws NacosException if the source cannot be searched
      */
+    @Since("3.2.2")
     @PostMapping("/search")
     @Secured(action = ActionTypes.READ, signType = SignType.AI, apiType = ApiType.CONSOLE_API)
     @Operation(summary = "nacos.console.ai.import.api.search.summary",
@@ -140,6 +143,7 @@ public class ConsoleAiResourceImportController {
      * @return validation result
      * @throws NacosException if validation cannot start
      */
+    @Since("3.2.2")
     @PostMapping("/validate")
     @Secured(action = ActionTypes.WRITE, signType = SignType.AI, apiType = ApiType.CONSOLE_API)
     @Operation(summary = "nacos.console.ai.import.api.validate.summary",
@@ -176,6 +180,7 @@ public class ConsoleAiResourceImportController {
      * @return import result
      * @throws NacosException if import cannot start
      */
+    @Since("3.2.2")
     @PostMapping("/execute")
     @Secured(action = ActionTypes.WRITE, signType = SignType.AI, apiType = ApiType.CONSOLE_API)
     @Operation(summary = "nacos.console.ai.import.api.execute.summary",

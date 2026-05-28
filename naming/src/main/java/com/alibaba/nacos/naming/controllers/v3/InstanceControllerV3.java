@@ -16,6 +16,7 @@
 
 package com.alibaba.nacos.naming.controllers.v3;
 
+import com.alibaba.nacos.api.annotation.Since;
 import com.alibaba.nacos.api.annotation.NacosApi;
 import com.alibaba.nacos.api.common.ApiType;
 import com.alibaba.nacos.api.exception.NacosException;
@@ -111,6 +112,7 @@ public class InstanceControllerV3 {
     /**
      * Register new instance.
      */
+    @Since("3.0.0")
     @CanDistro
     @PostMapping
     @TpsControl(pointName = "NamingInstanceRegister", name = "HttpNamingInstanceRegister")
@@ -162,6 +164,7 @@ public class InstanceControllerV3 {
     /**
      * Deregister instances.
      */
+    @Since("3.0.0")
     @CanDistro
     @DeleteMapping
     @TpsControl(pointName = "NamingInstanceDeregister", name = "HttpNamingInstanceDeregister")
@@ -204,6 +207,7 @@ public class InstanceControllerV3 {
     /**
      * Update instance.
      */
+    @Since("3.0.0")
     @CanDistro
     @PutMapping
     @TpsControl(pointName = "NamingInstanceUpdate", name = "HttpNamingInstanceUpdate")
@@ -255,6 +259,7 @@ public class InstanceControllerV3 {
     /**
      * Batch update instance's metadata. old key exist = update, old key not exist = add.
      */
+    @Since("3.0.0")
     @CanDistro
     @PutMapping(value = "/metadata/batch")
     @TpsControl(pointName = "NamingInstanceMetadataUpdate",
@@ -304,6 +309,7 @@ public class InstanceControllerV3 {
     /**
      * Batch delete instance's metadata. old key exist = delete, old key not exist = not operate
      */
+    @Since("3.0.0")
     @CanDistro
     @DeleteMapping("/metadata/batch")
     @TpsControl(pointName = "NamingInstanceMetadataUpdate",
@@ -374,6 +380,7 @@ public class InstanceControllerV3 {
     /**
      * Partial update instance.
      */
+    @Since("3.0.0")
     @CanDistro
     @PutMapping(value = "/partial")
     @Secured(action = ActionTypes.WRITE, apiType = ApiType.ADMIN_API)
@@ -428,6 +435,7 @@ public class InstanceControllerV3 {
     /**
      * Get all instance of input service.
      */
+    @Since("3.0.0")
     @GetMapping("/list")
     @TpsControl(pointName = "NamingServiceSubscribe", name = "HttpNamingServiceSubscribe")
     @ExtractorManager.Extractor(httpExtractor = NamingInstanceListHttpParamExtractor.class)
@@ -463,6 +471,7 @@ public class InstanceControllerV3 {
     /**
      * Get detail information of specified instance.
      */
+    @Since("3.0.0")
     @GetMapping
     @TpsControl(pointName = "NamingInstanceQuery", name = "HttpNamingInstanceQuery")
     @Secured(action = ActionTypes.READ, apiType = ApiType.ADMIN_API)

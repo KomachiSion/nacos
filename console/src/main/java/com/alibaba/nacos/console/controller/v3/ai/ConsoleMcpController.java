@@ -16,6 +16,7 @@
 
 package com.alibaba.nacos.console.controller.v3.ai;
 
+import com.alibaba.nacos.api.annotation.Since;
 import com.alibaba.nacos.ai.constant.Constants;
 import com.alibaba.nacos.ai.form.mcp.admin.McpDetailForm;
 import com.alibaba.nacos.ai.form.mcp.admin.McpForm;
@@ -128,6 +129,7 @@ public class ConsoleMcpController {
      * @return mcp server list wrapper with {@link Result}
      * @throws NacosApiException if request parameter is invalid or handle error
      */
+    @Since("3.0.0")
     @GetMapping(value = "/list")
     @Secured(action = ActionTypes.READ, signType = SignType.AI, apiType = ApiType.CONSOLE_API)
     @Operation(summary = "nacos.console.ai.mcp.api.list.summary",
@@ -168,6 +170,7 @@ public class ConsoleMcpController {
      * @return the result
      * @throws NacosException the nacos exception
      */
+    @Since("3.0.3")
     @GetMapping("/importToolsFromMcp")
     @Secured(action = ActionTypes.WRITE, signType = SignType.AI, apiType = ApiType.CONSOLE_API)
     @Operation(summary = "nacos.console.ai.mcp.api.import.tools.summary",
@@ -229,6 +232,7 @@ public class ConsoleMcpController {
      * @return detail info with {@link McpServerDetailInfo}
      * @throws NacosException any exception during handling
      */
+    @Since("3.0.0")
     @GetMapping
     @Secured(action = ActionTypes.READ, signType = SignType.AI, apiType = ApiType.CONSOLE_API)
     @Operation(summary = "nacos.console.ai.mcp.api.get.summary",
@@ -258,6 +262,7 @@ public class ConsoleMcpController {
      * @param mcpForm create mcp server request form
      * @throws NacosException any exception during handling
      */
+    @Since("3.0.0")
     @PostMapping
     @Secured(action = ActionTypes.WRITE, signType = SignType.AI, apiType = ApiType.CONSOLE_API)
     @Operation(summary = "nacos.console.ai.mcp.api.create.summary",
@@ -298,6 +303,7 @@ public class ConsoleMcpController {
      * @param mcpForm update mcp servers request form
      * @throws NacosException any exception during handling
      */
+    @Since("3.0.0")
     @PutMapping
     @Secured(action = ActionTypes.WRITE, signType = SignType.AI, apiType = ApiType.CONSOLE_API)
     @Operation(summary = "nacos.console.ai.mcp.api.update.summary",
@@ -338,6 +344,7 @@ public class ConsoleMcpController {
      * @param mcpForm delete mcp server request form
      * @throws NacosException any exception during handling
      */
+    @Since("3.0.0")
     @DeleteMapping
     @Secured(action = ActionTypes.WRITE, signType = SignType.AI, apiType = ApiType.CONSOLE_API)
     @Operation(summary = "nacos.console.ai.mcp.api.delete.summary",
@@ -367,6 +374,7 @@ public class ConsoleMcpController {
      * @return validation result with details about potential issues
      * @throws NacosException any exception during validation
      */
+    @Since("3.1.0")
     @PostMapping("/import/validate")
     @Secured(action = ActionTypes.WRITE, signType = SignType.AI, apiType = ApiType.CONSOLE_API)
     @Operation(summary = "nacos.console.ai.mcp.api.import.validate.summary",
@@ -404,6 +412,7 @@ public class ConsoleMcpController {
      * @return import response with results and statistics
      * @throws NacosException any exception during import execution
      */
+    @Since("3.1.0")
     @PostMapping("/import/execute")
     @Secured(action = ActionTypes.WRITE, signType = SignType.AI, apiType = ApiType.CONSOLE_API)
     @Operation(summary = "nacos.console.ai.mcp.api.import.execute.summary",

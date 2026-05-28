@@ -16,6 +16,7 @@
 
 package com.alibaba.nacos.ai.controller;
 
+import com.alibaba.nacos.api.annotation.Since;
 import com.alibaba.nacos.ai.constant.Constants;
 import com.alibaba.nacos.ai.form.prompt.PromptBizTagsUpdateForm;
 import com.alibaba.nacos.ai.form.prompt.PromptDescriptionUpdateForm;
@@ -106,6 +107,7 @@ public class PromptAdminController {
     /**
      * Delete prompt.
      */
+    @Since("3.2.0")
     @DeleteMapping
     @Secured(action = ActionTypes.WRITE, signType = SignType.AI, apiType = ApiType.ADMIN_API)
     @Operation(summary = "nacos.admin.ai.prompt.api.delete.summary",
@@ -130,6 +132,7 @@ public class PromptAdminController {
     /**
      * List prompts with pagination.
      */
+    @Since("3.2.0")
     @GetMapping("/list")
     @Secured(action = ActionTypes.READ, signType = SignType.AI, apiType = ApiType.ADMIN_API)
     @Operation(summary = "nacos.admin.ai.prompt.api.list.summary",
@@ -160,6 +163,7 @@ public class PromptAdminController {
     /**
      * List prompt versions.
      */
+    @Since("3.2.0")
     @GetMapping("/versions")
     @Secured(action = ActionTypes.READ, signType = SignType.AI, apiType = ApiType.ADMIN_API)
     @Operation(summary = "nacos.admin.ai.prompt.api.versions.summary",
@@ -192,6 +196,7 @@ public class PromptAdminController {
     /**
      * Get prompt governance detail (includes version governance info and all version summaries).
      */
+    @Since("3.2.1")
     @GetMapping("/governance")
     @Secured(action = ActionTypes.READ, signType = SignType.AI, apiType = ApiType.ADMIN_API)
     @Operation(summary = "nacos.admin.ai.prompt.api.governance.summary",
@@ -215,6 +220,7 @@ public class PromptAdminController {
     /**
      * Get specific version detail for viewing or editing.
      */
+    @Since("3.2.1")
     @GetMapping("/version")
     @Secured(action = ActionTypes.READ, signType = SignType.AI, apiType = ApiType.ADMIN_API)
     @Operation(summary = "nacos.admin.ai.prompt.api.version.get.summary",
@@ -246,6 +252,7 @@ public class PromptAdminController {
      * @return Markdown file as ResponseEntity
      * @throws NacosException if the prompt or version is not found
      */
+    @Since("3.2.2")
     @GetMapping("/version/download")
     @Secured(action = ActionTypes.READ, signType = SignType.AI, apiType = ApiType.ADMIN_API)
     @Operation(summary = "nacos.admin.ai.prompt.api.version.download.summary",
@@ -271,6 +278,7 @@ public class PromptAdminController {
     /**
      * Create draft: {@code template} required unless {@code basedOnVersion} is set (fork from existing version).
      */
+    @Since("3.2.1")
     @PostMapping("/draft")
     @Secured(action = ActionTypes.WRITE, signType = SignType.AI, apiType = ApiType.ADMIN_API)
     @Operation(summary = "nacos.admin.ai.prompt.api.draft.create.summary",
@@ -306,6 +314,7 @@ public class PromptAdminController {
     /**
      * Update current draft content.
      */
+    @Since("3.2.1")
     @PutMapping("/draft")
     @Secured(action = ActionTypes.WRITE, signType = SignType.AI, apiType = ApiType.ADMIN_API)
     @Operation(summary = "nacos.admin.ai.prompt.api.draft.update.summary",
@@ -336,6 +345,7 @@ public class PromptAdminController {
     /**
      * Delete current draft version.
      */
+    @Since("3.2.1")
     @DeleteMapping("/draft")
     @Secured(action = ActionTypes.WRITE, signType = SignType.AI, apiType = ApiType.ADMIN_API)
     @Operation(summary = "nacos.admin.ai.prompt.api.draft.delete.summary",
@@ -359,6 +369,7 @@ public class PromptAdminController {
     /**
      * Submit a version for pipeline review.
      */
+    @Since("3.2.1")
     @PostMapping("/submit")
     @Secured(action = ActionTypes.WRITE, signType = SignType.AI, apiType = ApiType.ADMIN_API)
     @Operation(summary = "nacos.admin.ai.prompt.api.submit.summary",
@@ -384,6 +395,7 @@ public class PromptAdminController {
     /**
      * Publish an approved reviewing version.
      */
+    @Since("3.2.1")
     @PostMapping("/publish")
     @Secured(action = ActionTypes.WRITE, signType = SignType.AI, apiType = ApiType.ADMIN_API)
     @Operation(summary = "nacos.admin.ai.prompt.api.version.publish.summary",
@@ -412,6 +424,7 @@ public class PromptAdminController {
     /**
      * Force-publish a prompt version, bypassing pipeline validation.
      */
+    @Since("3.2.1")
     @PostMapping("/force-publish")
     @Secured(resource = Constants.Prompt.ADMIN_PATH
         + "/force-publish", action = ActionTypes.WRITE, signType = SignType.CONSOLE,
@@ -443,6 +456,7 @@ public class PromptAdminController {
     /**
      * Re-edit a reviewed prompt version, transitioning it back to draft for modification.
      */
+    @Since("3.2.2")
     @PostMapping("/redraft")
     @Secured(action = ActionTypes.WRITE, signType = SignType.AI, apiType = ApiType.ADMIN_API)
     @Operation(summary = "nacos.admin.ai.prompt.api.redraft.summary",
@@ -468,6 +482,7 @@ public class PromptAdminController {
     /**
      * Online a prompt version.
      */
+    @Since("3.2.1")
     @PostMapping("/online")
     @Secured(action = ActionTypes.WRITE, signType = SignType.AI, apiType = ApiType.ADMIN_API)
     @Operation(summary = "nacos.admin.ai.prompt.api.online.summary",
@@ -493,6 +508,7 @@ public class PromptAdminController {
     /**
      * Offline a prompt version.
      */
+    @Since("3.2.1")
     @PostMapping("/offline")
     @Secured(action = ActionTypes.WRITE, signType = SignType.AI, apiType = ApiType.ADMIN_API)
     @Operation(summary = "nacos.admin.ai.prompt.api.offline.summary",
@@ -518,6 +534,7 @@ public class PromptAdminController {
     /**
      * Update runtime route labels without changing version status.
      */
+    @Since("3.2.1")
     @PutMapping("/labels")
     @Secured(action = ActionTypes.WRITE, signType = SignType.AI, apiType = ApiType.ADMIN_API)
     @Operation(summary = "nacos.admin.ai.prompt.api.labels.update.summary",
@@ -545,6 +562,7 @@ public class PromptAdminController {
     /**
      * Update prompt description without changing version status.
      */
+    @Since("3.2.1")
     @PutMapping("/description")
     @Secured(action = ActionTypes.WRITE, signType = SignType.AI, apiType = ApiType.ADMIN_API)
     @Operation(summary = "nacos.admin.ai.prompt.api.description.update.summary",
@@ -571,6 +589,7 @@ public class PromptAdminController {
     /**
      * Update prompt biz tags without changing version status.
      */
+    @Since("3.2.1")
     @PutMapping("/biz-tags")
     @Secured(action = ActionTypes.WRITE, signType = SignType.AI, apiType = ApiType.ADMIN_API)
     @Operation(summary = "nacos.admin.ai.prompt.api.biz.tags.update.summary",
@@ -612,6 +631,7 @@ public class PromptAdminController {
      *
      * @deprecated Use POST /draft + POST /submit instead.
      */
+    @Since("3.2.0")
     @Deprecated
     @PostMapping
     @Secured(action = ActionTypes.WRITE, signType = SignType.AI, apiType = ApiType.ADMIN_API)
@@ -650,6 +670,7 @@ public class PromptAdminController {
      *
      * @deprecated Use GET /governance instead.
      */
+    @Since("3.2.0")
     @Deprecated
     @GetMapping("/metadata")
     @Secured(action = ActionTypes.READ, signType = SignType.AI, apiType = ApiType.ADMIN_API)
@@ -677,6 +698,7 @@ public class PromptAdminController {
      *
      * @deprecated Use GET /version instead.
      */
+    @Since("3.2.0")
     @Deprecated
     @GetMapping("/detail")
     @Secured(action = ActionTypes.READ, signType = SignType.AI, apiType = ApiType.ADMIN_API)
@@ -707,6 +729,7 @@ public class PromptAdminController {
      *
      * @deprecated Use PUT /labels instead.
      */
+    @Since("3.2.0")
     @Deprecated
     @PutMapping("/label")
     @Secured(action = ActionTypes.WRITE, signType = SignType.AI, apiType = ApiType.ADMIN_API)
@@ -738,6 +761,7 @@ public class PromptAdminController {
      *
      * @deprecated Use PUT /labels instead.
      */
+    @Since("3.2.0")
     @Deprecated
     @DeleteMapping("/label")
     @Secured(action = ActionTypes.WRITE, signType = SignType.AI, apiType = ApiType.ADMIN_API)
@@ -768,6 +792,7 @@ public class PromptAdminController {
      *
      * @deprecated Use PUT /description and PUT /biz-tags instead.
      */
+    @Since("3.2.0")
     @Deprecated
     @PutMapping("/metadata")
     @Secured(action = ActionTypes.WRITE, signType = SignType.AI, apiType = ApiType.ADMIN_API)

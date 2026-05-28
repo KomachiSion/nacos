@@ -21,7 +21,14 @@ import org.mockito.MockedStatic;
 import org.mockito.Mockito;
 import org.springframework.boot.SpringApplication;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+
 class NamingAppTest {
+    
+    @Test
+    void testNewInstance() {
+        assertEquals(NamingApp.class, new NamingApp().getClass());
+    }
     
     @Test
     void testMainStartsSpringApplication() {

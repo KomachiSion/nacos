@@ -16,6 +16,7 @@
 
 package com.alibaba.nacos.console.controller.v3.ai;
 
+import com.alibaba.nacos.api.annotation.Since;
 import com.alibaba.nacos.ai.constant.Constants;
 import com.alibaba.nacos.ai.form.AiResourceFilterableForm;
 import com.alibaba.nacos.ai.form.skills.admin.SkillBizTagsUpdateForm;
@@ -102,6 +103,7 @@ public class ConsoleSkillController {
      * @return result of the get operation
      * @throws NacosException if the skill get fails
      */
+    @Since("3.2.0")
     @GetMapping
     @Secured(action = ActionTypes.READ, signType = SignType.AI, apiType = ApiType.CONSOLE_API)
     @Operation(summary = "nacos.console.ai.skill.api.get.summary",
@@ -128,6 +130,7 @@ public class ConsoleSkillController {
      * @return full skill content for the specified version
      * @throws NacosException if the skill or version not found
      */
+    @Since("3.2.0")
     @GetMapping("/version")
     @Secured(action = ActionTypes.READ, signType = SignType.AI, apiType = ApiType.CONSOLE_API)
     @Operation(summary = "nacos.console.ai.skill.api.get.version.summary",
@@ -155,6 +158,7 @@ public class ConsoleSkillController {
      * @return ZIP file as ResponseEntity
      * @throws NacosException if the skill or version not found
      */
+    @Since("3.2.0")
     @GetMapping("/version/download")
     @Secured(action = ActionTypes.READ, signType = SignType.AI, apiType = ApiType.CONSOLE_API)
     @Operation(summary = "nacos.console.ai.skill.api.download.version.summary",
@@ -183,6 +187,7 @@ public class ConsoleSkillController {
      * @return result of the deletion operation
      * @throws NacosException if the skill deletion fails
      */
+    @Since("3.2.0")
     @DeleteMapping
     @Secured(action = ActionTypes.WRITE, signType = SignType.AI, apiType = ApiType.CONSOLE_API)
     @Operation(summary = "nacos.console.ai.skill.api.delete.summary",
@@ -211,6 +216,7 @@ public class ConsoleSkillController {
      * @return result of the list operation
      * @throws NacosException if the skill list fails
      */
+    @Since("3.2.1")
     @GetMapping("/list")
     @Secured(action = ActionTypes.READ, signType = SignType.AI, apiType = ApiType.CONSOLE_API)
     @Operation(summary = "nacos.console.ai.skill.api.list.summary",
@@ -249,6 +255,7 @@ public class ConsoleSkillController {
      * @return result of the upload operation
      * @throws NacosException if the upload fails
      */
+    @Since("3.2.2")
     @PostMapping(value = "/upload", consumes = "multipart/form-data")
     @Secured(action = ActionTypes.WRITE, signType = SignType.AI, apiType = ApiType.CONSOLE_API)
     @ExtractorManager.Extractor(httpExtractor = ExtractorManager.DefaultHttpExtractor.class)
@@ -305,6 +312,7 @@ public class ConsoleSkillController {
      * @return batch upload result with succeeded and failed lists
      * @throws NacosException if zip parsing fails entirely
      */
+    @Since("3.2.2")
     @PostMapping(value = "/upload/batch", consumes = "multipart/form-data")
     @Secured(action = ActionTypes.WRITE, signType = SignType.AI, apiType = ApiType.CONSOLE_API)
     @ExtractorManager.Extractor(httpExtractor = ExtractorManager.DefaultHttpExtractor.class)
@@ -340,6 +348,7 @@ public class ConsoleSkillController {
     /**
      * Create draft. {@link SkillDraftCreateForm#prepareCreateDraftRequest()} validates here; handler only delegates.
      */
+    @Since("3.2.0")
     @PostMapping("/draft")
     @Secured(action = ActionTypes.WRITE, signType = SignType.AI, apiType = ApiType.CONSOLE_API)
     @Operation(summary = "nacos.console.ai.skill.api.draft.create.summary",
@@ -366,6 +375,7 @@ public class ConsoleSkillController {
     /**
      * Update current draft content.
      */
+    @Since("3.2.0")
     @PutMapping("/draft")
     @Secured(action = ActionTypes.WRITE, signType = SignType.AI, apiType = ApiType.CONSOLE_API)
     @Operation(summary = "nacos.console.ai.skill.api.draft.update.summary",
@@ -391,6 +401,7 @@ public class ConsoleSkillController {
     /**
      * Delete current draft version.
      */
+    @Since("3.2.0")
     @DeleteMapping("/draft")
     @Secured(action = ActionTypes.WRITE, signType = SignType.AI, apiType = ApiType.CONSOLE_API)
     @Operation(summary = "nacos.console.ai.skill.api.draft.delete.summary",
@@ -414,6 +425,7 @@ public class ConsoleSkillController {
     /**
      * Submit a version for pipeline review.
      */
+    @Since("3.2.0")
     @PostMapping("/submit")
     @Secured(action = ActionTypes.WRITE, signType = SignType.AI, apiType = ApiType.CONSOLE_API)
     @Operation(summary = "nacos.console.ai.skill.api.submit.summary",
@@ -437,6 +449,7 @@ public class ConsoleSkillController {
     /**
      * Publish an approved reviewing version.
      */
+    @Since("3.2.0")
     @PostMapping("/publish")
     @Secured(action = ActionTypes.WRITE, signType = SignType.AI, apiType = ApiType.CONSOLE_API)
     @Operation(summary = "nacos.console.ai.skill.api.publish.summary",
@@ -465,6 +478,7 @@ public class ConsoleSkillController {
      * (pipeline in-progress) versions. Restricted to admin users only (apiType = ADMIN_API enforces global admin
      * check).
      */
+    @Since("3.2.1")
     @PostMapping("/force-publish")
     @Secured(resource = CONSOLE_RESOURCE_NAME_PREFIX
         + "skills", action = ActionTypes.WRITE, signType = SignType.CONSOLE,
@@ -493,6 +507,7 @@ public class ConsoleSkillController {
     /**
      * Re-edit a reviewed skill version, transitioning it back to draft status.
      */
+    @Since("3.2.2")
     @PostMapping("/redraft")
     @Secured(action = ActionTypes.WRITE, signType = SignType.AI, apiType = ApiType.CONSOLE_API)
     @Operation(summary = "nacos.console.ai.skill.api.redraft.summary",
@@ -517,6 +532,7 @@ public class ConsoleSkillController {
     /**
      * Update runtime route labels without changing version status.
      */
+    @Since("3.2.0")
     @PutMapping("/labels")
     @Secured(action = ActionTypes.WRITE, signType = SignType.AI, apiType = ApiType.CONSOLE_API)
     @Operation(summary = "nacos.console.ai.skill.api.labels.update.summary",
@@ -543,6 +559,7 @@ public class ConsoleSkillController {
     /**
      * Update skill biz tags without changing version status.
      */
+    @Since("3.2.0")
     @PutMapping("/biz-tags")
     @Secured(action = ActionTypes.WRITE, signType = SignType.AI, apiType = ApiType.CONSOLE_API)
     @Operation(summary = "nacos.console.ai.skill.api.biz.tags.update.summary",
@@ -569,6 +586,7 @@ public class ConsoleSkillController {
     /**
      * Online operation (version-level or skill-level by scope).
      */
+    @Since("3.2.0")
     @PostMapping("/online")
     @Secured(action = ActionTypes.WRITE, signType = SignType.AI, apiType = ApiType.CONSOLE_API)
     @Operation(summary = "nacos.console.ai.skill.api.online.summary",
@@ -595,6 +613,7 @@ public class ConsoleSkillController {
     /**
      * Offline operation (version-level or skill-level by scope).
      */
+    @Since("3.2.0")
     @PostMapping("/offline")
     @Secured(action = ActionTypes.WRITE, signType = SignType.AI, apiType = ApiType.CONSOLE_API)
     @Operation(summary = "nacos.console.ai.skill.api.offline.summary",
@@ -621,6 +640,7 @@ public class ConsoleSkillController {
     /**
      * Update skill visibility scope (PUBLIC or PRIVATE).
      */
+    @Since("3.2.0")
     @PutMapping("/scope")
     @Secured(action = ActionTypes.WRITE, signType = SignType.AI, apiType = ApiType.CONSOLE_API)
     @Operation(summary = "nacos.console.ai.skill.api.scope.update.summary",

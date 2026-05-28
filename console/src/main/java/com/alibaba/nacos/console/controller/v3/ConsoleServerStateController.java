@@ -17,6 +17,7 @@
 
 package com.alibaba.nacos.console.controller.v3;
 
+import com.alibaba.nacos.api.annotation.Since;
 import com.alibaba.nacos.api.annotation.NacosApi;
 import com.alibaba.nacos.api.exception.NacosException;
 import com.alibaba.nacos.api.model.v2.Result;
@@ -70,6 +71,7 @@ public class ConsoleServerStateController {
      *
      * @return state json.
      */
+    @Since("3.0.0")
     @GetMapping(value = "/state")
     @Operation(summary = "nacos.console.state.api.state.summary",
         description = "nacos.console.state.api.state.description",
@@ -90,6 +92,7 @@ public class ConsoleServerStateController {
      * @param language Language for the announcement (default: "zh-CN")
      * @return Announcement content as a string wrapped in a Result object
      */
+    @Since("3.0.0")
     @GetMapping("/announcement")
     @Operation(summary = "nacos.console.state.api.announcement.summary",
         description = "nacos.console.state.api.announcement.description",
@@ -116,6 +119,7 @@ public class ConsoleServerStateController {
      *
      * @return Console UI guide information as a string wrapped in a Result object
      */
+    @Since("3.0.0")
     @GetMapping("/guide")
     @Operation(summary = "nacos.console.state.api.guide.summary",
         description = "nacos.console.state.api.guide.description",
