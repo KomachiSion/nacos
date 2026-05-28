@@ -88,7 +88,9 @@ public class ConsoleHistoryController {
     @Secured(action = ActionTypes.READ, signType = SignType.CONFIG, apiType = ApiType.CONSOLE_API)
     @Operation(summary = "nacos.console.config.history.api.get.summary",
         description = "nacos.console.config.history.api.get.description",
-        security = @SecurityRequirement(name = "nacos"))
+        security = @SecurityRequirement(name = "nacos"),
+        extensions = {@Extension(name = "nacos-api-since",
+            properties = @ExtensionProperty(name = "version", value = "3.0.0"))})
     @ApiResponse(responseCode = "200",
         content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
             schema = @Schema(implementation = Result.class,
@@ -121,7 +123,9 @@ public class ConsoleHistoryController {
     @Secured(action = ActionTypes.READ, signType = SignType.CONFIG, apiType = ApiType.CONSOLE_API)
     @Operation(summary = "nacos.console.config.history.api.list.summary",
         description = "nacos.console.config.history.api.list.description",
-        security = @SecurityRequirement(name = "nacos"))
+        security = @SecurityRequirement(name = "nacos"),
+        extensions = {@Extension(name = "nacos-api-since",
+            properties = @ExtensionProperty(name = "version", value = "3.0.0"))})
     @ApiResponse(responseCode = "200",
         content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
             schema = @Schema(implementation = Result.class,
@@ -161,7 +165,9 @@ public class ConsoleHistoryController {
     @Secured(action = ActionTypes.READ, signType = SignType.CONFIG, apiType = ApiType.CONSOLE_API)
     @Operation(summary = "nacos.console.config.history.api.previous.summary",
         description = "nacos.console.config.history.api.previous.description",
-        security = @SecurityRequirement(name = "nacos"))
+        security = @SecurityRequirement(name = "nacos"),
+        extensions = {@Extension(name = "nacos-api-since",
+            properties = @ExtensionProperty(name = "version", value = "3.0.0"))})
     @ApiResponse(responseCode = "200",
         content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
             schema = @Schema(implementation = Result.class,
@@ -191,7 +197,9 @@ public class ConsoleHistoryController {
     @Secured(action = ActionTypes.READ, signType = SignType.CONFIG, apiType = ApiType.CONSOLE_API)
     @Operation(summary = "nacos.console.config.history.api.names.summary",
         description = "nacos.console.config.history.api.names.description",
-        security = @SecurityRequirement(name = "nacos"))
+        security = @SecurityRequirement(name = "nacos"),
+        extensions = {@Extension(name = "nacos-api-since",
+            properties = @ExtensionProperty(name = "version", value = "3.0.0"))})
     @ApiResponse(responseCode = "200",
         content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
             schema = @Schema(implementation = Result.class,

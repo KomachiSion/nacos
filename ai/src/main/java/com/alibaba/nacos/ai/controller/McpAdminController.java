@@ -75,16 +75,25 @@ import org.springframework.web.bind.annotation.RestController;
 public class McpAdminController {
     
     private static final String MCP_SERVER_SPEC_EXAMPLE =
-        "{\"protocol\":\"stdio\",\"frontProtocol\":\"stdio\",\"name\":\"test\",\"id\":\"\",\"description\":\"ceshi\",\"versionDetail\":{\"version\":\"1.0.0\"},\"enabled\":true,\"localServerConfig\":{\"test\":{}}}";
+        "{\"protocol\":\"stdio\",\"frontProtocol\":\"stdio\",\"name\":\"test\",\"id\":\"\","
+            + "\"description\":\"ceshi\",\"versionDetail\":{\"version\":\"1.0.0\"},"
+            + "\"enabled\":true,\"localServerConfig\":{\"test\":{}}}";
     
     private static final String MCP_SERVER_SPEC_WITH_ID_EXAMPLE =
-        "{\"protocol\":\"stdio\",\"frontProtocol\":\"stdio\",\"name\":\"test\",\"id\":\"d7a64724-a556-4fe4-82fa-e806d43e00dc\",\"description\":\"ceshi\",\"versionDetail\":{\"version\":\"1.0.0\"},\"enabled\":true,\"localServerConfig\":{\"test\":{}}}";
+        "{\"protocol\":\"stdio\",\"frontProtocol\":\"stdio\",\"name\":\"test\","
+            + "\"id\":\"d7a64724-a556-4fe4-82fa-e806d43e00dc\",\"description\":\"ceshi\","
+            + "\"versionDetail\":{\"version\":\"1.0.0\"},\"enabled\":true,"
+            + "\"localServerConfig\":{\"test\":{}}}";
     
     private static final String MCP_SERVER_SPEC_TEXT_EXAMPLE =
-        "\"{\\\"protocol\\\":\\\"stdio\\\",\\\"frontProtocol\\\":\\\"stdio\\\",\\\"name\\\":\\\"test\\\",\\\"versionDetail\\\":{\\\"version\\\":\\\"1.0.0\\\"}}\"";
+        "\"{\\\"protocol\\\":\\\"stdio\\\",\\\"frontProtocol\\\":\\\"stdio\\\","
+            + "\\\"name\\\":\\\"test\\\",\\\"versionDetail\\\":{"
+            + "\\\"version\\\":\\\"1.0.0\\\"}}\"";
     
     private static final String MCP_SERVER_SPEC_WITH_ID_TEXT_EXAMPLE =
-        "\"{\\\"protocol\\\":\\\"stdio\\\",\\\"frontProtocol\\\":\\\"stdio\\\",\\\"name\\\":\\\"test\\\",\\\"id\\\":\\\"d7a64724-a556-4fe4-82fa-e806d43e00dc\\\",\\\"versionDetail\\\":{\\\"version\\\":\\\"1.0.0\\\"}}\"";
+        "\"{\\\"protocol\\\":\\\"stdio\\\",\\\"frontProtocol\\\":\\\"stdio\\\","
+            + "\\\"name\\\":\\\"test\\\",\\\"id\\\":\\\"d7a64724-a556-4fe4-82fa-e806d43e00dc\\\","
+            + "\\\"versionDetail\\\":{\\\"version\\\":\\\"1.0.0\\\"}}\"";
     
     private final McpServerOperationService mcpServerOperationService;
     

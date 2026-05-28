@@ -99,7 +99,9 @@ public class ConsoleA2aController {
     @Secured(action = ActionTypes.WRITE, signType = SignType.AI, apiType = ApiType.CONSOLE_API)
     @Operation(summary = "nacos.console.ai.a2a.api.create.summary",
         description = "nacos.console.ai.a2a.api.create.description",
-        security = @SecurityRequirement(name = "nacos"))
+        security = @SecurityRequirement(name = "nacos"),
+        extensions = {@Extension(name = "nacos-api-since",
+            properties = @ExtensionProperty(name = "version", value = "3.1.0"))})
     @ApiResponse(responseCode = "200",
         content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
             schema = @Schema(implementation = Result.class,
@@ -129,7 +131,9 @@ public class ConsoleA2aController {
     @Secured(action = ActionTypes.READ, signType = SignType.AI, apiType = ApiType.CONSOLE_API)
     @Operation(summary = "nacos.console.ai.a2a.api.get.summary",
         description = "nacos.console.ai.a2a.api.get.description",
-        security = @SecurityRequirement(name = "nacos"))
+        security = @SecurityRequirement(name = "nacos"),
+        extensions = {@Extension(name = "nacos-api-since",
+            properties = @ExtensionProperty(name = "version", value = "3.1.0"))})
     @ApiResponse(responseCode = "200",
         content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
             schema = @Schema(implementation = Result.class,
@@ -154,7 +158,9 @@ public class ConsoleA2aController {
     @Secured(action = ActionTypes.WRITE, signType = SignType.AI, apiType = ApiType.CONSOLE_API)
     @Operation(summary = "nacos.console.ai.a2a.api.update.summary",
         description = "nacos.console.ai.a2a.api.update.description",
-        security = @SecurityRequirement(name = "nacos"))
+        security = @SecurityRequirement(name = "nacos"),
+        extensions = {@Extension(name = "nacos-api-since",
+            properties = @ExtensionProperty(name = "version", value = "3.1.0"))})
     @ApiResponse(responseCode = "200",
         content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
             schema = @Schema(implementation = Result.class,
@@ -185,7 +191,9 @@ public class ConsoleA2aController {
     @Secured(action = ActionTypes.WRITE, signType = SignType.AI, apiType = ApiType.CONSOLE_API)
     @Operation(summary = "nacos.console.ai.a2a.api.delete.summary",
         description = "nacos.console.ai.a2a.api.delete.description",
-        security = @SecurityRequirement(name = "nacos"))
+        security = @SecurityRequirement(name = "nacos"),
+        extensions = {@Extension(name = "nacos-api-since",
+            properties = @ExtensionProperty(name = "version", value = "3.1.0"))})
     @ApiResponse(responseCode = "200",
         content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
             schema = @Schema(implementation = Result.class,
@@ -211,7 +219,9 @@ public class ConsoleA2aController {
     @Secured(action = ActionTypes.READ, signType = SignType.AI, apiType = ApiType.CONSOLE_API)
     @Operation(summary = "nacos.console.ai.a2a.api.list.summary",
         description = "nacos.console.ai.a2a.api.list.description",
-        security = @SecurityRequirement(name = "nacos"))
+        security = @SecurityRequirement(name = "nacos"),
+        extensions = {@Extension(name = "nacos-api-since",
+            properties = @ExtensionProperty(name = "version", value = "3.1.0"))})
     @ApiResponse(responseCode = "200",
         content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
             schema = @Schema(implementation = Result.class,
@@ -245,7 +255,9 @@ public class ConsoleA2aController {
     @Secured(action = ActionTypes.READ, signType = SignType.AI, apiType = ApiType.ADMIN_API)
     @Operation(summary = "nacos.console.ai.a2a.api.version.list.summary",
         description = "nacos.console.ai.a2a.api.version.list.description",
-        security = @SecurityRequirement(name = "nacos"))
+        security = @SecurityRequirement(name = "nacos"),
+        extensions = {@Extension(name = "nacos-api-since",
+            properties = @ExtensionProperty(name = "version", value = "3.1.0"))})
     @ApiResponse(responseCode = "200",
         content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
             schema = @Schema(implementation = Result.class,

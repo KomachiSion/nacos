@@ -84,7 +84,9 @@ public class ConsoleAiResourceImportController {
     @Secured(action = ActionTypes.READ, signType = SignType.AI, apiType = ApiType.CONSOLE_API)
     @Operation(summary = "nacos.console.ai.import.api.sources.summary",
         description = "nacos.console.ai.import.api.sources.description",
-        security = @SecurityRequirement(name = "nacos"))
+        security = @SecurityRequirement(name = "nacos"),
+        extensions = {@Extension(name = "nacos-api-since",
+            properties = @ExtensionProperty(name = "version", value = "3.2.2"))})
     @ApiResponse(responseCode = "200",
         content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
             schema = @Schema(implementation = Result.class,
@@ -108,7 +110,9 @@ public class ConsoleAiResourceImportController {
     @Secured(action = ActionTypes.READ, signType = SignType.AI, apiType = ApiType.CONSOLE_API)
     @Operation(summary = "nacos.console.ai.import.api.search.summary",
         description = "nacos.console.ai.import.api.search.description",
-        security = @SecurityRequirement(name = "nacos"))
+        security = @SecurityRequirement(name = "nacos"),
+        extensions = {@Extension(name = "nacos-api-since",
+            properties = @ExtensionProperty(name = "version", value = "3.2.2"))})
     @ApiResponse(responseCode = "200",
         content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
             schema = @Schema(implementation = Result.class,
@@ -140,7 +144,9 @@ public class ConsoleAiResourceImportController {
     @Secured(action = ActionTypes.WRITE, signType = SignType.AI, apiType = ApiType.CONSOLE_API)
     @Operation(summary = "nacos.console.ai.import.api.validate.summary",
         description = "nacos.console.ai.import.api.validate.description",
-        security = @SecurityRequirement(name = "nacos"))
+        security = @SecurityRequirement(name = "nacos"),
+        extensions = {@Extension(name = "nacos-api-since",
+            properties = @ExtensionProperty(name = "version", value = "3.2.2"))})
     @ApiResponse(responseCode = "200",
         content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
             schema = @Schema(implementation = Result.class,
@@ -174,7 +180,9 @@ public class ConsoleAiResourceImportController {
     @Secured(action = ActionTypes.WRITE, signType = SignType.AI, apiType = ApiType.CONSOLE_API)
     @Operation(summary = "nacos.console.ai.import.api.execute.summary",
         description = "nacos.console.ai.import.api.execute.description",
-        security = @SecurityRequirement(name = "nacos"))
+        security = @SecurityRequirement(name = "nacos"),
+        extensions = {@Extension(name = "nacos-api-since",
+            properties = @ExtensionProperty(name = "version", value = "3.2.2"))})
     @ApiResponse(responseCode = "200",
         content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
             schema = @Schema(implementation = Result.class,

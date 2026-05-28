@@ -72,7 +72,9 @@ public class ConsoleServerStateController {
      */
     @GetMapping(value = "/state")
     @Operation(summary = "nacos.console.state.api.state.summary",
-        description = "nacos.console.state.api.state.description")
+        description = "nacos.console.state.api.state.description",
+        extensions = {@Extension(name = "nacos-api-since",
+            properties = @ExtensionProperty(name = "version", value = "3.0.0"))})
     @ApiResponse(responseCode = "200",
         content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
             schema = @Schema(implementation = Map.class,
@@ -90,7 +92,9 @@ public class ConsoleServerStateController {
      */
     @GetMapping("/announcement")
     @Operation(summary = "nacos.console.state.api.announcement.summary",
-        description = "nacos.console.state.api.announcement.description")
+        description = "nacos.console.state.api.announcement.description",
+        extensions = {@Extension(name = "nacos-api-since",
+            properties = @ExtensionProperty(name = "version", value = "3.0.0"))})
     @ApiResponse(responseCode = "200",
         content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
             schema = @Schema(implementation = Result.class,
@@ -114,7 +118,9 @@ public class ConsoleServerStateController {
      */
     @GetMapping("/guide")
     @Operation(summary = "nacos.console.state.api.guide.summary",
-        description = "nacos.console.state.api.guide.description")
+        description = "nacos.console.state.api.guide.description",
+        extensions = {@Extension(name = "nacos-api-since",
+            properties = @ExtensionProperty(name = "version", value = "3.0.0"))})
     @ApiResponse(responseCode = "200",
         content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
             schema = @Schema(implementation = Result.class,

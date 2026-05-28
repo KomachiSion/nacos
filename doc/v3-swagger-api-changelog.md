@@ -14,6 +14,17 @@
 - `POST /v3/admin/ai/prompt/redraft`: added `x-nacos-api-since.version=3.2.2` after confirming the current pom candidate version for this new API.
 - `POST /v3/admin/ai/skills/upload/batch`: added `x-nacos-api-since.version=3.2.2` after confirming the current pom candidate version for this new API.
 - `POST /v3/admin/ai/skills/redraft`: added `x-nacos-api-since.version=3.2.2` after confirming the current pom candidate version for this new API.
+- `console-api`: added `x-nacos-api-since.version` to all 127 console operations; existing APIs use the earliest matching 3.x git tag, normalized to `x.y.z`.
+- `POST /v3/console/ai/agentspecs/redraft`: added `x-nacos-api-since.version=3.2.2` after confirming the current pom candidate version for this new API.
+- `GET /v3/console/ai/import/sources`: added `x-nacos-api-since.version=3.2.2` after confirming the current pom candidate version for this new API.
+- `POST /v3/console/ai/import/search`: added `x-nacos-api-since.version=3.2.2` after confirming the current pom candidate version for this new API.
+- `POST /v3/console/ai/import/validate`: added `x-nacos-api-since.version=3.2.2` after confirming the current pom candidate version for this new API.
+- `POST /v3/console/ai/import/execute`: added `x-nacos-api-since.version=3.2.2` after confirming the current pom candidate version for this new API.
+- `GET /v3/console/ai/prompt/version/download`: added `x-nacos-api-since.version=3.2.2` after confirming the current pom candidate version for this new API.
+- `POST /v3/console/ai/prompt/redraft`: added `x-nacos-api-since.version=3.2.2` after confirming the current pom candidate version for this new API.
+- `POST /v3/console/ai/skills/upload/batch`: added `x-nacos-api-since.version=3.2.2` after confirming the current pom candidate version for this new API.
+- `POST /v3/console/ai/skills/redraft`: added `x-nacos-api-since.version=3.2.2` after confirming the current pom candidate version for this new API.
+- `DELETE /v3/console/ns/instance`: added `x-nacos-api-since.version=3.2.2` after confirming the current pom candidate version for this new API.
 
 ## 2026-05-27
 

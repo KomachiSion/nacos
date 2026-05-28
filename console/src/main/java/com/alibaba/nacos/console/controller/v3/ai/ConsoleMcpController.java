@@ -94,16 +94,25 @@ import static com.alibaba.nacos.api.ai.constant.AiConstants.Mcp.MCP_PROTOCOL_STR
 public class ConsoleMcpController {
     
     private static final String MCP_SERVER_SPEC_EXAMPLE =
-        "{\"protocol\":\"stdio\",\"frontProtocol\":\"stdio\",\"name\":\"test\",\"id\":\"\",\"description\":\"ceshi\",\"versionDetail\":{\"version\":\"1.0.0\"},\"enabled\":true,\"localServerConfig\":{\"test\":{}}}";
+        "{\"protocol\":\"stdio\",\"frontProtocol\":\"stdio\",\"name\":\"test\",\"id\":\"\","
+            + "\"description\":\"ceshi\",\"versionDetail\":{\"version\":\"1.0.0\"},"
+            + "\"enabled\":true,\"localServerConfig\":{\"test\":{}}}";
     
     private static final String MCP_SERVER_SPEC_WITH_ID_EXAMPLE =
-        "{\"protocol\":\"stdio\",\"frontProtocol\":\"stdio\",\"name\":\"test\",\"id\":\"d7a64724-a556-4fe4-82fa-e806d43e00dc\",\"description\":\"ceshi\",\"versionDetail\":{\"version\":\"1.0.0\"},\"enabled\":true,\"localServerConfig\":{\"test\":{}}}";
+        "{\"protocol\":\"stdio\",\"frontProtocol\":\"stdio\",\"name\":\"test\","
+            + "\"id\":\"d7a64724-a556-4fe4-82fa-e806d43e00dc\",\"description\":\"ceshi\","
+            + "\"versionDetail\":{\"version\":\"1.0.0\"},\"enabled\":true,"
+            + "\"localServerConfig\":{\"test\":{}}}";
     
     private static final String MCP_SERVER_SPEC_TEXT_EXAMPLE =
-        "\"{\\\"protocol\\\":\\\"stdio\\\",\\\"frontProtocol\\\":\\\"stdio\\\",\\\"name\\\":\\\"test\\\",\\\"versionDetail\\\":{\\\"version\\\":\\\"1.0.0\\\"}}\"";
+        "\"{\\\"protocol\\\":\\\"stdio\\\",\\\"frontProtocol\\\":\\\"stdio\\\","
+            + "\\\"name\\\":\\\"test\\\",\\\"versionDetail\\\":{"
+            + "\\\"version\\\":\\\"1.0.0\\\"}}\"";
     
     private static final String MCP_SERVER_SPEC_WITH_ID_TEXT_EXAMPLE =
-        "\"{\\\"protocol\\\":\\\"stdio\\\",\\\"frontProtocol\\\":\\\"stdio\\\",\\\"name\\\":\\\"test\\\",\\\"id\\\":\\\"d7a64724-a556-4fe4-82fa-e806d43e00dc\\\",\\\"versionDetail\\\":{\\\"version\\\":\\\"1.0.0\\\"}}\"";
+        "\"{\\\"protocol\\\":\\\"stdio\\\",\\\"frontProtocol\\\":\\\"stdio\\\","
+            + "\\\"name\\\":\\\"test\\\",\\\"id\\\":\\\"d7a64724-a556-4fe4-82fa-e806d43e00dc\\\","
+            + "\\\"versionDetail\\\":{\\\"version\\\":\\\"1.0.0\\\"}}\"";
     
     private final McpProxy mcpProxy;
     
@@ -123,7 +132,9 @@ public class ConsoleMcpController {
     @Secured(action = ActionTypes.READ, signType = SignType.AI, apiType = ApiType.CONSOLE_API)
     @Operation(summary = "nacos.console.ai.mcp.api.list.summary",
         description = "nacos.console.ai.mcp.api.list.description",
-        security = @SecurityRequirement(name = "nacos"))
+        security = @SecurityRequirement(name = "nacos"),
+        extensions = {@Extension(name = "nacos-api-since",
+            properties = @ExtensionProperty(name = "version", value = "3.0.0"))})
     @ApiResponse(responseCode = "200",
         content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
             schema = @Schema(implementation = Result.class,
@@ -161,7 +172,9 @@ public class ConsoleMcpController {
     @Secured(action = ActionTypes.WRITE, signType = SignType.AI, apiType = ApiType.CONSOLE_API)
     @Operation(summary = "nacos.console.ai.mcp.api.import.tools.summary",
         description = "nacos.console.ai.mcp.api.import.tools.description",
-        security = @SecurityRequirement(name = "nacos"))
+        security = @SecurityRequirement(name = "nacos"),
+        extensions = {@Extension(name = "nacos-api-since",
+            properties = @ExtensionProperty(name = "version", value = "3.0.3"))})
     @ApiResponse(responseCode = "200",
         content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
             schema = @Schema(implementation = Result.class,
@@ -220,7 +233,9 @@ public class ConsoleMcpController {
     @Secured(action = ActionTypes.READ, signType = SignType.AI, apiType = ApiType.CONSOLE_API)
     @Operation(summary = "nacos.console.ai.mcp.api.get.summary",
         description = "nacos.console.ai.mcp.api.get.description",
-        security = @SecurityRequirement(name = "nacos"))
+        security = @SecurityRequirement(name = "nacos"),
+        extensions = {@Extension(name = "nacos-api-since",
+            properties = @ExtensionProperty(name = "version", value = "3.0.0"))})
     @ApiResponse(responseCode = "200",
         content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
             schema = @Schema(implementation = Result.class,
@@ -247,7 +262,9 @@ public class ConsoleMcpController {
     @Secured(action = ActionTypes.WRITE, signType = SignType.AI, apiType = ApiType.CONSOLE_API)
     @Operation(summary = "nacos.console.ai.mcp.api.create.summary",
         description = "nacos.console.ai.mcp.api.create.description",
-        security = @SecurityRequirement(name = "nacos"))
+        security = @SecurityRequirement(name = "nacos"),
+        extensions = {@Extension(name = "nacos-api-since",
+            properties = @ExtensionProperty(name = "version", value = "3.0.0"))})
     @ApiResponse(responseCode = "200",
         content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
             schema = @Schema(implementation = Result.class,
@@ -285,7 +302,9 @@ public class ConsoleMcpController {
     @Secured(action = ActionTypes.WRITE, signType = SignType.AI, apiType = ApiType.CONSOLE_API)
     @Operation(summary = "nacos.console.ai.mcp.api.update.summary",
         description = "nacos.console.ai.mcp.api.update.description",
-        security = @SecurityRequirement(name = "nacos"))
+        security = @SecurityRequirement(name = "nacos"),
+        extensions = {@Extension(name = "nacos-api-since",
+            properties = @ExtensionProperty(name = "version", value = "3.0.0"))})
     @ApiResponse(responseCode = "200",
         content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
             schema = @Schema(implementation = Result.class,
@@ -323,7 +342,9 @@ public class ConsoleMcpController {
     @Secured(action = ActionTypes.WRITE, signType = SignType.AI, apiType = ApiType.CONSOLE_API)
     @Operation(summary = "nacos.console.ai.mcp.api.delete.summary",
         description = "nacos.console.ai.mcp.api.delete.description",
-        security = @SecurityRequirement(name = "nacos"))
+        security = @SecurityRequirement(name = "nacos"),
+        extensions = {@Extension(name = "nacos-api-since",
+            properties = @ExtensionProperty(name = "version", value = "3.0.0"))})
     @ApiResponse(responseCode = "200",
         content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
             schema = @Schema(implementation = Result.class,
@@ -350,7 +371,9 @@ public class ConsoleMcpController {
     @Secured(action = ActionTypes.WRITE, signType = SignType.AI, apiType = ApiType.CONSOLE_API)
     @Operation(summary = "nacos.console.ai.mcp.api.import.validate.summary",
         description = "nacos.console.ai.mcp.api.import.validate.description",
-        security = @SecurityRequirement(name = "nacos"))
+        security = @SecurityRequirement(name = "nacos"),
+        extensions = {@Extension(name = "nacos-api-since",
+            properties = @ExtensionProperty(name = "version", value = "3.1.0"))})
     @ApiResponse(responseCode = "200",
         content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
             schema = @Schema(implementation = Result.class,
@@ -385,7 +408,9 @@ public class ConsoleMcpController {
     @Secured(action = ActionTypes.WRITE, signType = SignType.AI, apiType = ApiType.CONSOLE_API)
     @Operation(summary = "nacos.console.ai.mcp.api.import.execute.summary",
         description = "nacos.console.ai.mcp.api.import.execute.description",
-        security = @SecurityRequirement(name = "nacos"))
+        security = @SecurityRequirement(name = "nacos"),
+        extensions = {@Extension(name = "nacos-api-since",
+            properties = @ExtensionProperty(name = "version", value = "3.1.0"))})
     @ApiResponse(responseCode = "200",
         content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
             schema = @Schema(implementation = Result.class,

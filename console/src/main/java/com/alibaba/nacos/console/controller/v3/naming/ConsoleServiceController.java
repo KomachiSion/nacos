@@ -107,7 +107,9 @@ public class ConsoleServiceController {
     @Secured(action = ActionTypes.WRITE, apiType = ApiType.CONSOLE_API)
     @Operation(summary = "nacos.console.naming.service.api.create.summary",
         description = "nacos.console.naming.service.api.create.description",
-        security = @SecurityRequirement(name = "nacos"))
+        security = @SecurityRequirement(name = "nacos"),
+        extensions = {@Extension(name = "nacos-api-since",
+            properties = @ExtensionProperty(name = "version", value = "3.0.0"))})
     @ApiResponse(responseCode = "200",
         content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
             schema = @Schema(implementation = Result.class,
@@ -144,7 +146,9 @@ public class ConsoleServiceController {
     @Secured(action = ActionTypes.WRITE, apiType = ApiType.CONSOLE_API)
     @Operation(summary = "nacos.console.naming.service.api.delete.summary",
         description = "nacos.console.naming.service.api.delete.description",
-        security = @SecurityRequirement(name = "nacos"))
+        security = @SecurityRequirement(name = "nacos"),
+        extensions = {@Extension(name = "nacos-api-since",
+            properties = @ExtensionProperty(name = "version", value = "3.0.0"))})
     @ApiResponse(responseCode = "200",
         content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
             schema = @Schema(implementation = Result.class,
@@ -168,7 +172,9 @@ public class ConsoleServiceController {
     @Secured(action = ActionTypes.WRITE, apiType = ApiType.CONSOLE_API)
     @Operation(summary = "nacos.console.naming.service.api.update.summary",
         description = "nacos.console.naming.service.api.update.description",
-        security = @SecurityRequirement(name = "nacos"))
+        security = @SecurityRequirement(name = "nacos"),
+        extensions = {@Extension(name = "nacos-api-since",
+            properties = @ExtensionProperty(name = "version", value = "3.0.0"))})
     @ApiResponse(responseCode = "200",
         content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
             schema = @Schema(implementation = Result.class,
@@ -207,7 +213,9 @@ public class ConsoleServiceController {
         tags = Constants.Tag.ONLY_IDENTITY)
     @Operation(summary = "nacos.console.naming.service.api.selector.summary",
         description = "nacos.console.naming.service.api.selector.description",
-        security = @SecurityRequirement(name = "nacos"))
+        security = @SecurityRequirement(name = "nacos"),
+        extensions = {@Extension(name = "nacos-api-since",
+            properties = @ExtensionProperty(name = "version", value = "3.0.0"))})
     @ApiResponse(responseCode = "200",
         content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
             schema = @Schema(implementation = Result.class,
@@ -229,7 +237,9 @@ public class ConsoleServiceController {
     @Secured(action = ActionTypes.READ, apiType = ApiType.CONSOLE_API)
     @Operation(summary = "nacos.console.naming.service.api.subscribers.summary",
         description = "nacos.console.naming.service.api.subscribers.description",
-        security = @SecurityRequirement(name = "nacos"))
+        security = @SecurityRequirement(name = "nacos"),
+        extensions = {@Extension(name = "nacos-api-since",
+            properties = @ExtensionProperty(name = "version", value = "3.0.0"))})
     @ApiResponse(responseCode = "200",
         content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
             schema = @Schema(implementation = Result.class,
@@ -273,7 +283,9 @@ public class ConsoleServiceController {
     @GetMapping("/list")
     @Operation(summary = "nacos.console.naming.service.api.list.summary",
         description = "nacos.console.naming.service.api.list.description",
-        security = @SecurityRequirement(name = "nacos"))
+        security = @SecurityRequirement(name = "nacos"),
+        extensions = {@Extension(name = "nacos-api-since",
+            properties = @ExtensionProperty(name = "version", value = "3.0.0"))})
     @ApiResponse(responseCode = "200",
         content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
             schema = @Schema(implementation = Result.class,
@@ -317,7 +329,9 @@ public class ConsoleServiceController {
     @GetMapping()
     @Operation(summary = "nacos.console.naming.service.api.get.summary",
         description = "nacos.console.naming.service.api.get.description",
-        security = @SecurityRequirement(name = "nacos"))
+        security = @SecurityRequirement(name = "nacos"),
+        extensions = {@Extension(name = "nacos-api-since",
+            properties = @ExtensionProperty(name = "version", value = "3.0.0"))})
     @ApiResponse(responseCode = "200",
         content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
             schema = @Schema(implementation = Result.class,
@@ -345,7 +359,9 @@ public class ConsoleServiceController {
     @Secured(action = ActionTypes.WRITE, apiType = ApiType.CONSOLE_API)
     @Operation(summary = "nacos.console.naming.service.api.update.cluster.summary",
         description = "nacos.console.naming.service.api.update.cluster.description",
-        security = @SecurityRequirement(name = "nacos"))
+        security = @SecurityRequirement(name = "nacos"),
+        extensions = {@Extension(name = "nacos-api-since",
+            properties = @ExtensionProperty(name = "version", value = "3.0.0"))})
     @ApiResponse(responseCode = "200",
         content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
             schema = @Schema(implementation = Result.class,

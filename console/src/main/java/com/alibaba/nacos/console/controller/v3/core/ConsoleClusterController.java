@@ -82,7 +82,9 @@ public class ConsoleClusterController {
         apiType = ApiType.CONSOLE_API)
     @Operation(summary = "nacos.console.core.cluster.api.nodes.summary",
         description = "nacos.console.core.cluster.api.nodes.description",
-        security = @SecurityRequirement(name = "nacos"))
+        security = @SecurityRequirement(name = "nacos"),
+        extensions = {@Extension(name = "nacos-api-since",
+            properties = @ExtensionProperty(name = "version", value = "3.0.0"))})
     @ApiResponse(responseCode = "200",
         content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
             schema = @Schema(implementation = Result.class,

@@ -61,6 +61,9 @@ public class DocConfig {
         this.springDocConfigProperties = springDocConfigProperties;
     }
     
+    /**
+     * Initialize SpringDoc default media types for console APIs.
+     */
     @PostConstruct
     public void initSpringDocProperties() {
         springDocConfigProperties.setDefaultProducesMediaType(MediaType.APPLICATION_JSON_VALUE);
@@ -68,6 +71,11 @@ public class DocConfig {
             .setDefaultConsumesMediaType(MediaType.APPLICATION_FORM_URLENCODED_VALUE);
     }
     
+    /**
+     * Create the OpenAPI group for console APIs.
+     *
+     * @return console OpenAPI group
+     */
     @Bean
     public GroupedOpenApi consoleOpenApi() {
         String[] packages = {ConsoleServerStateController.class.getPackageName()};
