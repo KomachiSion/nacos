@@ -115,9 +115,7 @@ public class McpAdminController {
     @Secured(action = ActionTypes.READ, signType = SignType.AI, apiType = ApiType.ADMIN_API)
     @Operation(summary = "nacos.admin.ai.mcp.api.list.summary",
         description = "nacos.admin.ai.mcp.api.list.description",
-        security = @SecurityRequirement(name = "nacos"),
-        extensions = {@Extension(name = "nacos-api-since",
-            properties = @ExtensionProperty(name = "version", value = "3.0.1"))})
+        security = @SecurityRequirement(name = "nacos"))
     @ApiResponse(responseCode = "200",
         content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
             schema = @Schema(implementation = Result.class,
@@ -154,9 +152,7 @@ public class McpAdminController {
     @Secured(action = ActionTypes.READ, signType = SignType.AI, apiType = ApiType.ADMIN_API)
     @Operation(summary = "nacos.admin.ai.mcp.api.get.summary",
         description = "nacos.admin.ai.mcp.api.get.description",
-        security = @SecurityRequirement(name = "nacos"),
-        extensions = {@Extension(name = "nacos-api-since",
-            properties = @ExtensionProperty(name = "version", value = "3.0.1"))})
+        security = @SecurityRequirement(name = "nacos"))
     @ApiResponse(responseCode = "200",
         content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
             schema = @Schema(implementation = Result.class,
@@ -184,9 +180,7 @@ public class McpAdminController {
     @Secured(action = ActionTypes.WRITE, signType = SignType.AI, apiType = ApiType.ADMIN_API)
     @Operation(summary = "nacos.admin.ai.mcp.api.create.summary",
         description = "nacos.admin.ai.mcp.api.create.description",
-        security = @SecurityRequirement(name = "nacos"),
-        extensions = {@Extension(name = "nacos-api-since",
-            properties = @ExtensionProperty(name = "version", value = "3.0.1"))})
+        security = @SecurityRequirement(name = "nacos"))
     @ApiResponse(responseCode = "200",
         content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
             schema = @Schema(implementation = Result.class,
@@ -232,9 +226,7 @@ public class McpAdminController {
     @Secured(action = ActionTypes.WRITE, signType = SignType.AI, apiType = ApiType.ADMIN_API)
     @Operation(summary = "nacos.admin.ai.mcp.api.update.summary",
         description = "nacos.admin.ai.mcp.api.update.description",
-        security = @SecurityRequirement(name = "nacos"),
-        extensions = {@Extension(name = "nacos-api-since",
-            properties = @ExtensionProperty(name = "version", value = "3.0.1"))})
+        security = @SecurityRequirement(name = "nacos"))
     @ApiResponse(responseCode = "200",
         content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
             schema = @Schema(implementation = Result.class,
@@ -279,9 +271,7 @@ public class McpAdminController {
     @Secured(action = ActionTypes.WRITE, signType = SignType.AI, apiType = ApiType.ADMIN_API)
     @Operation(summary = "nacos.admin.ai.mcp.api.delete.summary",
         description = "nacos.admin.ai.mcp.api.delete.description",
-        security = @SecurityRequirement(name = "nacos"),
-        extensions = {@Extension(name = "nacos-api-since",
-            properties = @ExtensionProperty(name = "version", value = "3.0.1"))})
+        security = @SecurityRequirement(name = "nacos"))
     @ApiResponse(responseCode = "200",
         content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
             schema = @Schema(implementation = Result.class,

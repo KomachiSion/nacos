@@ -103,9 +103,7 @@ public class ConfigOpsControllerV3 {
         signType = SignType.CONFIG, apiType = ApiType.ADMIN_API)
     @Operation(summary = "nacos.admin.config.ops.api.localCache.summary",
         description = "nacos.admin.config.ops.api.localCache.description",
-        security = @SecurityRequirement(name = "nacos"),
-        extensions = {@Extension(name = "nacos-api-since",
-            properties = @ExtensionProperty(name = "version", value = "3.0.0"))})
+        security = @SecurityRequirement(name = "nacos"))
     @ApiResponse(responseCode = "200",
         content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
             schema = @Schema(implementation = Result.class,
@@ -129,9 +127,7 @@ public class ConfigOpsControllerV3 {
         signType = SignType.CONFIG, apiType = ApiType.ADMIN_API)
     @Operation(summary = "nacos.admin.config.ops.api.log.summary",
         description = "nacos.admin.config.ops.api.log.description",
-        security = @SecurityRequirement(name = "nacos"),
-        extensions = {@Extension(name = "nacos-api-since",
-            properties = @ExtensionProperty(name = "version", value = "3.0.0"))})
+        security = @SecurityRequirement(name = "nacos"))
     @ApiResponse(responseCode = "200",
         content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
             schema = @Schema(implementation = Result.class,
@@ -170,9 +166,7 @@ public class ConfigOpsControllerV3 {
         signType = SignType.CONFIG, apiType = ApiType.ADMIN_API)
     @Operation(summary = "nacos.admin.config.ops.api.derby.summary",
         description = "nacos.admin.config.ops.api.derby.description",
-        security = @SecurityRequirement(name = "nacos"),
-        extensions = {@Extension(name = "nacos-api-since",
-            properties = @ExtensionProperty(name = "version", value = "3.0.0"))})
+        security = @SecurityRequirement(name = "nacos"))
     @ApiResponse(responseCode = "200",
         content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
             schema = @Schema(implementation = Result.class,
@@ -235,9 +229,7 @@ public class ConfigOpsControllerV3 {
         signType = SignType.CONFIG, apiType = ApiType.ADMIN_API)
     @Operation(summary = "nacos.admin.config.ops.api.derby.import.summary",
         description = "nacos.admin.config.ops.api.derby.import.description",
-        security = @SecurityRequirement(name = "nacos"),
-        extensions = {@Extension(name = "nacos-api-since",
-            properties = @ExtensionProperty(name = "version", value = "3.0.0"))})
+        security = @SecurityRequirement(name = "nacos"))
     @ApiResponse(responseCode = "200",
         content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
             schema = @Schema(implementation = Result.class,

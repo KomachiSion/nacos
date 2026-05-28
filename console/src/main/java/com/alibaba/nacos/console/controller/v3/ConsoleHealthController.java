@@ -70,9 +70,7 @@ public class ConsoleHealthController {
     @Since("3.0.0")
     @GetMapping("/liveness")
     @Operation(summary = "nacos.console.health.api.liveness.summary",
-        description = "nacos.console.health.api.liveness.description",
-        extensions = {@Extension(name = "nacos-api-since",
-            properties = @ExtensionProperty(name = "version", value = "3.0.0"))})
+        description = "nacos.console.health.api.liveness.description")
     @ApiResponse(responseCode = "200",
         content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
             schema = @Schema(implementation = Result.class,
@@ -90,9 +88,7 @@ public class ConsoleHealthController {
     @Since("3.0.0")
     @GetMapping("/readiness")
     @Operation(summary = "nacos.console.health.api.readiness.summary",
-        description = "nacos.console.health.api.readiness.description",
-        extensions = {@Extension(name = "nacos-api-since",
-            properties = @ExtensionProperty(name = "version", value = "3.0.0"))})
+        description = "nacos.console.health.api.readiness.description")
     @ApiResponse(responseCode = "200",
         content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
             schema = @Schema(implementation = Result.class,

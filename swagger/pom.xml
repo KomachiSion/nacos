@@ -24,22 +24,27 @@
         <artifactId>nacos-all</artifactId>
         <version>${revision}</version>
     </parent>
-    
+
     <artifactId>nacos-swagger</artifactId>
     <packaging>jar</packaging>
     <name>nacos-swagger ${project.version}</name>
-    
+
     <dependencies>
+        <dependency>
+            <groupId>com.alibaba.nacos</groupId>
+            <artifactId>nacos-api</artifactId>
+        </dependency>
+
         <dependency>
             <groupId>com.alibaba.nacos</groupId>
             <artifactId>nacos-common</artifactId>
         </dependency>
-        
+
         <dependency>
             <groupId>org.springdoc</groupId>
             <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
             <scope>provided</scope>
         </dependency>
     </dependencies>
-    
+
 </project>

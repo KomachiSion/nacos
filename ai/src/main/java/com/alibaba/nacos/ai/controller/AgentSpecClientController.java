@@ -43,7 +43,9 @@ import io.swagger.v3.oas.annotations.extensions.Extension;
 import io.swagger.v3.oas.annotations.extensions.ExtensionProperty;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.headers.Header;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.http.MediaType;
@@ -83,9 +85,7 @@ public class AgentSpecClientController {
     @Secured(action = ActionTypes.READ, signType = SignType.AI, apiType = ApiType.OPEN_API)
     @Operation(summary = "nacos.admin.ai.agentspec.client.api.search.summary",
         description = "nacos.admin.ai.agentspec.client.api.search.description",
-        security = @SecurityRequirement(name = "nacos"), extensions = {
-            @Extension(name = "nacos-api-since",
-                properties = @ExtensionProperty(name = "version", value = "3.2.0"))})
+        security = @SecurityRequirement(name = "nacos"))
     @ApiResponse(responseCode = "200",
         content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
             schema = @Schema(implementation = Result.class,
@@ -116,17 +116,26 @@ public class AgentSpecClientController {
         tags = {ALLOW_ANONYMOUS})
     @Operation(summary = "nacos.admin.ai.agentspec.client.api.get.summary",
         description = "nacos.admin.ai.agentspec.client.api.get.description",
-        security = @SecurityRequirement(name = "nacos"), extensions = {
-            @Extension(name = "nacos-api-since",
-                properties = @ExtensionProperty(name = "version", value = "3.2.0"))})
-    @ApiResponse(responseCode = "200",
-        content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
-            schema = @Schema(implementation = Result.class,
-                example = "nacos.admin.ai.agentspec.client.api.get.example")))
+        security = @SecurityRequirement(name = "nacos"))
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200",
+            headers = {
+                @Header(name = "ETag", schema = @Schema(type = "string")),
+                @Header(name = "X-Nacos-AgentSpec-Md5", schema = @Schema(type = "string")),
+                @Header(name = "X-Nacos-AgentSpec-Resolved-Version",
+                    schema = @Schema(type = "string"))},
+            content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+                schema = @Schema(implementation = Result.class,
+                    example = "nacos.admin.ai.agentspec.client.api.get.example"))),
+        @ApiResponse(responseCode = "304", description = "Not Modified",
+            headers = {@Header(name = "ETag", schema = @Schema(type = "string")),
+                @Header(name = "X-Nacos-AgentSpec-Md5",
+                    schema = @Schema(type = "string"))})})
     @Parameters(value = {@Parameter(name = "namespaceId", example = "public"),
         @Parameter(name = "name", required = true, example = "my-agentspec"),
         @Parameter(name = "version", example = "1.0.0"),
         @Parameter(name = "label"),
+        @Parameter(name = "md5", example = "d41d8cd98f00b204e9800998ecf8427e"),
         @Parameter(name = "form", hidden = true)})
     public ResponseEntity<Result<AgentSpec>> get(AgentSpecQueryForm form)
         throws NacosException {

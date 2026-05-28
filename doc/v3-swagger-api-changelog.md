@@ -25,6 +25,19 @@
 - `POST /v3/console/ai/skills/upload/batch`: added `x-nacos-api-since.version=3.2.2` after confirming the current pom candidate version for this new API.
 - `POST /v3/console/ai/skills/redraft`: added `x-nacos-api-since.version=3.2.2` after confirming the current pom candidate version for this new API.
 - `DELETE /v3/console/ns/instance`: added `x-nacos-api-since.version=3.2.2` after confirming the current pom candidate version for this new API.
+- `GET /v3/client/ai/agentspecs`: added the `md5` polling parameter and documented `304 Not Modified` with listener cache headers.
+- `GET /v3/client/ai/skills`: added the `md5` polling parameter and documented `304 Not Modified` with listener cache headers.
+- `POST /v3/admin/cs/config/gray`: added Swagger operation, response example, parameters, i18n keys, and `x-nacos-api-since.version=3.2.2` for tagv2 gray publishing.
+- `GET /v3/admin/cs/config/gray`: added Swagger operation, response example, parameters, i18n keys, and `x-nacos-api-since.version=3.2.2` for gray detail queries.
+- `DELETE /v3/admin/cs/config/gray`: added Swagger operation, response example, parameters, i18n keys, and `x-nacos-api-since.version=3.2.2` for gray deletion.
+- `POST /v3/admin/ai/agentspecs/force-publish`: updated Swagger i18n description to include reviewed versions and exclude offline versions.
+- `POST /v3/admin/ai/skills/force-publish`: updated Swagger i18n description to include reviewed versions and exclude offline versions.
+- `POST /v3/console/ai/agentspecs/force-publish`: updated Swagger i18n description to include reviewed versions and exclude offline versions.
+- `POST /v3/console/ai/skills/force-publish`: updated Swagger i18n description to include reviewed versions and exclude offline versions.
+- All v3 Swagger operations: moved `x-nacos-api-since.version` generation to method-level `@Since`; removed duplicate method-level `@Operation.extensions` since declarations.
+- `POST /v3/console/cs/config/clone`: added the missing method-level `@Since("3.0.0")` before removing the duplicate since extension.
+- `GET /v3/admin/ai/agentspecs/list`, `GET /v3/admin/ai/skills/list`, `POST /v3/admin/ai/skills/upload`, `GET /v3/admin/ai/pipelines/list`, `GET /v3/admin/ai/pipelines/detail`: normalized generated since metadata to the method-level `@Since` value.
+- `GET /v3/console/ai/agentspecs/list`, `GET /v3/console/ai/skills/list`, `POST /v3/console/ai/skills/upload`, `GET /v3/console/ai/pipelines/list`, `GET /v3/console/ai/pipelines/detail`: normalized generated since metadata to the method-level `@Since` value.
 
 ## 2026-05-27
 

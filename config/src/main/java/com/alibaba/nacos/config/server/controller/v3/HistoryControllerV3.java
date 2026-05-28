@@ -93,9 +93,7 @@ public class HistoryControllerV3 {
     @Secured(action = ActionTypes.READ, signType = SignType.CONFIG, apiType = ApiType.ADMIN_API)
     @Operation(summary = "nacos.admin.config.history.api.list.summary",
         description = "nacos.admin.config.history.api.list.description",
-        security = @SecurityRequirement(name = "nacos"),
-        extensions = {@Extension(name = "nacos-api-since",
-            properties = @ExtensionProperty(name = "version", value = "3.0.0"))})
+        security = @SecurityRequirement(name = "nacos"))
     @ApiResponse(responseCode = "200",
         content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
             schema = @Schema(implementation = Result.class,
@@ -142,9 +140,7 @@ public class HistoryControllerV3 {
     @Secured(action = ActionTypes.READ, signType = SignType.CONFIG, apiType = ApiType.ADMIN_API)
     @Operation(summary = "nacos.admin.config.history.api.get.summary",
         description = "nacos.admin.config.history.api.get.description",
-        security = @SecurityRequirement(name = "nacos"),
-        extensions = {@Extension(name = "nacos-api-since",
-            properties = @ExtensionProperty(name = "version", value = "3.0.0"))})
+        security = @SecurityRequirement(name = "nacos"))
     @ApiResponse(responseCode = "200",
         content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
             schema = @Schema(implementation = Result.class,
@@ -183,9 +179,7 @@ public class HistoryControllerV3 {
     @Secured(action = ActionTypes.READ, signType = SignType.CONFIG, apiType = ApiType.ADMIN_API)
     @Operation(summary = "nacos.admin.config.history.api.previous.summary",
         description = "nacos.admin.config.history.api.previous.description",
-        security = @SecurityRequirement(name = "nacos"),
-        extensions = {@Extension(name = "nacos-api-since",
-            properties = @ExtensionProperty(name = "version", value = "3.0.0"))})
+        security = @SecurityRequirement(name = "nacos"))
     @ApiResponse(responseCode = "200",
         content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
             schema = @Schema(implementation = Result.class,
@@ -223,9 +217,7 @@ public class HistoryControllerV3 {
     @Secured(action = ActionTypes.READ, signType = SignType.CONFIG, apiType = ApiType.ADMIN_API)
     @Operation(summary = "nacos.admin.config.history.api.names.summary",
         description = "nacos.admin.config.history.api.names.description",
-        security = @SecurityRequirement(name = "nacos"),
-        extensions = {@Extension(name = "nacos-api-since",
-            properties = @ExtensionProperty(name = "version", value = "3.0.0"))})
+        security = @SecurityRequirement(name = "nacos"))
     @ApiResponse(responseCode = "200",
         content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
             schema = @Schema(implementation = Result.class,

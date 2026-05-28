@@ -53,7 +53,8 @@ public class NacosTagSorterOpenApiCustomizer implements GlobalOpenApiCustomizer 
         if (null == tag.getExtensions()) {
             return null;
         }
-        Map<String, String> extensionMap = (Map<String, String>) tag.getExtensions().get("x-" + RemoteConstants.LABEL_MODULE);
+        Map<String, String> extensionMap =
+            (Map<String, String>) tag.getExtensions().get("x-" + RemoteConstants.LABEL_MODULE);
         if (null == extensionMap) {
             return null;
         }

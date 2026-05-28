@@ -25,7 +25,8 @@ import java.util.Locale;
  */
 public class LocaleThreadLocalHolder {
     
-    private static final ThreadLocal<Locale> LANGUAGE_LOCALE = ThreadLocal.withInitial(Locale::getDefault);
+    private static final ThreadLocal<Locale> LANGUAGE_LOCALE =
+        ThreadLocal.withInitial(Locale::getDefault);
     
     public static Locale getLocale() {
         return LANGUAGE_LOCALE.get();

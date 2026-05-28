@@ -76,9 +76,7 @@ public class ClusterControllerV3 {
     @Secured(action = ActionTypes.WRITE, apiType = ApiType.ADMIN_API)
     @Operation(summary = "nacos.admin.naming.service.api.update.cluster.summary",
         description = "nacos.admin.naming.service.api.update.cluster.description",
-        security = @SecurityRequirement(name = "nacos"),
-        extensions = {@Extension(name = "nacos-api-since",
-            properties = @ExtensionProperty(name = "version", value = "3.0.0"))})
+        security = @SecurityRequirement(name = "nacos"))
     @ApiResponse(responseCode = "200",
         content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
             schema = @Schema(implementation = Result.class,

@@ -46,7 +46,8 @@ public class NacosGenericSchemaOpenApiCustomizer implements GlobalOpenApiCustomi
             return;
         }
         Set<String> shouldRemoveRespSchemas = schemas.keySet().stream()
-                .filter(schema -> schema.startsWith(Result.class.getSimpleName())).collect(Collectors.toSet());
+            .filter(schema -> schema.startsWith(Result.class.getSimpleName()))
+            .collect(Collectors.toSet());
         shouldRemoveRespSchemas.forEach(schemas::remove);
         schemas.putAll(schemaCache.getAllSchemas());
     }

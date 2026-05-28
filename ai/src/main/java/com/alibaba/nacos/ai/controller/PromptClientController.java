@@ -78,9 +78,7 @@ public class PromptClientController {
     @Secured(action = ActionTypes.READ, signType = SignType.AI, apiType = ApiType.OPEN_API)
     @Operation(summary = "nacos.admin.ai.prompt.client.api.query.summary",
         description = "nacos.admin.ai.prompt.client.api.query.description",
-        security = @SecurityRequirement(name = "nacos"), extensions = {
-            @Extension(name = "nacos-api-since",
-                properties = @ExtensionProperty(name = "version", value = "3.2.0"))})
+        security = @SecurityRequirement(name = "nacos"))
     @ApiResponse(responseCode = "200",
         content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
             schema = @Schema(implementation = Result.class,

@@ -37,13 +37,16 @@ import java.util.Optional;
  */
 public class NacosLocaleCachedOpenApiService extends OpenAPIService {
     
-    public NacosLocaleCachedOpenApiService(Optional<OpenAPI> openApi, SecurityService securityParser,
-            SpringDocConfigProperties springDocConfigProperties, PropertyResolverUtils propertyResolverUtils,
-            Optional<List<OpenApiBuilderCustomizer>> openApiBuilderCustomizers,
-            Optional<List<ServerBaseUrlCustomizer>> serverBaseUrlCustomizers,
-            Optional<JavadocProvider> javadocProvider) {
-        super(openApi, securityParser, springDocConfigProperties, propertyResolverUtils, openApiBuilderCustomizers,
-                serverBaseUrlCustomizers, javadocProvider);
+    public NacosLocaleCachedOpenApiService(Optional<OpenAPI> openApi,
+        SecurityService securityParser,
+        SpringDocConfigProperties springDocConfigProperties,
+        PropertyResolverUtils propertyResolverUtils,
+        Optional<List<OpenApiBuilderCustomizer>> openApiBuilderCustomizers,
+        Optional<List<ServerBaseUrlCustomizer>> serverBaseUrlCustomizers,
+        Optional<JavadocProvider> javadocProvider) {
+        super(openApi, securityParser, springDocConfigProperties, propertyResolverUtils,
+            openApiBuilderCustomizers,
+            serverBaseUrlCustomizers, javadocProvider);
     }
     
     @Override

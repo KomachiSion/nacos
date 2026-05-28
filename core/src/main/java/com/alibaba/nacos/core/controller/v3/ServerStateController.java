@@ -69,9 +69,7 @@ public class ServerStateController {
     @Since("3.0.0")
     @GetMapping()
     @Operation(summary = "nacos.admin.core.state.api.state.summary",
-        description = "nacos.admin.core.state.api.state.description",
-        extensions = {@Extension(name = "nacos-api-since",
-            properties = @ExtensionProperty(name = "version", value = "3.0.0"))})
+        description = "nacos.admin.core.state.api.state.description")
     @ApiResponse(responseCode = "200",
         content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
             schema = @Schema(implementation = Result.class,
@@ -89,9 +87,7 @@ public class ServerStateController {
     @Since("3.0.0")
     @GetMapping("/liveness")
     @Operation(summary = "nacos.admin.core.state.api.liveness.summary",
-        description = "nacos.admin.core.state.api.liveness.description",
-        extensions = {@Extension(name = "nacos-api-since",
-            properties = @ExtensionProperty(name = "version", value = "3.0.0"))})
+        description = "nacos.admin.core.state.api.liveness.description")
     @ApiResponse(responseCode = "200",
         content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
             schema = @Schema(implementation = Result.class,
@@ -109,9 +105,7 @@ public class ServerStateController {
     @Since("3.0.0")
     @GetMapping("/readiness")
     @Operation(summary = "nacos.admin.core.state.api.readiness.summary",
-        description = "nacos.admin.core.state.api.readiness.description",
-        extensions = {@Extension(name = "nacos-api-since",
-            properties = @ExtensionProperty(name = "version", value = "3.0.0"))})
+        description = "nacos.admin.core.state.api.readiness.description")
     @ApiResponse(responseCode = "200",
         content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
             schema = @Schema(implementation = Result.class,

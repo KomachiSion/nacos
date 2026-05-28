@@ -58,7 +58,8 @@ public class NacosGenericSchemaOperationCustomize implements GlobalOperationCust
             return operation;
         }
         Map<String, Schema> fieldsSchema = getResultFieldsSchema(Result.class);
-        Type actualTypeArgument = getGenericType((ParameterizedType) method.getMethod().getGenericReturnType(), 0);
+        Type actualTypeArgument =
+            getGenericType((ParameterizedType) method.getMethod().getGenericReturnType(), 0);
         Schema newSchema = null;
         if (actualTypeArgument instanceof Class<?>) {
             newSchema = buildDirectGenericSchema((Class<?>) actualTypeArgument, fieldsSchema);
@@ -70,10 +71,11 @@ public class NacosGenericSchemaOperationCustomize implements GlobalOperationCust
         ApiResponses responses = operation.getResponses();
         // // replace ref '#/components/schemas/ResultXxx' to '#/components/schemas/Result<Xxx>'
         for (ApiResponse apiResponse : responses.values()) {
-            for (io.swagger.v3.oas.models.media.MediaType mediaType : apiResponse.getContent().values()) {
+            for (io.swagger.v3.oas.models.media.MediaType mediaType : apiResponse.getContent()
+                .values()) {
                 Schema originApiResponseSchema = mediaType.getSchema();
                 if (originApiResponseSchema.get$ref() != null && originApiResponseSchema.get$ref()
-                        .startsWith("#/components/schemas/Result")) {
+                    .startsWith("#/components/schemas/Result")) {
                     originApiResponseSchema.$ref(newSchema.getName());
                 }
             }
@@ -84,7 +86,8 @@ public class NacosGenericSchemaOperationCustomize implements GlobalOperationCust
     
     private Map<String, Schema> getResultFieldsSchema(Class<?> clazz) {
         Map<String, Schema> result = new LinkedHashMap<>();
-        ResolvedSchema baseRespSchema = ModelConverters.getInstance().resolveAsResolvedSchema(new AnnotatedType(clazz));
+        ResolvedSchema baseRespSchema =
+            ModelConverters.getInstance().resolveAsResolvedSchema(new AnnotatedType(clazz));
         result.putAll(baseRespSchema.schema.getProperties());
         return result;
     }
@@ -93,16 +96,18 @@ public class NacosGenericSchemaOperationCustomize implements GlobalOperationCust
         return parameterizedType.getActualTypeArguments()[index];
     }
     
-    private Schema buildDirectGenericSchema(Class<?> actualTypeArgument, Map<String, Schema> fieldsSchema) {
+    private Schema buildDirectGenericSchema(Class<?> actualTypeArgument,
+        Map<String, Schema> fieldsSchema) {
         ResolvedSchema resolvedSchema = ModelConverters.getInstance()
-                .resolveAsResolvedSchema(new AnnotatedType(actualTypeArgument));
+            .resolveAsResolvedSchema(new AnnotatedType(actualTypeArgument));
         String respSchemaName;
         if (resolvedSchema.schema != null) {
             // override data field schema
             if (resolvedSchema.referencedSchemas.isEmpty()) {
                 fieldsSchema.put("data", resolvedSchema.schema);
             } else {
-                fieldsSchema.put("data", new ObjectSchema().$ref(actualTypeArgument.getSimpleName()));
+                fieldsSchema.put("data",
+                    new ObjectSchema().$ref(actualTypeArgument.getSimpleName()));
             }
             schemaCache.putAll(resolvedSchema.referencedSchemas);
             respSchemaName = "Result<" + actualTypeArgument.getSimpleName() + ">";
@@ -112,19 +117,21 @@ public class NacosGenericSchemaOperationCustomize implements GlobalOperationCust
         return new ObjectSchema().type("object").properties(fieldsSchema).name(respSchemaName);
     }
     
-    private Schema buildGenericSchema(ParameterizedType parameterizedType, Map<String, Schema> fieldsSchema) {
+    private Schema buildGenericSchema(ParameterizedType parameterizedType,
+        Map<String, Schema> fieldsSchema) {
         Class<?> rawType = (Class<?>) parameterizedType.getRawType();
         String resultSchemaName = "";
         Schema dataSchema = null;
         if (Collection.class.isAssignableFrom(rawType)) {
             Type actualTypeArgument = getGenericType(parameterizedType, 0);
             if (isSupportType(actualTypeArgument)) {
-                throw new UnsupportedOperationException("Not supported generate Result Schema with multiple Generic");
+                throw new UnsupportedOperationException(
+                    "Not supported generate Result Schema with multiple Generic");
             }
             dataSchema = new ArraySchema();
             Class<?> actualClass = getActualClass(actualTypeArgument);
             ResolvedSchema resolvedSchema = ModelConverters.getInstance()
-                    .resolveAsResolvedSchema(new AnnotatedType(actualTypeArgument));
+                .resolveAsResolvedSchema(new AnnotatedType(actualTypeArgument));
             dataSchema.setName(rawType.getSimpleName() + "<" + actualClass.getSimpleName() + ">");
             if (resolvedSchema.schema != null) {
                 dataSchema.setItems(resolvedSchema.schema);
@@ -139,15 +146,16 @@ public class NacosGenericSchemaOperationCustomize implements GlobalOperationCust
             Type keyActualTypeArgument = getGenericType(parameterizedType, 0);
             Type valueActualTypeArgument = getGenericType(parameterizedType, 1);
             if (isSupportType(keyActualTypeArgument) || isSupportType(valueActualTypeArgument)) {
-                throw new UnsupportedOperationException("Not supported generate Result Schema with multiple Generic");
+                throw new UnsupportedOperationException(
+                    "Not supported generate Result Schema with multiple Generic");
             }
             Class<?> keyActualClass = getActualClass(keyActualTypeArgument);
             Class<?> valueActualClass = getActualClass(valueActualTypeArgument);
             dataSchema = new MapSchema();
             ResolvedSchema valueResolvedSchema = ModelConverters.getInstance()
-                    .resolveAsResolvedSchema(new AnnotatedType(valueActualTypeArgument));
+                .resolveAsResolvedSchema(new AnnotatedType(valueActualTypeArgument));
             dataSchema.setName(rawType.getSimpleName() + "<" + keyActualClass.getSimpleName() + ", "
-                    + valueActualClass.getSimpleName() + ">");
+                + valueActualClass.getSimpleName() + ">");
             if (null != valueResolvedSchema.schema) {
                 dataSchema.setAdditionalProperties(valueResolvedSchema.schema);
                 if (!valueResolvedSchema.referencedSchemas.isEmpty()) {
@@ -160,15 +168,18 @@ public class NacosGenericSchemaOperationCustomize implements GlobalOperationCust
         } else if (Page.class.isAssignableFrom(rawType)) {
             Type actualTypeArgument = getGenericType(parameterizedType, 0);
             if (isSupportType(actualTypeArgument)) {
-                throw new UnsupportedOperationException("Not supported generate Result Schema with multiple Generic");
+                throw new UnsupportedOperationException(
+                    "Not supported generate Result Schema with multiple Generic");
             }
-            dataSchema = ModelConverters.getInstance().resolveAsResolvedSchema(new AnnotatedType(Page.class)).schema;
+            dataSchema = ModelConverters.getInstance()
+                .resolveAsResolvedSchema(new AnnotatedType(Page.class)).schema;
             Class<?> actualClass = getActualClass(actualTypeArgument);
             ResolvedSchema resolvedSchema = ModelConverters.getInstance()
-                    .resolveAsResolvedSchema(new AnnotatedType(actualTypeArgument));
+                .resolveAsResolvedSchema(new AnnotatedType(actualTypeArgument));
             dataSchema.setName("Page<" + actualClass.getSimpleName() + ">");
             if (resolvedSchema.schema != null) {
-                ((ArraySchema) dataSchema.getProperties().get("pageItems")).setItems(resolvedSchema.schema);
+                ((ArraySchema) dataSchema.getProperties().get("pageItems"))
+                    .setItems(resolvedSchema.schema);
                 if (!resolvedSchema.referencedSchemas.isEmpty()) {
                     schemaCache.putAll(resolvedSchema.referencedSchemas);
                 }
@@ -178,7 +189,8 @@ public class NacosGenericSchemaOperationCustomize implements GlobalOperationCust
             }
         } else {
             throw new UnsupportedOperationException(
-                    String.format("Not supported generate Result Schema with %s.", rawType.getCanonicalName()));
+                String.format("Not supported generate Result Schema with %s.",
+                    rawType.getCanonicalName()));
         }
         fieldsSchema.put("data", dataSchema);
         return new ObjectSchema().type("object").properties(fieldsSchema).name(resultSchemaName);
@@ -186,8 +198,9 @@ public class NacosGenericSchemaOperationCustomize implements GlobalOperationCust
     
     private String buildResultObjectSchema(Map<String, Schema> fieldsSchema) {
         fieldsSchema.compute("data",
-                (k, originDataSchema) -> new ObjectSchema().description(originDataSchema.getDescription())
-                        .nullable(originDataSchema.getNullable()));
+            (k, originDataSchema) -> new ObjectSchema()
+                .description(originDataSchema.getDescription())
+                .nullable(originDataSchema.getNullable()));
         return "Result<Object>";
     }
     
@@ -203,6 +216,6 @@ public class NacosGenericSchemaOperationCustomize implements GlobalOperationCust
             return getActualClass(((WildcardType) type).getUpperBounds()[0]);
         }
         throw new UnsupportedOperationException(
-                String.format("Not supported generate Result Schema with %s.", type.getTypeName()));
+            String.format("Not supported generate Result Schema with %s.", type.getTypeName()));
     }
 }

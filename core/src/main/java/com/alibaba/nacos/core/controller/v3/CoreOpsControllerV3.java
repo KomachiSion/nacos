@@ -97,9 +97,7 @@ public class CoreOpsControllerV3 {
         apiType = ApiType.ADMIN_API)
     @Operation(summary = "nacos.admin.core.ops.api.raft.summary",
         description = "nacos.admin.core.ops.api.raft.description",
-        security = @SecurityRequirement(name = "nacos"),
-        extensions = {@Extension(name = "nacos-api-since",
-            properties = @ExtensionProperty(name = "version", value = "3.0.0"))})
+        security = @SecurityRequirement(name = "nacos"))
     @ApiResponse(responseCode = "200",
         content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
             schema = @Schema(implementation = Result.class,
@@ -125,9 +123,7 @@ public class CoreOpsControllerV3 {
         apiType = ApiType.ADMIN_API)
     @Operation(summary = "nacos.admin.core.ops.api.ids.summary",
         description = "nacos.admin.core.ops.api.ids.description",
-        security = @SecurityRequirement(name = "nacos"),
-        extensions = {@Extension(name = "nacos-api-since",
-            properties = @ExtensionProperty(name = "version", value = "3.0.0"))})
+        security = @SecurityRequirement(name = "nacos"))
     @ApiResponse(responseCode = "200",
         content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
             schema = @Schema(implementation = Result.class,
@@ -163,9 +159,7 @@ public class CoreOpsControllerV3 {
         apiType = ApiType.ADMIN_API)
     @Operation(summary = "nacos.admin.core.ops.api.log.summary",
         description = "nacos.admin.core.ops.api.log.description",
-        security = @SecurityRequirement(name = "nacos"),
-        extensions = {@Extension(name = "nacos-api-since",
-            properties = @ExtensionProperty(name = "version", value = "3.0.0"))})
+        security = @SecurityRequirement(name = "nacos"))
     @ApiResponse(responseCode = "200",
         content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
             schema = @Schema(implementation = Result.class,

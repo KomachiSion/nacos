@@ -91,9 +91,7 @@ public class ConsolePluginController {
         apiType = ApiType.CONSOLE_API)
     @Operation(summary = "nacos.console.core.plugin.api.list.summary",
         description = "nacos.console.core.plugin.api.list.description",
-        security = @SecurityRequirement(name = "nacos"),
-        extensions = {@Extension(name = "nacos-api-since",
-            properties = @ExtensionProperty(name = "version", value = "3.2.0"))})
+        security = @SecurityRequirement(name = "nacos"))
     @ApiResponse(responseCode = "200",
         content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
             schema = @Schema(implementation = Result.class,
@@ -119,9 +117,7 @@ public class ConsolePluginController {
         apiType = ApiType.CONSOLE_API)
     @Operation(summary = "nacos.console.core.plugin.api.get.summary",
         description = "nacos.console.core.plugin.api.get.description",
-        security = @SecurityRequirement(name = "nacos"),
-        extensions = {@Extension(name = "nacos-api-since",
-            properties = @ExtensionProperty(name = "version", value = "3.2.0"))})
+        security = @SecurityRequirement(name = "nacos"))
     @ApiResponse(responseCode = "200",
         content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
             schema = @Schema(implementation = Result.class,
@@ -148,9 +144,7 @@ public class ConsolePluginController {
         apiType = ApiType.CONSOLE_API)
     @Operation(summary = "nacos.console.core.plugin.api.status.summary",
         description = "nacos.console.core.plugin.api.status.description",
-        security = @SecurityRequirement(name = "nacos"),
-        extensions = {@Extension(name = "nacos-api-since",
-            properties = @ExtensionProperty(name = "version", value = "3.2.0"))})
+        security = @SecurityRequirement(name = "nacos"))
     @ApiResponse(responseCode = "200",
         content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
             schema = @Schema(implementation = Result.class,
@@ -181,9 +175,7 @@ public class ConsolePluginController {
         apiType = ApiType.CONSOLE_API)
     @Operation(summary = "nacos.console.core.plugin.api.config.summary",
         description = "nacos.console.core.plugin.api.config.description",
-        security = @SecurityRequirement(name = "nacos"),
-        extensions = {@Extension(name = "nacos-api-since",
-            properties = @ExtensionProperty(name = "version", value = "3.2.0"))})
+        security = @SecurityRequirement(name = "nacos"))
     @ApiResponse(responseCode = "200",
         content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
             schema = @Schema(implementation = Result.class,
@@ -224,9 +216,7 @@ public class ConsolePluginController {
         apiType = ApiType.CONSOLE_API)
     @Operation(summary = "nacos.console.core.plugin.api.availability.summary",
         description = "nacos.console.core.plugin.api.availability.description",
-        security = @SecurityRequirement(name = "nacos"),
-        extensions = {@Extension(name = "nacos-api-since",
-            properties = @ExtensionProperty(name = "version", value = "3.2.0"))})
+        security = @SecurityRequirement(name = "nacos"))
     @ApiResponse(responseCode = "200",
         content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
             schema = @Schema(implementation = Result.class,

@@ -33,9 +33,11 @@ public class NacosOnlyTagControllerOpenApiBuilderCustomizer implements OpenApiBu
     
     @Override
     public void customise(OpenAPIService openApiService) {
-        Map<String, Object> needGenerateControllers = openApiService.getMappingsMap().entrySet().parallelStream()
-                .filter(controller -> (AnnotationUtils.findAnnotation(controller.getValue().getClass(), Tag.class)
-                        != null)).collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
+        Map<String, Object> needGenerateControllers =
+            openApiService.getMappingsMap().entrySet().parallelStream()
+                .filter(controller -> (AnnotationUtils
+                    .findAnnotation(controller.getValue().getClass(), Tag.class) != null))
+                .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
         openApiService.getMappingsMap().clear();
         openApiService.getMappingsMap().putAll(needGenerateControllers);
         openApiService.getControllerAdviceMap().clear();

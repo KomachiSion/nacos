@@ -89,9 +89,7 @@ public class ConsoleNamespaceController {
         apiType = ApiType.CONSOLE_API, tags = Constants.Tag.ONLY_IDENTITY)
     @Operation(summary = "nacos.console.core.namespace.api.list.summary",
         description = "nacos.console.core.namespace.api.list.description",
-        security = @SecurityRequirement(name = "nacos"),
-        extensions = {@Extension(name = "nacos-api-since",
-            properties = @ExtensionProperty(name = "version", value = "3.0.0"))})
+        security = @SecurityRequirement(name = "nacos"))
     @ApiResponse(responseCode = "200",
         content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
             schema = @Schema(implementation = Result.class,
@@ -113,9 +111,7 @@ public class ConsoleNamespaceController {
         apiType = ApiType.CONSOLE_API)
     @Operation(summary = "nacos.console.core.namespace.api.get.summary",
         description = "nacos.console.core.namespace.api.get.description",
-        security = @SecurityRequirement(name = "nacos", scopes = "ADMIN:READ"),
-        extensions = {@Extension(name = "nacos-api-since",
-            properties = @ExtensionProperty(name = "version", value = "3.0.0"))})
+        security = @SecurityRequirement(name = "nacos", scopes = "ADMIN:READ"))
     @ApiResponse(responseCode = "200",
         content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
             schema = @Schema(implementation = Result.class,
@@ -139,9 +135,7 @@ public class ConsoleNamespaceController {
         apiType = ApiType.CONSOLE_API)
     @Operation(summary = "nacos.console.core.namespace.api.create.summary",
         description = "nacos.console.core.namespace.api.create.description",
-        security = @SecurityRequirement(name = "nacos"),
-        extensions = {@Extension(name = "nacos-api-since",
-            properties = @ExtensionProperty(name = "version", value = "3.0.0"))})
+        security = @SecurityRequirement(name = "nacos"))
     @ApiResponse(responseCode = "200",
         content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
             schema = @Schema(implementation = Result.class,
@@ -173,9 +167,7 @@ public class ConsoleNamespaceController {
         apiType = ApiType.CONSOLE_API)
     @Operation(summary = "nacos.console.core.namespace.api.update.summary",
         description = "nacos.console.core.namespace.api.update.description",
-        security = @SecurityRequirement(name = "nacos"),
-        extensions = {@Extension(name = "nacos-api-since",
-            properties = @ExtensionProperty(name = "version", value = "3.0.0"))})
+        security = @SecurityRequirement(name = "nacos"))
     @ApiResponse(responseCode = "200",
         content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
             schema = @Schema(implementation = Result.class,
@@ -202,9 +194,7 @@ public class ConsoleNamespaceController {
         apiType = ApiType.CONSOLE_API)
     @Operation(summary = "nacos.console.core.namespace.api.delete.summary",
         description = "nacos.console.core.namespace.api.delete.description",
-        security = @SecurityRequirement(name = "nacos"),
-        extensions = {@Extension(name = "nacos-api-since",
-            properties = @ExtensionProperty(name = "version", value = "3.0.0"))})
+        security = @SecurityRequirement(name = "nacos"))
     @ApiResponse(responseCode = "200",
         content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
             schema = @Schema(implementation = Result.class,
@@ -228,9 +218,7 @@ public class ConsoleNamespaceController {
         apiType = ApiType.CONSOLE_API, tags = Constants.Tag.ONLY_IDENTITY)
     @Operation(summary = "nacos.console.core.namespace.api.check.summary",
         description = "nacos.console.core.namespace.api.check.description",
-        security = @SecurityRequirement(name = "nacos"),
-        extensions = {@Extension(name = "nacos-api-since",
-            properties = @ExtensionProperty(name = "version", value = "3.0.0"))})
+        security = @SecurityRequirement(name = "nacos"))
     @ApiResponse(responseCode = "200",
         content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
             schema = @Schema(implementation = Result.class,

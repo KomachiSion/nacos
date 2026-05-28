@@ -88,9 +88,7 @@ public class NacosClusterControllerV3 {
         + "/cluster", signType = SignType.CONSOLE, apiType = ApiType.ADMIN_API)
     @Operation(summary = "nacos.admin.core.cluster.api.node.self.summary",
         description = "nacos.admin.core.cluster.api.node.self.description",
-        security = @SecurityRequirement(name = "nacos"),
-        extensions = {@Extension(name = "nacos-api-since",
-            properties = @ExtensionProperty(name = "version", value = "3.0.0"))})
+        security = @SecurityRequirement(name = "nacos"))
     @ApiResponse(responseCode = "200",
         content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
             schema = @Schema(implementation = Result.class,
@@ -112,9 +110,7 @@ public class NacosClusterControllerV3 {
         + "/cluster", signType = SignType.CONSOLE, apiType = ApiType.ADMIN_API)
     @Operation(summary = "nacos.admin.core.cluster.api.node.list.summary",
         description = "nacos.admin.core.cluster.api.node.list.description",
-        security = @SecurityRequirement(name = "nacos"),
-        extensions = {@Extension(name = "nacos-api-since",
-            properties = @ExtensionProperty(name = "version", value = "3.0.0"))})
+        security = @SecurityRequirement(name = "nacos"))
     @ApiResponse(responseCode = "200",
         content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
             schema = @Schema(implementation = Result.class,
@@ -149,9 +145,7 @@ public class NacosClusterControllerV3 {
         + "/cluster", signType = SignType.CONSOLE, apiType = ApiType.ADMIN_API)
     @Operation(summary = "nacos.admin.core.cluster.api.node.update.summary",
         description = "nacos.admin.core.cluster.api.node.update.description",
-        security = @SecurityRequirement(name = "nacos"),
-        extensions = {@Extension(name = "nacos-api-since",
-            properties = @ExtensionProperty(name = "version", value = "3.0.0"))})
+        security = @SecurityRequirement(name = "nacos"))
     @ApiResponse(responseCode = "200",
         content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
             schema = @Schema(implementation = Result.class,
@@ -180,9 +174,7 @@ public class NacosClusterControllerV3 {
         + "/cluster", signType = SignType.CONSOLE, apiType = ApiType.ADMIN_API)
     @Operation(summary = "nacos.admin.core.cluster.api.lookup.update.summary",
         description = "nacos.admin.core.cluster.api.lookup.update.description",
-        security = @SecurityRequirement(name = "nacos"),
-        extensions = {@Extension(name = "nacos-api-since",
-            properties = @ExtensionProperty(name = "version", value = "3.0.0"))})
+        security = @SecurityRequirement(name = "nacos"))
     @ApiResponse(responseCode = "200",
         content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
             schema = @Schema(implementation = Result.class,

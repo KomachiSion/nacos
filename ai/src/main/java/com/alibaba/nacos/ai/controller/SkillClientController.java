@@ -38,7 +38,9 @@ import io.swagger.v3.oas.annotations.extensions.Extension;
 import io.swagger.v3.oas.annotations.extensions.ExtensionProperty;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.headers.Header;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.http.MediaType;
@@ -83,17 +85,27 @@ public class SkillClientController {
         tags = {ALLOW_ANONYMOUS})
     @Operation(summary = "nacos.admin.ai.skill.client.api.get.summary",
         description = "nacos.admin.ai.skill.client.api.get.description",
-        security = @SecurityRequirement(name = "nacos"), extensions = {
-            @Extension(name = "nacos-api-since",
-                properties = @ExtensionProperty(name = "version", value = "3.2.0"))})
-    @ApiResponse(responseCode = "200",
-        content = @Content(mediaType = MediaType.APPLICATION_OCTET_STREAM_VALUE,
-            schema = @Schema(type = "string", format = "binary",
-                description = "ZIP file containing the skill package")))
+        security = @SecurityRequirement(name = "nacos"))
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200",
+            headers = {
+                @Header(name = "ETag", schema = @Schema(type = "string")),
+                @Header(name = "X-Nacos-Skill-Md5", schema = @Schema(type = "string")),
+                @Header(name = "X-Nacos-Skill-Resolved-Version",
+                    schema = @Schema(type = "string"))},
+            content = @Content(mediaType = MediaType.APPLICATION_OCTET_STREAM_VALUE,
+                schema = @Schema(type = "string", format = "binary",
+                    description = "ZIP file containing the skill package"))),
+        @ApiResponse(responseCode = "304", description = "Not Modified",
+            headers = {@Header(name = "ETag", schema = @Schema(type = "string")),
+                @Header(name = "X-Nacos-Skill-Md5", schema = @Schema(type = "string")),
+                @Header(name = "X-Nacos-Skill-Resolved-Version",
+                    schema = @Schema(type = "string"))})})
     @Parameters(value = {@Parameter(name = "namespaceId", example = "public"),
         @Parameter(name = "name", required = true, example = "my-skill"),
         @Parameter(name = "version", example = "1.0.0"),
         @Parameter(name = "label"),
+        @Parameter(name = "md5", example = "d41d8cd98f00b204e9800998ecf8427e"),
         @Parameter(name = "form", hidden = true)})
     public ResponseEntity<byte[]> get(SkillQueryForm form) throws NacosException {
         form.validate();

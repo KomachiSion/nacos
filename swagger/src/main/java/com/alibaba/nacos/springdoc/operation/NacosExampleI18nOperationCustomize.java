@@ -53,7 +53,7 @@ public class NacosExampleI18nOperationCustomize implements GlobalOperationCustom
                     return;
                 }
                 String i18nExample = propertyResolverUtils.resolve((String) example,
-                        LocaleThreadLocalHolder.getLocale());
+                    LocaleThreadLocalHolder.getLocale());
                 if (key.equals(MediaType.APPLICATION_JSON_VALUE)) {
                     try {
                         schema.setExample(JacksonUtils.toObj(i18nExample));

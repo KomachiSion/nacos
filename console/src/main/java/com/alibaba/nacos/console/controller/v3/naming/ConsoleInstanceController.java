@@ -97,9 +97,7 @@ public class ConsoleInstanceController {
     @GetMapping("/list")
     @Operation(summary = "nacos.console.naming.instance.api.list.summary",
         description = "nacos.console.naming.instance.api.list.description",
-        security = @SecurityRequirement(name = "nacos"),
-        extensions = {@Extension(name = "nacos-api-since",
-            properties = @ExtensionProperty(name = "version", value = "3.0.0"))})
+        security = @SecurityRequirement(name = "nacos"))
     @ApiResponse(responseCode = "200",
         content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
             schema = @Schema(implementation = Result.class,
@@ -138,9 +136,7 @@ public class ConsoleInstanceController {
     @Secured(action = ActionTypes.WRITE, apiType = ApiType.CONSOLE_API)
     @Operation(summary = "nacos.console.naming.instance.api.update.summary",
         description = "nacos.console.naming.instance.api.update.description",
-        security = @SecurityRequirement(name = "nacos"),
-        extensions = {@Extension(name = "nacos-api-since",
-            properties = @ExtensionProperty(name = "version", value = "3.0.0"))})
+        security = @SecurityRequirement(name = "nacos"))
     @ApiResponse(responseCode = "200",
         content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
             schema = @Schema(implementation = Result.class,
@@ -180,9 +176,7 @@ public class ConsoleInstanceController {
     @Secured(action = ActionTypes.WRITE, apiType = ApiType.CONSOLE_API)
     @Operation(summary = "nacos.console.naming.instance.api.delete.summary",
         description = "nacos.console.naming.instance.api.delete.description",
-        security = @SecurityRequirement(name = "nacos"),
-        extensions = {@Extension(name = "nacos-api-since",
-            properties = @ExtensionProperty(name = "version", value = "3.2.2"))})
+        security = @SecurityRequirement(name = "nacos"))
     @ApiResponse(responseCode = "200",
         content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
             schema = @Schema(implementation = Result.class,

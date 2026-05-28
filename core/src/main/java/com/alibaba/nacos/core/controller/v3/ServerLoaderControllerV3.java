@@ -87,9 +87,7 @@ public class ServerLoaderControllerV3 {
         apiType = ApiType.ADMIN_API)
     @Operation(summary = "nacos.admin.core.loader.api.list.summary",
         description = "nacos.admin.core.loader.api.list.description",
-        security = @SecurityRequirement(name = "nacos"),
-        extensions = {@Extension(name = "nacos-api-since",
-            properties = @ExtensionProperty(name = "version", value = "3.0.0"))})
+        security = @SecurityRequirement(name = "nacos"))
     @ApiResponse(responseCode = "200",
         content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
             schema = @Schema(implementation = Result.class,
@@ -109,9 +107,7 @@ public class ServerLoaderControllerV3 {
     @PostMapping("/reloadCurrent")
     @Operation(summary = "nacos.admin.core.loader.api.reload.batch.summary",
         description = "nacos.admin.core.loader.api.reload.batch.description",
-        security = @SecurityRequirement(name = "nacos"),
-        extensions = {@Extension(name = "nacos-api-since",
-            properties = @ExtensionProperty(name = "version", value = "3.0.0"))})
+        security = @SecurityRequirement(name = "nacos"))
     @ApiResponse(responseCode = "200",
         content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
             schema = @Schema(implementation = Result.class,
@@ -138,9 +134,7 @@ public class ServerLoaderControllerV3 {
         + "/loader", action = ActionTypes.WRITE, apiType = ApiType.ADMIN_API)
     @Operation(summary = "nacos.admin.core.loader.api.reload.smart.summary",
         description = "nacos.admin.core.loader.api.reload.smart.description",
-        security = @SecurityRequirement(name = "nacos"),
-        extensions = {@Extension(name = "nacos-api-since",
-            properties = @ExtensionProperty(name = "version", value = "3.0.0"))})
+        security = @SecurityRequirement(name = "nacos"))
     @ApiResponse(responseCode = "200",
         content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
             schema = @Schema(implementation = Result.class,
@@ -169,9 +163,7 @@ public class ServerLoaderControllerV3 {
         + "/loader", action = ActionTypes.WRITE, apiType = ApiType.ADMIN_API)
     @Operation(summary = "nacos.admin.core.loader.api.reload.single.summary",
         description = "nacos.admin.core.loader.api.reload.single.description",
-        security = @SecurityRequirement(name = "nacos"),
-        extensions = {@Extension(name = "nacos-api-since",
-            properties = @ExtensionProperty(name = "version", value = "3.0.0"))})
+        security = @SecurityRequirement(name = "nacos"))
     @ApiResponse(responseCode = "200",
         content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
             schema = @Schema(implementation = Result.class,
@@ -196,9 +188,7 @@ public class ServerLoaderControllerV3 {
         apiType = ApiType.ADMIN_API)
     @Operation(summary = "nacos.admin.core.loader.api.metrics.summary",
         description = "nacos.admin.core.loader.api.metrics.description",
-        security = @SecurityRequirement(name = "nacos"),
-        extensions = {@Extension(name = "nacos-api-since",
-            properties = @ExtensionProperty(name = "version", value = "3.0.0"))})
+        security = @SecurityRequirement(name = "nacos"))
     @ApiResponse(responseCode = "200",
         content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
             schema = @Schema(implementation = Result.class,

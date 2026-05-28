@@ -37,7 +37,7 @@ public class NacosBasicInfoOpenApiCustomizer implements GlobalOpenApiCustomizer 
     private final PropertyResolverUtils propertyResolverUtils;
     
     public NacosBasicInfoOpenApiCustomizer(String title, String description,
-            PropertyResolverUtils propertyResolverUtils) {
+        PropertyResolverUtils propertyResolverUtils) {
         this.title = title;
         this.description = description;
         this.propertyResolverUtils = propertyResolverUtils;
@@ -45,9 +45,11 @@ public class NacosBasicInfoOpenApiCustomizer implements GlobalOpenApiCustomizer 
     
     @Override
     public void customise(OpenAPI openApi) {
-        openApi.getInfo().setTitle(propertyResolverUtils.resolve(title, LocaleThreadLocalHolder.getLocale()));
         openApi.getInfo()
-                .setDescription(propertyResolverUtils.resolve(description, LocaleThreadLocalHolder.getLocale()));
+            .setTitle(propertyResolverUtils.resolve(title, LocaleThreadLocalHolder.getLocale()));
+        openApi.getInfo()
+            .setDescription(
+                propertyResolverUtils.resolve(description, LocaleThreadLocalHolder.getLocale()));
         openApi.getInfo().version(VersionUtils.version);
         License license = new License();
         license.setName("Apache 2.0");

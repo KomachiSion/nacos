@@ -89,9 +89,7 @@ public class ClientControllerV3 {
     @Secured(action = ActionTypes.READ, apiType = ApiType.ADMIN_API)
     @Operation(summary = "nacos.admin.naming.client.api.list.summary",
         description = "nacos.admin.naming.client.api.list.description",
-        security = @SecurityRequirement(name = "nacos"),
-        extensions = {@Extension(name = "nacos-api-since",
-            properties = @ExtensionProperty(name = "version", value = "3.0.0"))})
+        security = @SecurityRequirement(name = "nacos"))
     @ApiResponse(responseCode = "200",
         content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
             schema = @Schema(implementation = Result.class,
@@ -108,9 +106,7 @@ public class ClientControllerV3 {
     @Secured(action = ActionTypes.READ, apiType = ApiType.ADMIN_API)
     @Operation(summary = "nacos.admin.naming.client.api.get.summary",
         description = "nacos.admin.naming.client.api.get.description",
-        security = @SecurityRequirement(name = "nacos"),
-        extensions = {@Extension(name = "nacos-api-since",
-            properties = @ExtensionProperty(name = "version", value = "3.0.0"))})
+        security = @SecurityRequirement(name = "nacos"))
     @ApiResponse(responseCode = "200",
         content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
             schema = @Schema(implementation = Result.class,
@@ -130,9 +126,7 @@ public class ClientControllerV3 {
     @Secured(action = ActionTypes.READ, apiType = ApiType.ADMIN_API)
     @Operation(summary = "nacos.admin.naming.client.api.publish.list.summary",
         description = "nacos.admin.naming.client.api.publish.list.description",
-        security = @SecurityRequirement(name = "nacos"),
-        extensions = {@Extension(name = "nacos-api-since",
-            properties = @ExtensionProperty(name = "version", value = "3.0.0"))})
+        security = @SecurityRequirement(name = "nacos"))
     @ApiResponse(responseCode = "200",
         content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
             schema = @Schema(implementation = Result.class,
@@ -153,9 +147,7 @@ public class ClientControllerV3 {
     @Secured(action = ActionTypes.READ, apiType = ApiType.ADMIN_API)
     @Operation(summary = "nacos.admin.naming.client.api.subscribe.list.summary",
         description = "nacos.admin.naming.client.api.subscribe.list.description",
-        security = @SecurityRequirement(name = "nacos"),
-        extensions = {@Extension(name = "nacos-api-since",
-            properties = @ExtensionProperty(name = "version", value = "3.0.0"))})
+        security = @SecurityRequirement(name = "nacos"))
     @ApiResponse(responseCode = "200",
         content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
             schema = @Schema(implementation = Result.class,
@@ -176,9 +168,7 @@ public class ClientControllerV3 {
     @Secured(action = ActionTypes.READ, apiType = ApiType.ADMIN_API)
     @Operation(summary = "nacos.admin.naming.client.api.service.publisher.list.summary",
         description = "nacos.admin.naming.client.api.service.publisher.list.description",
-        security = @SecurityRequirement(name = "nacos"),
-        extensions = {@Extension(name = "nacos-api-since",
-            properties = @ExtensionProperty(name = "version", value = "3.0.0"))})
+        security = @SecurityRequirement(name = "nacos"))
     @ApiResponse(responseCode = "200",
         content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
             schema = @Schema(implementation = Result.class,
@@ -208,9 +198,7 @@ public class ClientControllerV3 {
     @Secured(action = ActionTypes.READ, apiType = ApiType.ADMIN_API)
     @Operation(summary = "nacos.admin.naming.client.api.service.subscriber.list.summary",
         description = "nacos.admin.naming.client.api.service.subscriber.list.description",
-        security = @SecurityRequirement(name = "nacos"),
-        extensions = {@Extension(name = "nacos-api-since",
-            properties = @ExtensionProperty(name = "version", value = "3.0.0"))})
+        security = @SecurityRequirement(name = "nacos"))
     @ApiResponse(responseCode = "200",
         content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
             schema = @Schema(implementation = Result.class,
@@ -241,9 +229,7 @@ public class ClientControllerV3 {
         apiType = ApiType.ADMIN_API)
     @Operation(summary = "nacos.admin.naming.client.api.distro.summary",
         description = "nacos.admin.naming.client.api.distro.description",
-        security = @SecurityRequirement(name = "nacos"),
-        extensions = {@Extension(name = "nacos-api-since",
-            properties = @ExtensionProperty(name = "version", value = "3.0.0"))})
+        security = @SecurityRequirement(name = "nacos"))
     @ApiResponse(responseCode = "200",
         content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
             schema = @Schema(implementation = Result.class,
