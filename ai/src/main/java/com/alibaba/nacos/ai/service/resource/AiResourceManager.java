@@ -16,7 +16,6 @@
 
 package com.alibaba.nacos.ai.service.resource;
 
-import com.alibaba.nacos.ai.config.ReviewedStatusConfig;
 import com.alibaba.nacos.ai.constant.AiResourceConstants;
 import com.alibaba.nacos.ai.model.AiResource;
 import com.alibaba.nacos.ai.model.AiResourceVersion;
@@ -862,18 +861,11 @@ public class AiResourceManager {
             throw new NacosApiException(NacosException.NOT_FOUND, ErrorCode.RESOURCE_NOT_FOUND,
                 type + " version not found: " + name + "@" + version);
         }
-        if (!AiResourceConstants.VERSION_STATUS_REVIEWED.equalsIgnoreCase(v.getStatus())
-            && !AiResourceConstants.VERSION_STATUS_REVIEWING.equalsIgnoreCase(
-                v.getStatus())) {
-            // Allow draft only for legacy data: pipeline rejected → draft (historical is null/false)
-            boolean allowDraft = AiResourceConstants.VERSION_STATUS_DRAFT
-                .equalsIgnoreCase(v.getStatus()) && isLegacyRejectedDraft(v);
-            if (!allowDraft) {
-                throw new NacosApiException(NacosException.INVALID_PARAM,
-                    ErrorCode.PARAMETER_VALIDATE_ERROR,
-                    "Force-publish is only allowed for versions in 'reviewing' or "
-                        + "'reviewed' status, current: " + v.getStatus());
-            }
+        if (AiResourceConstants.VERSION_STATUS_ONLINE.equalsIgnoreCase(v.getStatus())
+            || AiResourceConstants.VERSION_STATUS_OFFLINE.equalsIgnoreCase(v.getStatus())) {
+            throw new NacosApiException(NacosException.INVALID_PARAM,
+                ErrorCode.PARAMETER_VALIDATE_ERROR,
+                "Force-publish is not allowed for online or offline version: " + version);
         }
         
         LOGGER.warn("[FORCE-PUBLISH] Bypassing pipeline validation for {} {}@{} by user {}",
@@ -1098,24 +1090,6 @@ public class AiResourceManager {
     }
     
     /**
-     * Check if a draft version is a legacy rejected-to-draft (not from redraft).
-     * Returns true when pipeline info exists with REJECTED status and historical is null/false.
-     */
-    private boolean isLegacyRejectedDraft(AiResourceVersion v) {
-        if (StringUtils.isBlank(v.getPublishPipelineInfo())) {
-            return false;
-        }
-        try {
-            PublishPipelineInfo info =
-                JacksonUtils.toObj(v.getPublishPipelineInfo(), PublishPipelineInfo.class);
-            return info.getStatus() == PipelineExecutionStatus.REJECTED
-                && !Boolean.TRUE.equals(info.getHistorical());
-        } catch (Exception ex) {
-            return false;
-        }
-    }
-    
-    /**
      * Functional interface for deleting storage associated with a specific version.
      */
     @FunctionalInterface
@@ -1210,7 +1184,7 @@ public class AiResourceManager {
         aiResourceVersionPersistService.updateStatus(namespaceId, name, type, version,
             AiResourceConstants.VERSION_STATUS_DRAFT);
         
-        // Mark pipeline info as historical so forcePublish is not available on redrafted versions
+        // Mark pipeline info as historical so redraft history is not treated as the current review.
         if (StringUtils.isNotBlank(v.getPublishPipelineInfo())) {
             try {
                 PublishPipelineInfo pipelineInfo =
@@ -1300,8 +1274,8 @@ public class AiResourceManager {
     /**
      * Handle pipeline completion: persist pipeline info and transition version status.
      *
-     * <p>When reviewed-status switch is enabled, both approved and rejected results transition
-     * to {@code reviewed}. When disabled, rejected rolls back to {@code draft} (legacy behavior).</p>
+     * <p>Both approved and rejected results transition to {@code reviewed}. Users must explicitly
+     * call redraft to return to draft.</p>
      */
     public void onPipelineComplete(String namespaceId, String name, String type, String version,
         PipelineExecutionResult result) {
@@ -1317,44 +1291,12 @@ public class AiResourceManager {
             boolean approved =
                 result != null && result.getStatus() == PipelineExecutionStatus.APPROVED;
             
-            if (ReviewedStatusConfig.getInstance().isEnabled()) {
-                // New behavior: always transition to reviewed regardless of pipeline result.
-                aiResourceVersionPersistService.updateStatus(namespaceId, name, type, version,
-                    AiResourceConstants.VERSION_STATUS_REVIEWED);
-                AiResourceTraceService.logSuccess(type, name, version,
-                    approved ? AiResourceTraceService.OP_REVIEW_APPROVED
-                        : AiResourceTraceService.OP_REVIEW_REJECTED,
-                    "system", "", result == null ? null : result.getExecutionId());
-            } else {
-                // Legacy behavior: rejected rolls back to draft, approved transitions to reviewed.
-                if (!approved) {
-                    aiResourceVersionPersistService.updateStatus(namespaceId, name, type, version,
-                        AiResourceConstants.VERSION_STATUS_DRAFT);
-                    AiResource meta = aiResourcePersistService.find(namespaceId, name, type);
-                    if (meta != null) {
-                        ResourceVersionInfo vInfo = requireVersionInfo(meta);
-                        if (StringUtils.equals(vInfo.getReviewingVersion(), version)) {
-                            vInfo.setReviewingVersion(null);
-                            vInfo.setEditingVersion(version);
-                            try {
-                                updateVersionInfoCas(namespaceId, meta, vInfo);
-                            } catch (Exception ex) {
-                                LOGGER.warn("Failed to rollback meta working pointers for {}@{}",
-                                    name, version, ex);
-                            }
-                        }
-                    }
-                    AiResourceTraceService.logSuccess(type, name, version,
-                        AiResourceTraceService.OP_REVIEW_REJECTED,
-                        "system", "", result == null ? null : result.getExecutionId());
-                } else {
-                    aiResourceVersionPersistService.updateStatus(namespaceId, name, type, version,
-                        AiResourceConstants.VERSION_STATUS_REVIEWED);
-                    AiResourceTraceService.logSuccess(type, name, version,
-                        AiResourceTraceService.OP_REVIEW_APPROVED,
-                        "system", "", result.getExecutionId());
-                }
-            }
+            aiResourceVersionPersistService.updateStatus(namespaceId, name, type, version,
+                AiResourceConstants.VERSION_STATUS_REVIEWED);
+            AiResourceTraceService.logSuccess(type, name, version,
+                approved ? AiResourceTraceService.OP_REVIEW_APPROVED
+                    : AiResourceTraceService.OP_REVIEW_REJECTED,
+                "system", "", result == null ? null : result.getExecutionId());
         } catch (Throwable ex) {
             LOGGER.error("Pipeline callback failed for {}@{}", name, version, ex);
         }
