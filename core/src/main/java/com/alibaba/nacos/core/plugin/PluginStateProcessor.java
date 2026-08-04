@@ -23,7 +23,7 @@ import com.alibaba.nacos.consistency.entity.ReadRequest;
 import com.alibaba.nacos.consistency.entity.Response;
 import com.alibaba.nacos.consistency.entity.WriteRequest;
 import com.alibaba.nacos.consistency.snapshot.SnapshotOperation;
-import com.alibaba.nacos.core.distributed.ProtocolManager;
+import com.alibaba.nacos.core.plugin.config.PluginConfigApplyException;
 import com.alibaba.nacos.core.plugin.model.PluginStateOperation;
 import com.alibaba.nacos.core.plugin.storage.PluginStatePersistenceService;
 import org.slf4j.Logger;
@@ -60,16 +60,12 @@ public class PluginStateProcessor extends RequestProcessor4CP {
     private final ReentrantReadWriteLock.ReadLock readLock;
     
     public PluginStateProcessor(PluginManager pluginManager,
-        PluginStatePersistenceService persistence,
-        ProtocolManager protocolManager) {
+        PluginStatePersistenceService persistence) {
         this.pluginManager = pluginManager;
         this.persistence = persistence;
         this.serializer = SerializeFactory.getDefault();
         this.lock = new ReentrantReadWriteLock();
         this.readLock = lock.readLock();
-        
-        // Register with Raft protocol
-        protocolManager.getCpProtocol().addRequestProcessors(Collections.singletonList(this));
     }
     
     @Override
@@ -113,6 +109,11 @@ public class PluginStateProcessor extends RequestProcessor4CP {
                 e);
             String errorMessage = String.format("[%s] %s", context,
                 e.getMessage() != null ? e.getMessage() : e.getClass().getName());
+            if (e instanceof IllegalArgumentException) {
+                errorMessage = PluginStateOperation.INVALID_PARAM_ERROR_PREFIX + errorMessage;
+            } else if (e instanceof PluginConfigApplyException) {
+                errorMessage = PluginStateOperation.CONFIG_APPLY_ERROR_PREFIX + errorMessage;
+            }
             return Response.newBuilder()
                 .setSuccess(false)
                 .setErrMsg(errorMessage)
@@ -140,11 +141,9 @@ public class PluginStateProcessor extends RequestProcessor4CP {
                 "Enabled state cannot be null for CHANGE_STATE operation, pluginId=" + pluginId);
         }
         
-        // Apply to in-memory state
-        pluginManager.applyStateChange(pluginId, enabled);
-        
-        // Persist to local storage
+        pluginManager.validateStateChange(pluginId, enabled);
         persistence.saveState(pluginId, enabled);
+        pluginManager.applyStateChange(pluginId, enabled);
         
         LOGGER.info("[PluginStateProcessor] Applied state change: {}={}", pluginId, enabled);
     }
@@ -156,15 +155,12 @@ public class PluginStateProcessor extends RequestProcessor4CP {
         // Apply to in-memory config
         pluginManager.applyConfigChange(pluginId, config);
         
-        // Persist to local storage
-        persistence.saveConfig(pluginId, config);
-        
         LOGGER.info("[PluginStateProcessor] Applied config update: {}", pluginId);
     }
     
     @Override
     public List<SnapshotOperation> loadSnapshotOperate() {
         return Collections.singletonList(
-            new PluginStateSnapshotOperation(persistence, pluginManager, lock));
+            new PluginStateSnapshotOperation(pluginManager, lock));
     }
 }

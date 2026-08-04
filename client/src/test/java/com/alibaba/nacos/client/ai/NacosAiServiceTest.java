@@ -18,10 +18,12 @@ package com.alibaba.nacos.client.ai;
 
 import com.alibaba.nacos.api.PropertyKeyConst;
 import com.alibaba.nacos.api.ai.listener.AbstractNacosAgentCardListener;
+import com.alibaba.nacos.api.ai.listener.AbstractNacosAgentDiscoveryListener;
 import com.alibaba.nacos.api.ai.listener.AbstractNacosAgentSpecListener;
 import com.alibaba.nacos.api.ai.listener.AbstractNacosMcpServerListener;
 import com.alibaba.nacos.api.ai.listener.AbstractNacosPromptListener;
 import com.alibaba.nacos.api.ai.listener.NacosAgentCardEvent;
+import com.alibaba.nacos.api.ai.listener.NacosAgentDiscoveryEvent;
 import com.alibaba.nacos.api.ai.listener.NacosAgentSpecEvent;
 import com.alibaba.nacos.api.ai.listener.NacosMcpServerEvent;
 import com.alibaba.nacos.api.ai.listener.NacosPromptEvent;
@@ -30,17 +32,31 @@ import com.alibaba.nacos.api.ai.model.a2a.AgentCardDetailInfo;
 import com.alibaba.nacos.api.ai.model.a2a.AgentEndpoint;
 import com.alibaba.nacos.api.ai.model.a2a.AgentInterface;
 import com.alibaba.nacos.api.ai.model.agentspecs.AgentSpec;
+import com.alibaba.nacos.api.ai.model.agent.AgentCallInterface;
+import com.alibaba.nacos.api.ai.model.agent.AgentPublishRequest;
+import com.alibaba.nacos.api.ai.model.agent.AgentVersionDetail;
 import com.alibaba.nacos.api.ai.model.mcp.McpServerBasicInfo;
 import com.alibaba.nacos.api.ai.model.mcp.McpServerDetailInfo;
 import com.alibaba.nacos.api.ai.model.mcp.registry.ServerVersionDetail;
 import com.alibaba.nacos.api.ai.model.prompt.Prompt;
+import com.alibaba.nacos.api.ai.model.rad.AgentCatalogEntry;
+import com.alibaba.nacos.api.ai.model.rad.AgentDiscoveryFilter;
+import com.alibaba.nacos.api.ai.model.rad.AgentDiscoveryRequest;
+import com.alibaba.nacos.api.ai.model.rad.AgentDiscoveryResult;
+import com.alibaba.nacos.api.ai.model.rad.AgentEndpointDeregistrationBatch;
+import com.alibaba.nacos.api.ai.model.rad.AgentEndpointRegistrationBatch;
+import com.alibaba.nacos.api.ai.model.rad.AgentReference;
+import com.alibaba.nacos.api.ai.model.rad.AgentSearchRequest;
 import com.alibaba.nacos.api.common.Constants;
 import com.alibaba.nacos.api.exception.NacosException;
 import com.alibaba.nacos.api.exception.api.NacosApiException;
+import com.alibaba.nacos.api.model.Page;
 import com.alibaba.nacos.client.ai.cache.NacosAgentCardCacheHolder;
+import com.alibaba.nacos.client.ai.cache.NacosAgentDiscoveryCacheHolder;
 import com.alibaba.nacos.client.ai.cache.NacosAgentSpecCacheHolder;
 import com.alibaba.nacos.client.ai.cache.NacosMcpServerCacheHolder;
 import com.alibaba.nacos.client.ai.cache.NacosPromptCacheHolder;
+import com.alibaba.nacos.client.ai.cache.NacosSkillCacheHolder;
 import com.alibaba.nacos.client.ai.event.AgentCardListenerInvoker;
 import com.alibaba.nacos.client.ai.event.AgentSpecListenerInvoker;
 import com.alibaba.nacos.client.ai.event.AiChangeNotifier;
@@ -54,7 +70,9 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
+import org.mockito.MockedConstruction;
 import org.mockito.Mockito;
+import org.mockito.ArgumentCaptor;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.lang.reflect.Field;
@@ -95,6 +113,15 @@ class NacosAiServiceTest {
     private NacosAgentSpecCacheHolder agentSpecCacheHolder;
     
     @Mock
+    private NacosSkillCacheHolder skillCacheHolder;
+    
+    @Mock
+    private NacosAgentDiscoveryCacheHolder agentDiscoveryCacheHolder;
+    
+    @Mock
+    private AgentEndpointPublicationManager agentEndpointPublicationManager;
+    
+    @Mock
     private AiHttpClientProxy httpProxy;
     
     @Mock
@@ -105,8 +132,23 @@ class NacosAiServiceTest {
     
     NacosAiService nacosAiService;
     
+    private MockedConstruction<AiGrpcClient> grpcClientConstruction;
+    
+    private MockedConstruction<AiHttpClientProxy> httpProxyConstruction;
+    
+    private MockedConstruction<NacosMcpServerCacheHolder> mcpServerCacheHolderConstruction;
+    
+    private MockedConstruction<NacosAgentCardCacheHolder> agentCardCacheHolderConstruction;
+    
+    private MockedConstruction<NacosPromptCacheHolder> promptCacheHolderConstruction;
+    
+    private MockedConstruction<NacosAgentSpecCacheHolder> agentSpecCacheHolderConstruction;
+    
+    private MockedConstruction<NacosSkillCacheHolder> skillCacheHolderConstruction;
+    
     @BeforeEach
     void setUp() throws NacosException {
+        mockChildConstructions();
         Properties properties = new Properties();
         properties.put(PropertyKeyConst.SERVER_ADDR, "127.0.0.1");
         nacosAiService = new NacosAiService(properties);
@@ -114,8 +156,12 @@ class NacosAiServiceTest {
     
     @AfterEach
     void tearDown() throws NacosException {
-        if (null != nacosAiService) {
-            nacosAiService.shutdown();
+        try {
+            if (null != nacosAiService) {
+                nacosAiService.shutdown();
+            }
+        } finally {
+            closeMockedConstructions();
         }
     }
     
@@ -813,13 +859,130 @@ class NacosAiServiceTest {
         throws NoSuchFieldException, IllegalAccessException, NacosException {
         injectMocks();
         nacosAiService.shutdown();
+        nacosAiService.shutdown();
         verify(grpcClient).shutdown();
         verify(httpProxy).shutdown();
+        verify(agentDiscoveryCacheHolder).shutdown();
+        verify(agentEndpointPublicationManager).shutdown();
         verify(mcpServerCacheHolder).shutdown();
+        verify(agentCardCacheHolder).shutdown();
         verify(promptCacheHolder).shutdown();
         verify(agentSpecCacheHolder).shutdown();
+        verify(skillCacheHolder).shutdown();
         // null out so AfterEach doesn't run shutdown again
         nacosAiService = null;
+    }
+    
+    @Test
+    void publishAgentCopiesCallerRequestAndDelegates() throws Exception {
+        injectMocks();
+        AgentPublishRequest source = new AgentPublishRequest();
+        source.setAgentName("agent-a");
+        source.setVersion("1.0.0");
+        source.setCallInterfaces(Collections.singletonList(new AgentCallInterface()));
+        source.setTags(new ArrayList<String>(Collections.singletonList("assistant")));
+        AgentVersionDetail expected = new AgentVersionDetail();
+        when(aiClientProxy.publishAgent(any(AgentPublishRequest.class))).thenReturn(expected);
+        
+        assertEquals(expected, nacosAiService.publishAgent(source));
+        ArgumentCaptor<AgentPublishRequest> request =
+            ArgumentCaptor.forClass(AgentPublishRequest.class);
+        verify(aiClientProxy).publishAgent(request.capture());
+        assertNotNull(request.getValue());
+        assertEquals("assistant", request.getValue().getTags().get(0));
+        source.getTags().clear();
+        assertEquals("assistant", request.getValue().getTags().get(0));
+    }
+    
+    @Test
+    void agentSearchAndDiscoverBindNamespaceAndDelegate() throws Exception {
+        injectMocks();
+        Page<AgentCatalogEntry> page = new Page<AgentCatalogEntry>();
+        when(aiClientProxy.searchAgents(any(AgentSearchRequest.class))).thenReturn(page);
+        AgentDiscoveryResult discoveryResult = new AgentDiscoveryResult();
+        when(aiClientProxy.discoverAgent(any(AgentDiscoveryRequest.class)))
+            .thenReturn(discoveryResult);
+        AgentSearchRequest search = new AgentSearchRequest();
+        AgentReference reference = new AgentReference();
+        reference.setAgentName("agent-a");
+        
+        assertEquals(page, nacosAiService.searchAgents(search));
+        assertEquals(discoveryResult, nacosAiService.discoverAgent(reference));
+        
+        ArgumentCaptor<AgentSearchRequest> searchCaptor =
+            ArgumentCaptor.forClass(AgentSearchRequest.class);
+        verify(aiClientProxy).searchAgents(searchCaptor.capture());
+        assertEquals(Constants.DEFAULT_NAMESPACE_ID, searchCaptor.getValue().getNamespaceId());
+        assertNull(search.getNamespaceId());
+        ArgumentCaptor<AgentDiscoveryRequest> discoveryCaptor =
+            ArgumentCaptor.forClass(AgentDiscoveryRequest.class);
+        verify(aiClientProxy).discoverAgent(discoveryCaptor.capture());
+        assertEquals(Constants.DEFAULT_NAMESPACE_ID,
+            discoveryCaptor.getValue().getNamespaceId());
+        assertEquals("agent-a",
+            discoveryCaptor.getValue().getReference().getAgentName());
+    }
+    
+    @Test
+    void agentPollingSubscriptionDelegatesExactReferenceFilterAndListener() throws Exception {
+        injectMocks();
+        AgentReference reference = new AgentReference();
+        reference.setAgentName("agent-a");
+        AgentDiscoveryFilter filter = new AgentDiscoveryFilter();
+        AbstractNacosAgentDiscoveryListener listener =
+            new AbstractNacosAgentDiscoveryListener() {
+                
+                @Override
+                public void onEvent(NacosAgentDiscoveryEvent event) {
+                }
+            };
+        AgentDiscoveryResult expected = new AgentDiscoveryResult();
+        when(agentDiscoveryCacheHolder.subscribe(reference, filter, listener))
+            .thenReturn(expected);
+        
+        assertEquals(expected, nacosAiService.subscribeAgent(reference, filter, listener));
+        nacosAiService.unsubscribeAgent(reference, filter, listener);
+        
+        verify(agentDiscoveryCacheHolder).subscribe(reference, filter, listener);
+        verify(agentDiscoveryCacheHolder).unsubscribe(reference, filter, listener);
+    }
+    
+    @Test
+    void completeAgentEndpointOperationsBindNamespaceBeforeDelegating() throws Exception {
+        injectMocks();
+        AgentEndpointRegistrationBatch registration = new AgentEndpointRegistrationBatch();
+        registration.setAgentName("agent-a");
+        registration.setRuntimeVersion("1.0.0");
+        registration.setProtocol("a2a");
+        registration.setEndpoints(Collections.emptyList());
+        AgentEndpointDeregistrationBatch deregistration =
+            new AgentEndpointDeregistrationBatch();
+        deregistration.setAgentName("agent-a");
+        deregistration.setProtocol("a2a");
+        deregistration.setEndpoints(Collections.emptyList());
+        
+        assertThrows(NacosException.class,
+            () -> nacosAiService.registerAgentEndpoints(registration));
+        assertThrows(NacosException.class,
+            () -> nacosAiService.deregisterAgentEndpoints(deregistration));
+        
+        registration.setEndpoints(Collections.singletonList(endpoint("http://host/a")));
+        deregistration.setEndpoints(Collections.singletonList(endpoint("http://host/a")));
+        nacosAiService.registerAgentEndpoints(registration);
+        nacosAiService.deregisterAgentEndpoints(deregistration);
+        
+        ArgumentCaptor<AgentEndpointRegistrationBatch> registrationCaptor =
+            ArgumentCaptor.forClass(AgentEndpointRegistrationBatch.class);
+        verify(agentEndpointPublicationManager).register(registrationCaptor.capture());
+        assertEquals(Constants.DEFAULT_NAMESPACE_ID,
+            registrationCaptor.getValue().getNamespaceId());
+        ArgumentCaptor<AgentEndpointDeregistrationBatch> deregistrationCaptor =
+            ArgumentCaptor.forClass(AgentEndpointDeregistrationBatch.class);
+        verify(agentEndpointPublicationManager).deregister(deregistrationCaptor.capture());
+        assertEquals(Constants.DEFAULT_NAMESPACE_ID,
+            deregistrationCaptor.getValue().getNamespaceId());
+        assertNull(registration.getNamespaceId());
+        assertNull(deregistration.getNamespaceId());
     }
     
     @Test
@@ -878,6 +1041,21 @@ class NacosAiServiceTest {
         NacosAgentSpecCacheHolder autoBuildAgentSpecCacheHolder =
             (NacosAgentSpecCacheHolder) field.get(nacosAiService);
         field.set(nacosAiService, agentSpecCacheHolder);
+        field = NacosAiService.class.getDeclaredField("skillCacheHolder");
+        field.setAccessible(true);
+        NacosSkillCacheHolder autoBuildSkillCacheHolder =
+            (NacosSkillCacheHolder) field.get(nacosAiService);
+        field.set(nacosAiService, skillCacheHolder);
+        field = NacosAiService.class.getDeclaredField("agentDiscoveryCacheHolder");
+        field.setAccessible(true);
+        NacosAgentDiscoveryCacheHolder autoBuildDiscoveryCacheHolder =
+            (NacosAgentDiscoveryCacheHolder) field.get(nacosAiService);
+        field.set(nacosAiService, agentDiscoveryCacheHolder);
+        field = NacosAiService.class.getDeclaredField("agentEndpointPublicationManager");
+        field.setAccessible(true);
+        AgentEndpointPublicationManager autoBuildPublicationManager =
+            (AgentEndpointPublicationManager) field.get(nacosAiService);
+        field.set(nacosAiService, agentEndpointPublicationManager);
         field = NacosAiService.class.getDeclaredField("aiChangeNotifier");
         field.setAccessible(true);
         field.set(nacosAiService, aiChangeNotifier);
@@ -888,7 +1066,39 @@ class NacosAiServiceTest {
             autoBuildAgentCacheHolder.shutdown();
             autoBuildPromptCacheHolder.shutdown();
             autoBuildAgentSpecCacheHolder.shutdown();
+            autoBuildSkillCacheHolder.shutdown();
+            autoBuildDiscoveryCacheHolder.shutdown();
+            autoBuildPublicationManager.shutdown();
         } catch (NacosException ignored) {
+        }
+    }
+    
+    private void mockChildConstructions() {
+        grpcClientConstruction = Mockito.mockConstruction(AiGrpcClient.class);
+        httpProxyConstruction = Mockito.mockConstruction(AiHttpClientProxy.class);
+        mcpServerCacheHolderConstruction =
+            Mockito.mockConstruction(NacosMcpServerCacheHolder.class);
+        agentCardCacheHolderConstruction =
+            Mockito.mockConstruction(NacosAgentCardCacheHolder.class);
+        promptCacheHolderConstruction = Mockito.mockConstruction(NacosPromptCacheHolder.class);
+        agentSpecCacheHolderConstruction =
+            Mockito.mockConstruction(NacosAgentSpecCacheHolder.class);
+        skillCacheHolderConstruction = Mockito.mockConstruction(NacosSkillCacheHolder.class);
+    }
+    
+    private void closeMockedConstructions() {
+        closeMockedConstruction(skillCacheHolderConstruction);
+        closeMockedConstruction(agentSpecCacheHolderConstruction);
+        closeMockedConstruction(promptCacheHolderConstruction);
+        closeMockedConstruction(agentCardCacheHolderConstruction);
+        closeMockedConstruction(mcpServerCacheHolderConstruction);
+        closeMockedConstruction(httpProxyConstruction);
+        closeMockedConstruction(grpcClientConstruction);
+    }
+    
+    private void closeMockedConstruction(MockedConstruction<?> construction) {
+        if (construction != null) {
+            construction.close();
         }
     }
     
@@ -904,5 +1114,13 @@ class NacosAiServiceTest {
         endpoint2.setVersion("1.0.0");
         
         return Arrays.asList(endpoint1, endpoint2);
+    }
+    
+    private com.alibaba.nacos.api.ai.model.agent.Endpoint endpoint(String uri) {
+        com.alibaba.nacos.api.ai.model.agent.Endpoint result =
+            new com.alibaba.nacos.api.ai.model.agent.Endpoint();
+        result.setUri(uri);
+        result.setTransport("jsonrpc");
+        return result;
     }
 }

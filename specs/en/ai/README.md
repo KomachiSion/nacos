@@ -28,12 +28,21 @@ behavior through the [HTTP API](../http-api/api-spec.md),
 - [AI Registry Spec](ai-registry-spec.md)
 - [AI Resource Model Spec](ai-resource-model-spec.md)
 - [AI Resource Lifecycle Spec](ai-resource-lifecycle-spec.md)
+- [AI Resource Search Spec](ai-resource-search-spec.md)
 - [AI Registry Adaptor Spec](ai-registry-adaptor-spec.md)
+
+## Agent Registry
+
+- [Agent Management Spec](agent-management-spec.md)
+- [Remote Agent Discovery Protocol Spec](rad-protocol-spec.md)
+- [Agent API Spec](agent-api-spec.md)
+- [Agent Storage Spec](agent-storage-spec.md)
+- [A2A Agent Binding And Compatibility Spec](a2a-agent-spec.md)
+- [Shared JSON Schema Index](../../schemas/README.md)
 
 ## Resource Types
 
 - [MCP Server Spec](mcp-server-spec.md)
-- [A2A Agent Spec](a2a-agent-spec.md)
 - [Prompt Spec](prompt-spec.md)
 - [Skill Spec](skill-spec.md)
 - [AgentSpec Spec](agentspec-spec.md)

@@ -17,11 +17,15 @@
 package com.alibaba.nacos.maintainer.client.ai;
 
 import com.alibaba.nacos.api.PropertyKeyConst;
+import com.alibaba.nacos.api.ai.model.skills.BatchUploadItemResult;
+import com.alibaba.nacos.api.ai.model.skills.BatchUploadResult;
+import com.alibaba.nacos.api.ai.model.skills.SkillUploadPrecheckResult;
 import com.alibaba.nacos.api.exception.NacosException;
 import com.alibaba.nacos.api.model.v2.ErrorCode;
 import com.alibaba.nacos.api.model.v2.Result;
 import com.alibaba.nacos.common.http.HttpRestResult;
 import com.alibaba.nacos.common.utils.JacksonUtils;
+import com.alibaba.nacos.maintainer.client.constants.Constants;
 import com.alibaba.nacos.maintainer.client.model.HttpRequest;
 import com.alibaba.nacos.maintainer.client.remote.ClientHttpProxy;
 import org.junit.jupiter.api.BeforeEach;
@@ -36,6 +40,7 @@ import java.lang.reflect.Field;
 import java.util.Properties;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.any;
@@ -119,7 +124,7 @@ class SkillMaintainerServiceImplTest {
             .thenReturn(mockRestResult);
         
         String actual = skillService.uploadSkillFromZip("public", "zip".getBytes(), true,
-            "v2", "upload commit");
+            "v2", "upload commit", SkillUploadPrecheckResult.ACTION_OVERWRITE_DRAFT);
         
         assertEquals("test-skill", actual);
         ArgumentCaptor<HttpRequest> requestCaptor = ArgumentCaptor.forClass(HttpRequest.class);
@@ -128,6 +133,83 @@ class SkillMaintainerServiceImplTest {
         assertEquals("true", request.getParamValues().get("overwrite"));
         assertEquals("v2", request.getParamValues().get("targetVersion"));
         assertEquals("upload commit", request.getParamValues().get("commitMsg"));
+        assertEquals(SkillUploadPrecheckResult.ACTION_OVERWRITE_DRAFT,
+            request.getParamValues().get("uploadAction"));
+        assertTrue(request.isFileUpload());
+    }
+    
+    @Test
+    @DisplayName("batchUploadSkillsFromZip should return batch result")
+    void testBatchUploadSkillsFromZip() throws NacosException {
+        BatchUploadResult batchUploadResult = new BatchUploadResult();
+        batchUploadResult.addResult(BatchUploadItemResult.success("test-skill"));
+        HttpRestResult<String> mockRestResult = new HttpRestResult<>();
+        mockRestResult.setData(JacksonUtils.toJson(Result.success(batchUploadResult)));
+        when(clientHttpProxy.executeSyncHttpRequest(any(HttpRequest.class)))
+            .thenReturn(mockRestResult);
+        
+        BatchUploadResult actual =
+            skillService.batchUploadSkillsFromZip("public", "zip".getBytes(), false);
+        
+        assertEquals(java.util.Collections.singletonList("test-skill"), actual.getSucceeded());
+        assertTrue(actual.getFailed().isEmpty());
+        assertEquals(1, actual.getResults().size());
+        BatchUploadItemResult itemResult = actual.getResults().get(0);
+        assertEquals("test-skill", itemResult.getName());
+        assertTrue(itemResult.isSuccess());
+        assertEquals(BatchUploadItemResult.ERROR_CODE_SUCCESS, itemResult.getErrorCode());
+        assertEquals("success", itemResult.getErrorMessage());
+        ArgumentCaptor<HttpRequest> requestCaptor = ArgumentCaptor.forClass(HttpRequest.class);
+        verify(clientHttpProxy).executeSyncHttpRequest(requestCaptor.capture());
+        HttpRequest request = requestCaptor.getValue();
+        assertEquals(Constants.AdminApiPath.AI_SKILL_BATCH_UPLOAD_ADMIN_PATH, request.getPath());
+        assertTrue(request.isFileUpload());
+    }
+    
+    @Test
+    @DisplayName("batchUploadSkillsFromZip should parse legacy batch result")
+    void testBatchUploadSkillsFromZipWithLegacyResult() throws NacosException {
+        java.util.Map<String, Object> legacyResult = new java.util.HashMap<>();
+        legacyResult.put("succeeded",
+            java.util.Collections.singletonList("legacy-skill"));
+        legacyResult.put("failed", java.util.Collections.emptyList());
+        HttpRestResult<String> mockRestResult = new HttpRestResult<>();
+        mockRestResult.setData(JacksonUtils.toJson(Result.success(legacyResult)));
+        when(clientHttpProxy.executeSyncHttpRequest(any(HttpRequest.class)))
+            .thenReturn(mockRestResult);
+        
+        BatchUploadResult actual =
+            skillService.batchUploadSkillsFromZip("public", "zip".getBytes(), false);
+        
+        assertEquals(java.util.Collections.singletonList("legacy-skill"),
+            actual.getSucceeded());
+        assertEquals(1, actual.getResults().size());
+        assertEquals("legacy-skill", actual.getResults().get(0).getName());
+        assertTrue(actual.getResults().get(0).isSuccess());
+    }
+    
+    @Test
+    @DisplayName("precheckUploadSkillFromZip should call zip precheck path")
+    void testPrecheckUploadSkillFromZip() throws NacosException {
+        SkillUploadPrecheckResult item = new SkillUploadPrecheckResult();
+        item.setSkillName("test-skill");
+        item.setParsedVersion("v2");
+        HttpRestResult<String> mockRestResult = new HttpRestResult<>();
+        mockRestResult.setData(JacksonUtils.toJson(Result.success(
+            java.util.Collections.singletonList(item))));
+        when(clientHttpProxy.executeSyncHttpRequest(any(HttpRequest.class)))
+            .thenReturn(mockRestResult);
+        java.util.List<SkillUploadPrecheckResult> actual =
+            skillService.precheckUploadSkillFromZip("public", "zip".getBytes());
+        
+        assertEquals(1, actual.size());
+        assertEquals("test-skill", actual.get(0).getSkillName());
+        ArgumentCaptor<HttpRequest> requestCaptor = ArgumentCaptor.forClass(HttpRequest.class);
+        verify(clientHttpProxy).executeSyncHttpRequest(requestCaptor.capture());
+        HttpRequest request = requestCaptor.getValue();
+        assertEquals(Constants.AdminApiPath.AI_SKILL_UPLOAD_PRECHECK_ADMIN_PATH,
+            request.getPath());
+        assertFalse(request.getParamValues().containsKey("targetVersion"));
         assertTrue(request.isFileUpload());
     }
     
@@ -192,6 +274,19 @@ class SkillMaintainerServiceImplTest {
             .thenReturn(mockRestResult);
         
         boolean actual = skillService.redraft("public", "testSkill", "v1");
+        assertTrue(actual);
+    }
+    
+    @Test
+    @DisplayName("updateLabels should return true")
+    void testUpdateLabelsReturnsTrue() throws NacosException {
+        HttpRestResult<String> mockRestResult = new HttpRestResult<>();
+        mockRestResult
+            .setData(JacksonUtils.toJson(new Result<>(ErrorCode.SUCCESS.getCode(), "ok")));
+        when(clientHttpProxy.executeSyncHttpRequest(any(HttpRequest.class)))
+            .thenReturn(mockRestResult);
+        
+        boolean actual = skillService.updateLabels("public", "testSkill", "{\"latest\":\"v1\"}");
         assertTrue(actual);
     }
     

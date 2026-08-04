@@ -18,6 +18,18 @@ This file provides guidance to AI coding agents (Claude Code, Cursor, GitHub Cop
   clarifies spec-covered behavior MUST include the corresponding spec updates
   in the same change set. When the design is large or controversial, prefer a
   spec/design-only PR first, then follow with implementation PRs.
+- **API IT impact comes first**: Before adding, changing, deleting, or
+  deprecating any HTTP API, AI agents MUST analyze the affected
+  `test/openapi-test` coverage and update the API IT scenario matrix, test
+  cases, and coverage registry in the same change set. If the functional path
+  cannot be exercised in standalone IT, cover boundary/error scenarios and
+  document the reason.
+- **Java SDK IT impact comes first**: Before adding, changing, deleting, or
+  deprecating any public Java SDK interface, factory, model, listener behavior,
+  lifecycle behavior, or exception mapping, AI agents MUST analyze and update
+  `test/java-sdk-test` coverage, including scenario documentation. If the
+  end-to-end success path is impractical, cover SDK parameter validation,
+  boundary behavior, and controlled exceptions.
 - **Disclose AI usage**: When a significant part of a commit is AI-generated, add a trailer to your commit message:
   ```
   Assisted-by: Claude Code
@@ -61,9 +73,10 @@ mvn '-Prelease-nacos,!dev' -Dmaven.test.skip=true clean install -U
 # Run all unit tests
 mvn test
 
-# Run config / naming integration tests
-mvn test -Pcit-test
-mvn test -Pnit-test
+# Run standalone-server integration tests
+mvn -pl test/openapi-test -Pintegration-test -DskipTests=false verify
+mvn -pl test/java-sdk-test -Pjava-sdk-integration-test -DskipTests=false verify
+mvn -pl test/maintainer-sdk-test -Pmaintainer-sdk-integration-test -DskipTests=false verify
 
 # Format code (run before commit)
 mvn spotless:apply
@@ -197,6 +210,10 @@ English:
   [AI Resource Model Spec](./specs/en/ai/ai-resource-model-spec.md),
   [AI Resource Lifecycle Spec](./specs/en/ai/ai-resource-lifecycle-spec.md),
   [AI Registry Adaptor Spec](./specs/en/ai/ai-registry-adaptor-spec.md),
+  [Agent Management Spec](./specs/en/ai/agent-management-spec.md),
+  [Remote Agent Discovery Protocol Spec](./specs/en/ai/rad-protocol-spec.md),
+  [Agent API Spec](./specs/en/ai/agent-api-spec.md),
+  [Agent Storage Spec](./specs/en/ai/agent-storage-spec.md),
   [MCP Server Spec](./specs/en/ai/mcp-server-spec.md),
   [A2A Agent Spec](./specs/en/ai/a2a-agent-spec.md),
   [Prompt Spec](./specs/en/ai/prompt-spec.md),
@@ -215,6 +232,11 @@ English:
   [OIDC Auth Plugin Spec](./specs/en/auth/oidc-auth-plugin-spec.md),
   [Visibility Plugin Spec](./specs/en/auth/visibility-plugin-spec.md),
   [Default Auth Plugin Implementation Spec](./specs/en/auth/default-auth-plugin-spec.md)
+- Testing model:
+  [API Integration Test Spec](./specs/en/testing/api-integration-test-spec.md),
+  [Java SDK Integration Test Spec](./specs/en/testing/java-sdk-integration-test-spec.md)
+- Shared schemas:
+  [JSON Schema Index](./specs/schemas/README.md)
 
 Simplified Chinese:
 
@@ -271,6 +293,10 @@ Simplified Chinese:
   [AI 资源模型规范](./specs/zh-cn/ai/ai-resource-model-spec.md)，
   [AI 资源生命周期规范](./specs/zh-cn/ai/ai-resource-lifecycle-spec.md)，
   [AI Registry 适配器规范](./specs/zh-cn/ai/ai-registry-adaptor-spec.md)，
+  [Agent 管理规范](./specs/zh-cn/ai/agent-management-spec.md)，
+  [Remote Agent Discovery 协议规范](./specs/zh-cn/ai/rad-protocol-spec.md)，
+  [Agent API 规范](./specs/zh-cn/ai/agent-api-spec.md)，
+  [Agent 存储规范](./specs/zh-cn/ai/agent-storage-spec.md)，
   [MCP Server 规范](./specs/zh-cn/ai/mcp-server-spec.md)，
   [A2A Agent 规范](./specs/zh-cn/ai/a2a-agent-spec.md)，
   [Prompt 规范](./specs/zh-cn/ai/prompt-spec.md)，
@@ -289,6 +315,11 @@ Simplified Chinese:
   [OIDC 鉴权插件规范](./specs/zh-cn/auth/oidc-auth-plugin-spec.md)，
   [可见性插件规范](./specs/zh-cn/auth/visibility-plugin-spec.md)，
   [默认鉴权插件实现规范](./specs/zh-cn/auth/default-auth-plugin-spec.md)
+- 测试模型：
+  [API 集成测试规范](./specs/zh-cn/testing/api-integration-test-spec.md)，
+  [Java SDK 集成测试规范](./specs/zh-cn/testing/java-sdk-integration-test-spec.md)
+- 共享 Schema：
+  [JSON Schema 索引](./specs/schemas/README.md)
 
 This section is a quick implementation checklist for agents. If it conflicts
 with the specs, follow the specs and update this checklist.
@@ -344,6 +375,38 @@ with the specs, follow the specs and update this checklist.
          signType = SignType.CONFIG,       // CONFIG, NAMING, or CONSOLE
          apiType = ApiType.ADMIN_API)      // OPEN_API, ADMIN_API, or CONSOLE_API
 ```
+
+### API Integration Tests
+
+For every HTTP API addition, modification, deletion, or deprecation, handle
+`test/openapi-test` before the API change is considered complete:
+
+1. Read the affected controller, form/request model, validators, service path,
+   response model, exception handling, and matching specs.
+2. Build or update the scenario matrix for expected capability,
+   boundary/validation behavior, and exception/error handling.
+3. Add, update, or remove API IT cases for the changed contract. The goal is API
+   scenario coverage, not line or branch coverage.
+4. Update `test/openapi-test/API_TEST_COVERAGE.md` and the matching
+   `*_API_TEST_SCENARIOS.md` document.
+5. If the functional success path is hard to exercise in standalone IT, at
+   least cover boundary and error scenarios and document the uncovered path.
+
+### Java SDK Integration Tests
+
+For every Java SDK public contract change, handle `test/java-sdk-test` before
+the SDK change is considered complete:
+
+1. Read the public interface, implementation, request/response model, listener
+   path, lifecycle code, exception mapping, and matching SDK/client specs.
+2. Build or update the scenario matrix for factory/lifecycle behavior,
+   expected capability, boundary/validation behavior, listener/subscription
+   behavior, and exception handling.
+3. Add, update, or remove Java SDK IT cases for the changed SDK contract. Assert
+   SDK return values, callbacks, remote side effects, and typed exceptions.
+4. Update `test/java-sdk-test/JAVA_SDK_IT_COVERAGE.md`.
+5. Keep SDK ITs as external-client tests against a standalone Nacos server; do
+   not start Spring or Nacos inside the test class.
 
 ### Controller Example
 

@@ -64,6 +64,8 @@ public class Constants {
         
         public static final String AI_AGENT_LIST_ADMIN_PATH = AI_AGENT_ADMIN_PATH + "/list";
         
+        public static final String AI_AGENTS_ADMIN_PATH = "/v3/admin/ai/agents";
+        
         public static final String AI_PROMPT_ADMIN_PATH = "/v3/admin/ai/prompt";
         
         public static final String AI_PROMPT_LIST_ADMIN_PATH = AI_PROMPT_ADMIN_PATH + "/list";
@@ -124,6 +126,9 @@ public class Constants {
         
         public static final String AI_SKILL_BATCH_UPLOAD_ADMIN_PATH =
             AI_SKILL_UPLOAD_ADMIN_PATH + "/batch";
+        
+        public static final String AI_SKILL_UPLOAD_PRECHECK_ADMIN_PATH =
+            AI_SKILL_UPLOAD_ADMIN_PATH + "/precheck";
         
         public static final String AI_AGENTSPEC_ADMIN_PATH = "/v3/admin/ai/agentspecs";
         

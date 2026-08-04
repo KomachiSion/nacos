@@ -31,6 +31,10 @@ AP 和 CP 是 CAP 理论中的一致性选择。在 Nacos 中，AP 路径优先�
 | Distro | Naming 运行时状态 | 在服务端节点之间同步临时、客户端拥有的服务实例状态。 |
 | Config Notify | Config 缓存与 listener 可见性 | 通知 peer 节点某个 Config 资源发生变化，使本地 dump 缓存和 listener 刷新。 |
 
+第 6 节定义通用 HTTP connection-based Client 的目标契约。它复用 Naming 当前的 ClientData
+Distro 资源类型和处理器；在对应 Client manager 完成并由上层 API 声明能力前，不表示该
+Client 类型已经实现或可用。
+
 历史上 `consistency` 模块中存在 `APProtocol` 接口，但当前活跃 AP 实现是 Distro 基础能力和
 Config Notify 路径。新的规范应直接描述 AP 语义，而不应假设所有 AP 行为都必须实现 `APProtocol`。
 
@@ -126,7 +130,99 @@ Naming Distro 传输通过
 `DistroDataRequest` / `DistroDataResponse` 承载，并遵循
 [内部 RPC 与集群请求规范](foundation-internal-rpc-spec.md)。
 
-## 6. Config Notify 契约
+## 6. 通用 HTTP Connection-based Client 目标契约
+
+本节定义由多个 HTTP 请求共同维护的临时 Naming Client。Agent Endpoint、普通 Naming
+Instance 和未来其他运行时 Endpoint 在进入 Client 前分别完成领域适配；Client manager 和
+Distro 只处理标准 `InstancePublishInfo` 或 `BatchInstancePublishInfo`。
+
+目标流程为：
+
+```text
+HTTP request
+  -> module-owned Distro Filter routes by internal client id
+  -> mutate HttpConnectionBasedClient
+  -> existing Naming ClientData CHANGE or DELETE
+  -> peer Client state
+  -> Naming indexes and runtime projections
+```
+
+### 6.1 资源身份与路由
+
+| 项目 | 目标语义要求 |
+| --- | --- |
+| 外部身份 | 调用方提供的 opaque `externalClientId`。 |
+| 内部 Client id | `HTTP_CLIENT@@<externalClientId>`。 |
+| Distro resource type | 复用 `Nacos:Naming:v2:ClientData`。 |
+| `resourceKey` 和 `responsibleId` | 完整内部 Client id。 |
+| Client manager | `HttpConnectionBasedClientManager`，与 `ConnectionBasedClientManager` 同级并由 `ClientManagerDelegate` 路由。 |
+| 责任归属 | Distro 根据稳定内部 Client id 选择唯一责任节点。 |
+| 模块复用 | AI、Naming 或其他模块使用相同 external id 时共享同一个 Client、publisher/subscriber 容器和生命周期。 |
+| 远端入口 | 每个模块使用自己的 HTTP Distro Filter 将有状态请求转发到责任节点；AI 不扩展 Naming 模块现有的 Distro Filter。 |
+
+首次创建有状态 Client 时绑定一个鉴权主体和一个 `namespaceId`。状态只保存稳定主体标识，
+不保存 credential 或 access token。后续有状态请求必须使用相同主体和 namespace；不匹配时
+拒绝请求且不刷新任何活性时间。Client id 只是路由和状态归属标识，不是鉴权凭据。
+
+### 6.2 ClientData 与操作
+
+通用 HTTP Client 直接复用 Naming `ClientSyncData`、`DistroClientDataProcessor` 及其
+`ADD/CHANGE/DELETE/VERIFY/SNAPSHOT/QUERY` 语义，不注册新的 Distro resource type 或
+processor。同步数据包含标准 Client identity、attributes、全部 publication 和 revision；
+HTTP Client attributes 额外保存 namespace、鉴权主体标识、Client 活性和 Publisher 活性。
+
+Publisher 数据仍使用现有 Client 的完整 service publication：
+
+- 单实例使用 `InstancePublishInfo`；
+- 完整批次使用 `BatchInstancePublishInfo`；
+- Agent 或其他领域 Adapter 不把领域 DTO 放入 Distro payload；
+- Subscriber 与现有 connection-based Client 一致，只保留在实际承载订阅的一侧，不进入
+  ClientData publication snapshot。
+
+Publication 变化或语义健康状态变化推进 Client revision 并产生现有
+`ClientChangedEvent`。普通 Client 续约和 Publisher heartbeat 不因时间戳本身变化而广播
+ClientData；peer 通过已有 verify、snapshot 和 repair 收敛。
+
+### 6.3 Client 与 Publisher 分层活性
+
+HTTP Client 分别维护：
+
+| 活性 | 刷新来源 | 影响 |
+| --- | --- | --- |
+| Client 活性 | 合法查询、订阅变更、publication 写入和显式 Publisher heartbeat。 | 决定 Client 及 subscriber state 是否仍存在。 |
+| Publisher 活性 | publication 写入和显式 Publisher heartbeat。 | 决定该 Client 拥有的 publication 是否健康和保留。 |
+
+查询只续约已存在的 Client，不创建空 Client，不修改 publisher payload、revision 或健康状态。
+因此频繁查询可以维持 Client 或 subscriber state，但不能使已超时的 publication 恢复健康，
+也不能阻止 publisher expiry。显式 Publisher heartbeat 同时续约 Client 和该 Client 的全部
+publication。
+
+Publisher timeout 满足：
+
+```text
+heartbeatIntervalMillis < unhealthyTimeoutMillis < expireTimeoutMillis
+```
+
+超过 `unhealthyTimeoutMillis` 时 publication 保留但转为 unhealthy；恢复 Publisher 活性时
+恢复为 active，并仅在公开健康投影变化时产生 `CHANGE`。超过 `expireTimeoutMillis` 时删除
+该 Client 的全部 publication，但如果 Client 仍有 subscriber state 则保留 Client。Client
+自身过期时释放其全部 publisher 和 subscriber state。
+
+只有责任节点执行 native Client 和 Publisher 超时调度。ClientData replica 通过现有 snapshot、
+verify 和 repair 流程收敛。Replica 最近一次成功 verify 的时间参与其后成为责任节点时的本地
+超时计算，因此 Client 不需要维护第二个 ownership 标记或单独同步 failover 状态。普通 heartbeat
+不在每个间隔广播。
+
+### 6.4 Apply 事件与可见性
+
+本地 publication 变更、远端 `ADD/CHANGE`、repair 或 snapshot apply 必须沿用 Naming
+Client/service 事件，重建 publisher index、service storage 和 push view。`DELETE` 使用现有
+Client release 路径清理派生状态。`VERIFY` 本身不产生 discovery 变化。
+
+上层 Agent/RAD 投影只消费 Naming `ServiceStorage` 结果；HTTP Client manager 不维护第二份
+Agent Endpoint projection，也不直接依赖 Agent 定义或 AI Resource 状态。
+
+## 7. Config Notify 契约
 
 Config Notify 是 AP 风格的变更传播路径。它不是持久存储协议，也不承载权威配置内容。
 
@@ -156,7 +252,7 @@ Config write or delete
 对于 Config，AP notify 成功表示 peer 节点已被通知刷新服务状态。它不替代持久化成功，也不使推送
 payload 成为权威内容。
 
-## 7. 失败语义
+## 8. 失败语义
 
 AP 使用方必须处理部分成功。
 
@@ -170,18 +266,19 @@ AP 使用方必须处理部分成功。
 - AP 恢复过程必须可以通过日志、指标、trace 或诊断观察；
 - AP 失败不得静默地把运行时状态转化为持久元数据。
 
-## 8. 边界规则
+## 9. 边界规则
 
 - AP 一致性是最终收敛，不是强一致。
 - 本地 `NotifyCenter` 事件本身不是 AP 一致性；只有领域定义了远端传播和修复行为时，它才成为
   AP 行为的一部分。
-- Distro 是运行时数据的正式共享 AP 框架。Config Notify 是 Config 特定的缓存/listener 可见性
-  AP 通知路径。
+- Distro 是运行时数据的正式共享 AP 框架。Naming 使用它同步包括通用 HTTP
+  connection-based Client 在内的临时 Client state。Config Notify 是 Config 特定的
+  cache/listener 可见性 AP 通知路径。
 - AP 路径不得用于权限、namespace 元数据、持久服务元数据、插件状态或数据库 schema 状态。
 - 除非接口规范显式暴露，AP payload 是内部集群契约。
 - AP 传输必须遵循内部 RPC 的鉴权、来源、payload 和重试规则。
 
-## 9. 相关规范
+## 10. 相关规范
 
 - [基础能力规范](foundation-capabilities-spec.md)
 - [内部 RPC 与集群请求规范](foundation-internal-rpc-spec.md)
@@ -194,4 +291,6 @@ AP 使用方必须处理部分成功。
 - [Config 规范](../config/config-spec.md)
 - [Config 监听与订阅规范](../config/config-listener-watch-spec.md)
 - [Naming 一致性与客户端状态规范](../naming/naming-consistency-client-spec.md)
+- [Agent 存储规范](../ai/agent-storage-spec.md)
+- [RAD 协议规范](../ai/rad-protocol-spec.md)
 - [gRPC API 规范](../grpc-api/api-spec.md)

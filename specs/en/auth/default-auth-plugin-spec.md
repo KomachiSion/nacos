@@ -38,28 +38,90 @@ internal networks. It is not a full strong-auth solution for hostile public
 networks. Public exposure requires an external security boundary or a stronger
 auth plugin.
 
-## Required Configuration
+## Auth Framework Configuration
 
 | Configuration | Purpose |
 |---------------|---------|
 | `nacos.core.auth.enabled` | Enable the general auth system and Open API auth. |
 | `nacos.core.auth.admin.enabled` | Enable Admin API auth. |
 | `nacos.core.auth.console.enabled` | Enable Console API auth and default login behavior. |
-| `nacos.core.auth.system.type` | Select the auth plugin, default `nacos`. |
-| `nacos.core.auth.plugin.nacos.token.secret.key` | Secret key used to sign default tokens. Must be configured by deployments. |
-| `nacos.core.auth.plugin.nacos.token.expire.seconds` | Token expiration time. |
-| `nacos.core.auth.plugin.nacos.token.cache.enable` | Enable token parse and validation cache. |
+| `nacos.plugin.auth.type` | Select the auth plugin at startup, default `nacos`; `nacos.core.auth.system.type` is the legacy alias. |
 | `nacos.core.auth.server.identity.key` | Server-to-server identity key. |
 | `nacos.core.auth.server.identity.value` | Server-to-server identity value. |
-| `nacos.core.auth.caching.enabled` | Enable user, role, and permission cache. |
-| `nacos.core.auth.nacos.anonymous.ai.enabled` | Allow anonymous AI access when an endpoint explicitly opts in. |
 
-Token secrets and server identity values must be deployment-specific. A default
-or shared value is unsafe.
+These settings control the auth module, API scopes, startup plugin selection,
+and server identity. They are not configuration items owned by `auth:nacos`.
+Plugin selection requires restart. Server identity values must be
+deployment-specific.
 
-The `ldap` plugin variant additionally uses the `nacos.core.auth.ldap.*`
-configuration family. LDAP changes identity authentication only; authorization
-continues to use Nacos roles and permissions.
+## Managed Plugin Configuration
+
+The `nacos` implementation directly implements `PluginConfigSpec` and is
+registered as configurable plugin `auth:nacos`. Its canonical configuration
+prefix is `nacos.plugin.auth.nacos.`.
+
+| Item key | Canonical static key | Legacy static alias | Type | Effect | Default | Sensitive |
+|----------|----------------------|---------------------|------|--------|---------|-----------|
+| `token.secret.key` | `nacos.plugin.auth.nacos.token.secret.key` | `nacos.core.auth.plugin.nacos.token.secret.key` | String | `RESTART` | Empty | Yes |
+| `token.expire.seconds` | `nacos.plugin.auth.nacos.token.expire.seconds` | `nacos.core.auth.plugin.nacos.token.expire.seconds` | Number | `RUNTIME` | `18000` | No |
+| `token.cache.enable` | `nacos.plugin.auth.nacos.token.cache.enable` | `nacos.core.auth.plugin.nacos.token.cache.enable` | Boolean | `RUNTIME` | `false` | No |
+| `caching.enabled` | `nacos.plugin.auth.nacos.caching.enabled` | `nacos.core.auth.caching.enabled` | Boolean | `RUNTIME` | `true` | No |
+| `anonymous.ai.enabled` | `nacos.plugin.auth.nacos.anonymous.ai.enabled` | `nacos.core.auth.nacos.anonymous.ai.enabled` | Boolean | `RUNTIME` | `false` | No |
+
+`token.expire.seconds` must be greater than zero. When any Nacos API auth scope
+needs token support, `token.secret.key` must be a valid Base64 value that
+decodes to at least 32 bytes. A token secret must be deployment-specific; a
+default or shared value is unsafe. The secret is returned in masked form by
+plugin management APIs and cannot be changed through a runtime update.
+
+The canonical key wins when it and a legacy alias are both present. Legacy
+aliases remain readable for compatibility and produce migration diagnostics
+without logging configuration values. Runtime and local-only updates use the
+item keys in the table and follow the common full-source-map semantics from the
+[Nacos Plugin Spec](../plugin/plugin-spec.md).
+
+The plugin owns an immutable effective configuration snapshot. Applying a new
+snapshot updates token expiration, token-cache selection, authorization cache
+behavior, and anonymous access without making those consumers read Spring
+environment properties directly. The JWT parser is created from the accepted
+restart-only secret. Enabling token caching selects a cache wrapper around the
+same base manager. Disabling token caching switches back to the base manager
+and clears the token cache. Changing token expiration also clears the wrapper
+cache so the next token request uses the accepted runtime lifetime; tokens
+already returned to clients remain valid until their signed expiration.
+
+The `ldap` implementation also implements `PluginConfigSpec` and is registered
+as configurable plugin `auth:ldap`. Its canonical configuration prefix is
+`nacos.plugin.auth.ldap.`.
+
+| Item key | Canonical static key | Legacy static alias | Type | Effect | Default | Sensitive |
+|----------|----------------------|---------------------|------|--------|---------|-----------|
+| `url` | `nacos.plugin.auth.ldap.url` | `nacos.core.auth.ldap.url` | String | `RESTART` | `ldap://localhost:389` | No |
+| `base-dn` | `nacos.plugin.auth.ldap.base-dn` | `nacos.core.auth.ldap.basedc` | String | `RESTART` | `dc=example,dc=org` | No |
+| `timeout` | `nacos.plugin.auth.ldap.timeout` | `nacos.core.auth.ldap.timeout` | Number | `RESTART` | `3000` | No |
+| `user-dn` | `nacos.plugin.auth.ldap.user-dn` | `nacos.core.auth.ldap.userDn` | String | `RESTART` | `cn=admin,dc=example,dc=org` | No |
+| `password` | `nacos.plugin.auth.ldap.password` | `nacos.core.auth.ldap.password` | String | `RESTART` | `password` | Yes |
+| `filter-prefix` | `nacos.plugin.auth.ldap.filter-prefix` | `nacos.core.auth.ldap.filter.prefix` | String | `RESTART` | `uid` | No |
+| `case-sensitive` | `nacos.plugin.auth.ldap.case-sensitive` | `nacos.core.auth.ldap.case.sensitive` | Boolean | `RESTART` | `true` | No |
+| `ignore-partial-result-exception` | `nacos.plugin.auth.ldap.ignore-partial-result-exception` | `nacos.core.auth.ldap.ignore.partial.result.exception` | Boolean | `RESTART` | `false` | No |
+
+The timeout is expressed in milliseconds and must be greater than zero. The
+bind password is masked by plugin management APIs. All LDAP-owned fields are
+restart-only in the first managed version, so runtime and local-only updates
+that add, modify, or remove one of these fields are rejected.
+
+Canonical keys take precedence over the legacy aliases. The unused historical
+template key `nacos.core.auth.ldap.userdn` is not a supported alias because no
+production implementation consumed it and its intended user-DN-pattern
+semantics were ambiguous.
+
+The LDAP plugin owns an immutable effective configuration snapshot. Spring
+LDAP context and template construction reads that accepted snapshot lazily;
+LDAP consumers do not read a second set of `@Value` properties. LDAP changes
+identity authentication only. Token signing and lifetime, Nacos user and role
+storage, and authorization continue to use the infrastructure configured by
+`auth:nacos`; those shared settings are not duplicated in `auth:ldap`
+definitions.
 
 ## Identity
 
@@ -79,11 +141,34 @@ the user role model.
 Anonymous AI access is allowed only when all of these are true:
 
 - The endpoint marks the request as allowing anonymous access.
-- `nacos.core.auth.nacos.anonymous.ai.enabled` is enabled.
+- `anonymous.ai.enabled` is enabled in `auth:nacos` configuration.
 - The default plugin accepts the request as the built-in anonymous identity.
 
-When anonymous AI access is enabled, the implementation initializes the reserved
-anonymous user and role with read permission on `public:*:ai/*`.
+Anonymous fallback is available only when the request does not explicitly
+supply any default-auth credential key. Supplying `Authorization`,
+`accessToken`, `username`, or `password` counts as explicit credential
+presence even when the supplied value is blank. If such a credential is blank
+or invalid, the plugin must return an authentication failure instead of
+falling back to anonymous identity. At the HTTP filter layer, failed identity
+or authority results are converted to an `ACCESS_DENIED` response with HTTP
+403; the plugin-level failure code and message may remain visible in the
+response detail.
+
+Enabling anonymous access immediately enables only identity acceptance. A
+background reconciler then ensures the reserved anonymous user and role exist.
+On first initialization it adds read permission on `public:*:ai/*` and writes
+the anonymous role binding last as the durable completion marker. Concurrent
+nodes use read-after-conflict verification so duplicate creation is treated as
+success only when the expected persisted state is observable.
+
+An existing anonymous role binding is treated as already initialized. The
+reconciler does not restore the broad default permission in that case, so
+administrator-customized anonymous permission scope is preserved. Disabling
+anonymous access stops identity acceptance but does not delete the reserved
+user, role, or permissions. Reconciliation state is only a local database-work
+optimization and is not an authorization condition: normal RBAC authority
+checks still deny the anonymous identity when no matching role or permission is
+present.
 
 ## Default Java Client Auth Integration
 
@@ -157,6 +242,7 @@ The default plugin owns these v3 API families:
 | `/v3/auth/user/admin` | Administrator bootstrap when no global admin exists. |
 | `/v3/auth/role` | Role management. |
 | `/v3/auth/permission` | Permission management. |
+| `/v3/auth/visibility` | Explicit visibility grant management. |
 
 Management endpoints must be protected by console-scoped `@Secured` resources
 such as `console/users`, `console/roles`, `console/permissions`, and
@@ -167,6 +253,12 @@ only for the no-admin initialization state and must be rejected after a global
 administrator exists. These APIs are part of the
 [V3 API Surface](../http-api/v3-api-surface.md) and must follow the
 [HTTP Authorization Spec](../http-api/authorization-spec.md).
+
+The visibility grant API is plugin-owned, not part of any domain controller
+family. It uses `ApiType.ADMIN_API` with identity-only request authentication
+and enforces resource management authority in the grant service. When auth is
+enabled, only the resource owner or a global administrator may grant or revoke
+explicit visibility access for that resource.
 
 ## Default Visibility Implementation
 
@@ -190,10 +282,76 @@ Explicit visibility permission resources use:
 @@visibility/{namespaceId}/{resourceType}/{resourceName}
 ```
 
+The exact canonical resource string must be stored in the default RBAC
+`permissions.resource` column. The column must support at least 512 characters
+so namespaced resources can be persisted without truncation. Resource matching
+is exact and case-sensitive; the default MySQL schema therefore uses
+`utf8mb4_bin` for this column and `ROW_FORMAT=DYNAMIC` for the `permissions`
+table to keep the existing `(role, resource, action)` indexes valid with
+`utf8mb4`.
+
+Existing MySQL deployments should review the MySQL version, InnoDB page size,
+row format, and current `permissions` table definition before applying the
+upgrade SQL. Operators must configure a compatible InnoDB storage mode before
+running the MySQL migration so the existing `UNIQUE(role, resource, action)`
+index can accept the enlarged `utf8mb4` resource column.
+
+Upgrade scripts for this change are delivered in `distribution/conf`:
+
+| Database | Upgrade script | Exact schema change |
+|----------|----------------|---------------------|
+| MySQL | `mysql-upgrade-visibility-permission-resource.sql` | `ALTER TABLE permissions ROW_FORMAT=DYNAMIC, MODIFY COLUMN resource VARCHAR(512) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL;` |
+| Derby | `derby-upgrade-visibility-permission-resource.sql` | `ALTER TABLE permissions ALTER COLUMN resource SET DATA TYPE VARCHAR(512);` |
+| PostgreSQL | `pg-upgrade-visibility-permission-resource.sql` | `ALTER TABLE permissions ALTER COLUMN resource TYPE VARCHAR(512);` |
+| Oracle | `oracle-upgrade-visibility-permission-resource.sql` | `ALTER TABLE permissions MODIFY (resource VARCHAR2(512 CHAR) NOT NULL);` |
+
+The MySQL script documents these preflight checks:
+
+```sql
+SELECT VERSION();
+SHOW VARIABLES LIKE 'innodb_page_size';
+SHOW VARIABLES LIKE 'innodb_default_row_format';
+SHOW CREATE TABLE permissions;
+```
+
+These scripts only expand the raw canonical resource column. They must not add
+grant-list-only reverse indexes such as `permissions(resource, action, role)` or
+`roles(role, username)`.
+The operator-facing upgrade note is
+[`doc/visibility-permission-resource-upgrade.md`](../../../doc/visibility-permission-resource-upgrade.md).
+
+Explicit visibility grants for currently supported resources are managed through:
+
+```text
+POST /v3/auth/visibility
+DELETE /v3/auth/visibility
+```
+
+Both endpoints are secured with `ApiType.ADMIN_API`.
+
+Grant behavior:
+
+- Read grants store action `r`.
+- Write or read-write grant requests store action `rw`, and `rw` implies read
+  visibility when list/search queries are advised.
+- Grant data reuses the default RBAC persistence by storing plugin-owned
+  internal roles and permissions in the auth backend.
+- The default implementation creates at most one reserved internal visibility
+  role for each grantee user. The role name is deterministic, unique to the
+  grantee, and bounded by the existing role-name column. Resource and action
+  data must be stored only in permission rows attached to that role, not encoded
+  into the role name.
+- List/search authorization must derive explicit resources from the actual
+  permission rows attached to the caller's reserved visibility role. A role
+  binding without a matching permission row must not grant visibility.
+- Resource existence and owner metadata are resolved through a domain-provided
+  visibility resource locator instead of a direct compile-time dependency from
+  the auth plugin to domain persistence types.
+
 Range queries must combine the base visibility predicate with explicitly
-authorized resources. The current default implementation exposes the structure
-for explicit authorized resources; API and storage integrations must use it as
-that integration is completed.
+authorized resources. The default visibility implementation populates
+explicit authorized resources from the grant service so list/search paths can
+include private resources that were granted to the caller.
 
 For AI list and search paths, visibility must be converted into repository query
 conditions before count and page queries run. This keeps `totalCount` aligned
@@ -205,11 +363,16 @@ Legacy or compatibility endpoints may remain for existing clients, but new
 documentation and new development should target the v3 auth API and the plugin
 contracts defined here.
 
+Legacy static configuration aliases in the managed-plugin table remain
+supported. New distribution templates use canonical keys and identify the old
+keys in comments. Startup scripts migrate a valid legacy token secret to the
+canonical key when the canonical key is absent or empty; when both are set, the
+canonical value wins. Secret values must never be printed during migration.
+
 ## Pending Issues
 
-- The `ldap` plugin is currently coupled into the default auth implementation
-  package by extending `NacosAuthPluginService`. Conceptually LDAP is a separate
-  identity-provider-backed auth plugin, not part of the default Nacos
-  username/password and token implementation. It should be split into a
-  standalone auth plugin package and spec while preserving compatibility for
-  existing `nacos.core.auth.system.type=ldap` deployments.
+- The `ldap` plugin now owns its LDAP connection and lookup configuration
+  through `PluginConfigSpec`, but still consumes token, user, role, and
+  authorization infrastructure configured by `auth:nacos`. A later refactor
+  should move those shared capabilities behind an explicit auth-module service
+  so the identity-provider plugin does not depend on default-plugin ownership.

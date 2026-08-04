@@ -16,6 +16,10 @@
 
 package com.alibaba.nacos.config.server.configuration;
 
+import ch.qos.logback.classic.Level;
+import ch.qos.logback.classic.Logger;
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.read.ListAppender;
 import com.alibaba.nacos.common.event.ServerConfigChangeEvent;
 import com.alibaba.nacos.plugin.config.constants.ConfigChangeConstants;
 import com.alibaba.nacos.sys.env.EnvUtil;
@@ -25,6 +29,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.MockedStatic;
 import org.mockito.Mockito;
+import org.slf4j.LoggerFactory;
 import org.springframework.mock.env.MockEnvironment;
 
 import java.util.Properties;
@@ -32,6 +37,7 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
@@ -81,6 +87,29 @@ class ConfigChangeConfigsTest {
         assertNotNull(properties);
         assertTrue(properties.isEmpty());
         assertNull(properties.getProperty("enabled"));
+    }
+    
+    @Test
+    void testLegacyUsageWarningLoggedOncePerPlugin() {
+        Logger logger = (Logger) LoggerFactory.getLogger(ConfigChangeConfigs.class);
+        ListAppender<ILoggingEvent> appender = new ListAppender<>();
+        appender.start();
+        logger.addAppender(appender);
+        try {
+            configChangeConfigs.getPluginProperties("mockPlugin");
+            configChangeConfigs.getPluginProperties("mockPlugin");
+            
+            long warningCount = appender.list.stream()
+                .filter(event -> Level.WARN == event.getLevel())
+                .filter(event -> event.getFormattedMessage()
+                    .contains("Applying deprecated legacy configuration"))
+                .filter(event -> event.getFormattedMessage().contains("mockPlugin"))
+                .count();
+            assertEquals(1L, warningCount);
+        } finally {
+            logger.detachAppender(appender);
+            appender.stop();
+        }
     }
     
     @Test
@@ -160,4 +189,38 @@ class ConfigChangeConfigsTest {
         }
     }
     
+    @Test
+    void testRefreshPluginPropertiesIgnoresMalformedPropertyWithoutDot() {
+        // Create a fresh ConfigChangeConfigs with no valid properties loaded first.
+        MockEnvironment emptyEnv = new MockEnvironment();
+        EnvUtil.setEnvironment(emptyEnv);
+        
+        // Mock PropertiesUtil to return Properties containing both a valid key
+        // ("mockPlugin.enabled") and a malformed one without any dot ("nodotvalue").
+        // When the loop hits "nodotvalue", indexOf('.') returns -1, and
+        // substring(0, -1) throws StringIndexOutOfBoundsException. The exception
+        // is caught, but the assignment `configPluginProperties = newProperties` at line 67
+        // is inside the try block BEFORE the catch, so all valid entries are lost.
+        Properties badProperties = new Properties();
+        badProperties.setProperty("mockPlugin.enabled", "true");
+        badProperties.setProperty("nodotvalue", "bad");
+        
+        try (MockedStatic<PropertiesUtil> mocked = Mockito.mockStatic(PropertiesUtil.class)) {
+            mocked.when(() -> PropertiesUtil.getPropertiesWithPrefix(Mockito.any(),
+                Mockito.eq(ConfigChangeConstants.NACOS_CORE_CONFIG_PLUGIN_PREFIX)))
+                .thenReturn(badProperties);
+            
+            // Create a brand new instance so its constructor's refreshPluginProperties()
+            // runs with the mocked badProperties — no prior valid data to fall back on.
+            ConfigChangeConfigs freshConfigs = new ConfigChangeConfigs();
+            
+            // Valid property "mockPlugin.enabled" must survive despite the malformed "nodotvalue"
+            // causing StringIndexOutOfBoundsException. If the bug exists, the exception prevents
+            // the assignment of configPluginProperties, so valid properties are wiped out.
+            assertTrue(Boolean.parseBoolean(
+                freshConfigs.getPluginProperties("mockPlugin").getProperty("enabled")),
+                "Valid property 'mockPlugin.enabled' should still be loaded even when "
+                    + "a malformed property without dot ('nodotvalue') causes StringIndexOutOfBoundsException");
+        }
+    }
 }

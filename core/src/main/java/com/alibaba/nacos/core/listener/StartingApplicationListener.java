@@ -18,9 +18,13 @@ package com.alibaba.nacos.core.listener;
 
 import com.alibaba.nacos.core.listener.startup.NacosStartUp;
 import com.alibaba.nacos.core.listener.startup.NacosStartUpManager;
+import com.alibaba.nacos.core.plugin.PluginCriticalBootstrapValidator;
+import com.alibaba.nacos.core.plugin.PreContextPluginInitializer;
+import com.alibaba.nacos.core.plugin.StandardPluginInitializer;
 import com.alibaba.nacos.sys.env.EnvUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.core.env.ConfigurableEnvironment;
 
@@ -57,12 +61,26 @@ public class StartingApplicationListener implements NacosApplicationListener {
     
     @Override
     public void contextLoaded(ConfigurableApplicationContext context) {
-        NacosStartUpManager.getCurrentStartUp().customEnvironment();
+        NacosStartUp currentStartUp = NacosStartUpManager.getCurrentStartUp();
+        if (NacosStartUp.CORE_START_UP_PHASE.equals(currentStartUp.startUpPhase())
+            && EnvUtil.getDeploymentType() != null) {
+            new PreContextPluginInitializer(context).initialize();
+            currentStartUp.customEnvironment();
+            PluginCriticalBootstrapValidator.validate();
+            return;
+        }
+        currentStartUp.customEnvironment();
     }
     
     @Override
     public void started(ConfigurableApplicationContext context) {
         NacosStartUp currentStartUp = NacosStartUpManager.getCurrentStartUp();
+        ObjectProvider<StandardPluginInitializer> initializerProvider =
+            context.getBeanProvider(StandardPluginInitializer.class);
+        StandardPluginInitializer initializer = initializerProvider.getIfAvailable();
+        if (initializer != null) {
+            initializer.initialize();
+        }
         currentStartUp.started();
         currentStartUp.logStarted(LOGGER);
     }

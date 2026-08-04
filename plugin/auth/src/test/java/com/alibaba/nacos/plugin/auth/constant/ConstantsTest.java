@@ -28,6 +28,7 @@ class ConstantsTest {
     @Test
     void testConstantsForAuth() {
         assertEquals("nacos.core.auth.enabled", Constants.Auth.NACOS_CORE_AUTH_ENABLED);
+        assertEquals("nacos.plugin.auth.type", Constants.Auth.NACOS_PLUGIN_AUTH_TYPE);
         assertEquals("nacos.core.auth.system.type", Constants.Auth.NACOS_CORE_AUTH_SYSTEM_TYPE);
         assertEquals("nacos.core.auth.caching.enabled",
             Constants.Auth.NACOS_CORE_AUTH_CACHING_ENABLED);
@@ -50,6 +51,7 @@ class ConstantsTest {
         assertEquals("identity_id", Constants.Identity.IDENTITY_ID);
         assertEquals("X-Real-IP", Constants.Identity.X_REAL_IP);
         assertEquals("remote_ip", Constants.Identity.REMOTE_IP);
+        assertEquals("server_identity", Constants.Identity.SERVER_IDENTITY);
     }
     
     @Test

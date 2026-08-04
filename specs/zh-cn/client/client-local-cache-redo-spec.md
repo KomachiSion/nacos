@@ -31,6 +31,7 @@ redo 行为。本文展开[客户端运行时规范](client-runtime-spec.md)中�
 | Naming service-info cache | 服务端 push 或 query response | 订阅或查询服务的最后已知实例。 | 仅恢复缓存。 |
 | Naming failover data | 用户或扩展提供的本地 failover source | failover switch 开启时覆盖 discovery view。 | 仅本地 discovery override。 |
 | Redo data | SDK register、subscribe 或 endpoint 操作 | reconnect 后恢复运行时意图。 | 仅运行时意图。 |
+| RAD 发现与 Watch 状态（目标） | Discover 结果或 Watch 注册 | 最后一个完整 Agent 发现快照和 Watch 意图。 | 仅恢复缓存和运行时意图。 |
 
 除非领域规范显式说明，本地数据不得被视为服务端已提交状态。
 
@@ -115,19 +116,91 @@ Naming redo 覆盖：
 持久 Naming service 状态由服务端持有，除非领域明确把某操作视为运行时意图，否则不应由客户端
 redo 恢复。
 
-AI redo 覆盖运行时 endpoint 和 subscription intent，例如 MCP 或 agent endpoint 注册。AI resource
-publish/delete 语义仍由 [AI Registry 规范](../ai/ai-registry-spec.md)约束。
+AI redo 覆盖运行时 endpoint 和 subscription intent，例如 MCP 或 Agent Endpoint 注册。AI resource
+publish/delete 语义仍由 [AI Registry 规范](../ai/ai-registry-spec.md)约束。目标 Agent/RAD
+规则在第 8 节定义。
 
 Config listener 通过 listener resync 和 fuzzy watch resync 恢复。Client SDK 不会自动 redo Config
 publish/delete 操作。
 
-## 8. Shutdown
+## 8. Agent 与 RAD 目标恢复契约
+
+本节定义新 Agent/RAD SDK 的恢复契约。gRPC 路径在
+[Agent API 规范](../ai/agent-api-spec.md)中的 Agent/RAD 能力完成协商后生效；HTTP
+路径使用同一份本地期望状态，但不依赖 gRPC ability。
+
+### 8.1 Endpoint 发布 Redo 身份
+
+SDK 按 Publication 身份维护期望 Endpoint 发布状态，并保存重放所需的完整 Batch
+Payload。Redo key 固定为：
+
+```text
+(namespaceId, agentName, protocol)
+```
+
+每个 key 只保存一份完整 `AgentEndpointRegistrationBatch`。Register 先复制并校验
+全部 Endpoint，再以提交的完整 Batch 原子替换旧记录；它不合并 Endpoint upsert。
+`runtimeVersion`、`versionRange` 和全部 Endpoint payload 都属于该记录内容，后一次
+Register 可以完整更换它们。
+
+Deregister 按 Endpoint 自然键从这份期望 Batch 中删除成员。仍有 Endpoint 时，SDK
+通过 Register 发送完整剩余 Batch；没有 Endpoint 时发送整份 Publication 注销并清除
+成功完成的期望记录。Redo Payload 必须保留 URI、Priority、Weight 和 Metadata 等完整
+公开值。
+
+### 8.2 HTTP 与 gRPC Publisher 恢复
+
+HTTP Agent Publisher 为一个 SDK 实例生成一个 `X-Nacos-Client-Id`。在该 SDK 实例
+生命周期内，这个 Id 在请求重试、Server 切换、故障转移、Heartbeat 和 Redo 时保持稳定；
+进程重启后生成新 Id。
+
+任一 Agent Endpoint 请求返回 `HTTP_CLIENT_NOT_FOUND` 时，SDK 将该 HTTP Client
+拥有的全部 Endpoint redo record 标记为未注册，并 redo 每个完整期望 Publication 分组。
+只重试失败 Endpoint 不充分，因为 Server 已声明整个 HTTP Client 状态不存在。
+
+gRPC Endpoint 意图归属于当前 connection id。Reconnect 后，SDK 获取新的 connection id，
+把旧 Connection 的全部 Endpoint redo record 标记为未注册，并在新 Connection 下重放完整
+期望分组。HTTP 与 gRPC Publisher record 必须隔离；一种 Transport 不得注销另一种
+Transport 拥有的 Contribution。
+
+### 8.3 本地轮询订阅身份
+
+首版 SDK 不创建服务端 Watch，也不保存 Connection 维度 `watchKey`。规范化本地轮询
+订阅 Key 包含：
+
+```text
+(namespaceId, canonicalAgentReference, canonicalFilter, listenerIdentity)
+```
+
+Reference 规范化保持精确 Version、Label 和 Latest 之间的区别。Filter 的集合和 Map
+内容用于值相等比较，Listener identity 是取消订阅时使用的同一 Listener 实例。SDK 周期
+执行相同 Discover；gRPC reconnect 不增加订阅 redo，因为下一次轮询自然使用新连接。
+目标不存在时保留轮询但不投递空快照。解析 Version、`contentDigest` 或任一
+`sourceRevision` 改变时，SDK 原子替换缓存并投递完整结果。
+
+[运行时推送与重连规范](runtime-push-reconnect-spec.md)中的服务端 Watch/Push 是独立
+后续契约；实现该契约前必须先更新 Agent API、能力位和传输 Payload，不能从本地轮询
+身份推导 Wire Watch state。
+
+### 8.4 旧 A2A 兼容恢复
+
+namespace-bound `A2aService` 的旧 Version-specific Endpoint Publication 使用
+`(agentName, exactVersion)` 作为本地 redo 身份；不同精确 Version 不得相互覆盖。Redo record
+保存 Endpoint 集合及其 URI、transport、metadata 等字段的防御性快照，调用方后续修改原始
+`AgentEndpoint` 或 Collection 不得改变重连意图。
+
+旧 AgentCard 订阅的 exact Version 和 latest 是不同本地身份。服务端返回的 Version 当前是否为
+latest 不能替代调用方订阅身份；一次变化必须通知所有受影响的 exact/latest key。当 latest 指向已
+缓存的精确 Version 时仍需产生 latest 变化。取消后使用已有 Cache 重新订阅必须重新启动轮询任务。
+SDK shutdown 必须停止旧 AgentCard Cache Holder 的全部轮询。
+
+## 9. Shutdown
 
 SDK shutdown 必须清理内存 redo state、停止后台 retry task、关闭 transport client，并停止本地
 cache/failover refresh task。除非用户显式调用缓存清理操作，shutdown 不应删除用户维护的 failover
 文件或服务端派生 snapshot。
 
-## 9. 待处理问题
+## 10. 待处理问题
 
 - Naming redo 当前仍使用独立实现，较新的 AI redo 使用通用 redo 抽象。后续实现应收敛到共享 redo
   模型。

@@ -16,32 +16,28 @@
 
 package com.alibaba.nacos.ai.pipeline;
 
-import com.alibaba.nacos.ai.pipeline.config.PipelineConfigProvider;
-import com.alibaba.nacos.ai.pipeline.model.PipelineConfig;
-import com.alibaba.nacos.ai.pipeline.model.PipelineExecution;
-import com.alibaba.nacos.ai.pipeline.model.PipelineExecutionResult;
-import com.alibaba.nacos.ai.pipeline.model.PipelineExecutionStatus;
-import com.alibaba.nacos.ai.pipeline.model.PipelineNodeConfig;
-import com.alibaba.nacos.ai.pipeline.model.PipelineNodeResult;
+import com.alibaba.nacos.api.ai.model.pipeline.PipelineExecution;
+import com.alibaba.nacos.api.ai.model.pipeline.PipelineExecutionResult;
+import com.alibaba.nacos.api.ai.model.pipeline.PipelineExecutionStatus;
+import com.alibaba.nacos.api.ai.model.pipeline.PipelineNodeResult;
 import com.alibaba.nacos.ai.pipeline.repository.PipelineExecutionRepository;
+import com.alibaba.nacos.plugin.ai.pipeline.model.Checkpoint;
 import com.alibaba.nacos.plugin.ai.pipeline.model.PublishPipelineContext;
 import com.alibaba.nacos.plugin.ai.pipeline.model.PublishPipelineResourceType;
 import com.alibaba.nacos.plugin.ai.pipeline.model.PublishPipelineResult;
 import com.alibaba.nacos.plugin.ai.pipeline.spi.PublishPipelineService;
-import com.alibaba.nacos.plugin.ai.pipeline.spi.PublishPipelineServiceBuilder;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
-import java.util.Properties;
 import java.util.concurrent.AbstractExecutorService;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
-import java.util.stream.Collectors;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -58,6 +54,11 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * @since 3.2.0
  */
 class PublishPipelineExecutorTest {
+    
+    @AfterEach
+    void tearDown() {
+        TestAiPipelineSupport.clearStateChecker();
+    }
     
     private static ExecutorService directExecutor() {
         return new AbstractExecutorService() {
@@ -114,12 +115,6 @@ class PublishPipelineExecutorTest {
             }
             
             @Override
-            public PipelineExecution findByResource(String resourceType, String resourceName,
-                String namespaceId, String version) {
-                return null;
-            }
-            
-            @Override
             public List<PipelineExecution> findByResourceWithPage(String resourceType,
                 String resourceName,
                 String namespaceId, String version, int offset, int limit) {
@@ -156,12 +151,6 @@ class PublishPipelineExecutorTest {
         }
         
         @Override
-        public PipelineExecution findByResource(String resourceType, String resourceName,
-            String namespaceId, String version) {
-            return null;
-        }
-        
-        @Override
         public List<PipelineExecution> findByResourceWithPage(String resourceType,
             String resourceName,
             String namespaceId, String version, int offset, int limit) {
@@ -194,12 +183,6 @@ class PublishPipelineExecutorTest {
             }
             
             @Override
-            public PipelineExecution findByResource(String resourceType, String resourceName,
-                String namespaceId, String version) {
-                return null;
-            }
-            
-            @Override
             public List<PipelineExecution> findByResourceWithPage(String resourceType,
                 String resourceName,
                 String namespaceId, String version, int offset, int limit) {
@@ -226,7 +209,7 @@ class PublishPipelineExecutorTest {
     
     private static PublishPipelineService passingService(String id, int order,
         PublishPipelineResourceType... types) {
-        return new PublishPipelineService() {
+        return new TestPublishPipelineService() {
             
             @Override
             public String pipelineId() {
@@ -252,7 +235,7 @@ class PublishPipelineExecutorTest {
     
     private static PublishPipelineService failingService(String id, int order,
         PublishPipelineResourceType... types) {
-        return new PublishPipelineService() {
+        return new TestPublishPipelineService() {
             
             @Override
             public String pipelineId() {
@@ -278,7 +261,7 @@ class PublishPipelineExecutorTest {
     
     private static PublishPipelineService throwingService(String id, int order,
         String exceptionMsg, PublishPipelineResourceType... types) {
-        return new PublishPipelineService() {
+        return new TestPublishPipelineService() {
             
             @Override
             public String pipelineId() {
@@ -302,58 +285,13 @@ class PublishPipelineExecutorTest {
         };
     }
     
-    private static PublishPipelineServiceBuilder builderFor(PublishPipelineService service) {
-        return new PublishPipelineServiceBuilder() {
-            
-            @Override
-            public String pipelineId() {
-                return service.pipelineId();
-            }
-            
-            @Override
-            public PublishPipelineService build(Properties properties) {
-                return service;
-            }
-        };
-    }
-    
-    private static PipelineConfig buildConfig(boolean enabled, List<String> nodeIds) {
-        PipelineConfig config = new PipelineConfig();
-        config.setEnabled(enabled);
-        List<PipelineNodeConfig> nodes = new ArrayList<>();
-        for (String id : nodeIds) {
-            PipelineNodeConfig nc = new PipelineNodeConfig();
-            nc.setPipelineId(id);
-            nc.setProperties(new Properties());
-            nodes.add(nc);
-        }
-        config.setNodes(nodes);
-        return config;
+    private static PipelineTestSettings buildConfig(boolean enabled, List<String> nodeIds) {
+        return new PipelineTestSettings(enabled, nodeIds);
     }
     
     private static PublishPipelineManager buildManager(List<PublishPipelineService> services,
-        PipelineConfig config) {
-        PublishPipelineManager manager = new PublishPipelineManager();
-        List<PublishPipelineServiceBuilder> builders = services.stream()
-            .map(PublishPipelineExecutorTest::builderFor)
-            .collect(Collectors.toList());
-        manager.initWithBuilders(builders, config);
-        return manager;
-    }
-    
-    private static PipelineConfigProvider fixedConfigProvider(PipelineConfig config) {
-        return new PipelineConfigProvider() {
-            
-            @Override
-            public PipelineConfig getConfig() {
-                return config;
-            }
-            
-            @Override
-            public String type() {
-                return "test";
-            }
-        };
+        PipelineTestSettings config) {
+        return TestAiPipelineSupport.newManager(config.enabled, config.nodeIds, services);
     }
     
     private static List<ExecutionInput> sampleExecutionInputs() {
@@ -374,7 +312,7 @@ class PublishPipelineExecutorTest {
     @Test
     void enabledConfigReturnsExecutionId() {
         for (ExecutionInput input : sampleExecutionInputs()) {
-            PipelineConfig config = buildConfig(true, input.nodeIds);
+            PipelineTestSettings config = buildConfig(true, input.nodeIds);
             List<PublishPipelineService> services = new ArrayList<>();
             for (int i = 0; i < input.nodeIds.size(); i++) {
                 services.add(
@@ -382,10 +320,8 @@ class PublishPipelineExecutorTest {
             }
             
             PublishPipelineManager manager = buildManager(services, config);
-            PipelineConfigProvider configProvider = fixedConfigProvider(config);
-            
             PublishPipelineExecutor executor = new PublishPipelineExecutor(
-                manager, configProvider, noOpRepository(), directExecutor());
+                manager, noOpRepository(), directExecutor());
             
             PublishPipelineContext ctx = buildContext(input.resourceType, input.resourceName,
                 input.namespaceId, input.version);
@@ -413,7 +349,7 @@ class PublishPipelineExecutorTest {
     @Test
     void disabledOrNoMatchingNodesHasNoSideEffects() {
         for (DisabledOrEmptyInput input : sampleDisabledOrEmptyInputs()) {
-            PipelineConfig config = buildConfig(input.enabled, input.nodeIds);
+            PipelineTestSettings config = buildConfig(input.enabled, input.nodeIds);
             
             List<PublishPipelineService> services = new ArrayList<>();
             if (!input.nodeIds.isEmpty()) {
@@ -422,11 +358,10 @@ class PublishPipelineExecutorTest {
             }
             
             PublishPipelineManager manager = buildManager(services, config);
-            PipelineConfigProvider configProvider = fixedConfigProvider(config);
             TrackingRepository trackingRepo = new TrackingRepository();
             
             PublishPipelineExecutor executor = new PublishPipelineExecutor(
-                manager, configProvider, trackingRepo, directExecutor());
+                manager, trackingRepo, directExecutor());
             
             PublishPipelineContext ctx = buildContext(PublishPipelineResourceType.SKILL,
                 "test-resource", "ns", "v1");
@@ -461,7 +396,7 @@ class PublishPipelineExecutorTest {
     @Test
     void callbackCalledExactlyOnce() {
         for (CallbackTestInput input : sampleCallbackTestInputs()) {
-            PipelineConfig config = buildConfig(true, input.nodeIds);
+            PipelineTestSettings config = buildConfig(true, input.nodeIds);
             
             List<PublishPipelineService> services = new ArrayList<>();
             for (int i = 0; i < input.nodeIds.size(); i++) {
@@ -475,10 +410,8 @@ class PublishPipelineExecutorTest {
             }
             
             PublishPipelineManager manager = buildManager(services, config);
-            PipelineConfigProvider configProvider = fixedConfigProvider(config);
-            
             PublishPipelineExecutor executor = new PublishPipelineExecutor(
-                manager, configProvider, noOpRepository(), directExecutor());
+                manager, noOpRepository(), directExecutor());
             
             PublishPipelineContext ctx = buildContext(input.resourceType, "res", "ns", "v1");
             
@@ -518,7 +451,7 @@ class PublishPipelineExecutorTest {
     @Test
     void failStopNoNodesAfterRejection() {
         for (FailStopInput input : sampleFailStopInputs()) {
-            PipelineConfig config = buildConfig(true, input.nodeIds);
+            PipelineTestSettings config = buildConfig(true, input.nodeIds);
             
             List<PublishPipelineService> services = new ArrayList<>();
             for (int i = 0; i < input.nodeIds.size(); i++) {
@@ -532,10 +465,8 @@ class PublishPipelineExecutorTest {
             }
             
             PublishPipelineManager manager = buildManager(services, config);
-            PipelineConfigProvider configProvider = fixedConfigProvider(config);
-            
             PublishPipelineExecutor executor = new PublishPipelineExecutor(
-                manager, configProvider, noOpRepository(), directExecutor());
+                manager, noOpRepository(), directExecutor());
             
             PublishPipelineContext ctx =
                 buildContext(PublishPipelineResourceType.SKILL, "res", "ns", "v1");
@@ -581,7 +512,7 @@ class PublishPipelineExecutorTest {
     @Test
     void exceptionTreatedAsFailure() {
         for (ExceptionInput input : sampleExceptionInputs()) {
-            PipelineConfig config = buildConfig(true, input.nodeIds);
+            PipelineTestSettings config = buildConfig(true, input.nodeIds);
             
             List<PublishPipelineService> services = new ArrayList<>();
             for (int i = 0; i < input.nodeIds.size(); i++) {
@@ -596,10 +527,8 @@ class PublishPipelineExecutorTest {
             }
             
             PublishPipelineManager manager = buildManager(services, config);
-            PipelineConfigProvider configProvider = fixedConfigProvider(config);
-            
             PublishPipelineExecutor executor = new PublishPipelineExecutor(
-                manager, configProvider, noOpRepository(), directExecutor());
+                manager, noOpRepository(), directExecutor());
             
             PublishPipelineContext ctx =
                 buildContext(PublishPipelineResourceType.SKILL, "res", "ns", "v1");
@@ -642,7 +571,7 @@ class PublishPipelineExecutorTest {
     @Test
     void nodesExecutedInOrderAscending() {
         for (OrderTestInput input : sampleOrderTestInputs()) {
-            PipelineConfig config = buildConfig(true, input.nodeIds);
+            PipelineTestSettings config = buildConfig(true, input.nodeIds);
             
             List<PublishPipelineService> services = new ArrayList<>();
             for (int i = 0; i < input.nodeIds.size(); i++) {
@@ -651,10 +580,8 @@ class PublishPipelineExecutorTest {
             }
             
             PublishPipelineManager manager = buildManager(services, config);
-            PipelineConfigProvider configProvider = fixedConfigProvider(config);
-            
             PublishPipelineExecutor executor = new PublishPipelineExecutor(
-                manager, configProvider, noOpRepository(), directExecutor());
+                manager, noOpRepository(), directExecutor());
             
             PublishPipelineContext ctx =
                 buildContext(PublishPipelineResourceType.SKILL, "res", "ns", "v1");
@@ -699,7 +626,7 @@ class PublishPipelineExecutorTest {
     @Test
     void persistenceFailureDoesNotBlockCallback() {
         for (PersistenceFailureInput input : samplePersistenceFailureInputs()) {
-            PipelineConfig config = buildConfig(true, input.nodeIds);
+            PipelineTestSettings config = buildConfig(true, input.nodeIds);
             
             List<PublishPipelineService> services = new ArrayList<>();
             for (int i = 0; i < input.nodeIds.size(); i++) {
@@ -713,10 +640,8 @@ class PublishPipelineExecutorTest {
             }
             
             PublishPipelineManager manager = buildManager(services, config);
-            PipelineConfigProvider configProvider = fixedConfigProvider(config);
-            
             PublishPipelineExecutor executor = new PublishPipelineExecutor(
-                manager, configProvider, throwingRepository(), directExecutor());
+                manager, throwingRepository(), directExecutor());
             
             PublishPipelineContext ctx =
                 buildContext(PublishPipelineResourceType.SKILL, "res", "ns", "v1");
@@ -742,6 +667,83 @@ class PublishPipelineExecutorTest {
         }
     }
     
+    @Test
+    void checkpointsShouldBeCopiedToExecutionResult() {
+        PipelineTestSettings config = buildConfig(true,
+            Collections.singletonList("checkpoint"));
+        PublishPipelineService service = new TestPublishPipelineService() {
+            
+            @Override
+            public String pipelineId() {
+                return "checkpoint";
+            }
+            
+            @Override
+            public PublishPipelineResult execute(PublishPipelineContext context) {
+                return PublishPipelineResult.pass("passed", null,
+                    Collections.singletonList(new Checkpoint("criterion", true)));
+            }
+            
+            @Override
+            public int getPreferOrder() {
+                return 1;
+            }
+            
+            @Override
+            public PublishPipelineResourceType[] pipelineResourceTypes() {
+                return PublishPipelineResourceType.values();
+            }
+        };
+        PublishPipelineManager manager = buildManager(Collections.singletonList(service), config);
+        PublishPipelineExecutor executor = new PublishPipelineExecutor(manager, noOpRepository(),
+            directExecutor());
+        AtomicReference<PipelineExecutionResult> result = new AtomicReference<>();
+        
+        executor.execute(buildContext(PublishPipelineResourceType.SKILL, "resource", "ns", "v1"),
+            result::set);
+        
+        assertEquals(1, result.get().getPipeline().get(0).getCheckpoints().size());
+        assertEquals("criterion",
+            result.get().getPipeline().get(0).getCheckpoints().get(0).getTitle());
+        assertTrue(result.get().getPipeline().get(0).getCheckpoints().get(0).getPassed());
+    }
+    
+    @Test
+    void callbackFailureShouldProduceRejectedFallbackResult() {
+        PipelineTestSettings config = buildConfig(true,
+            Collections.singletonList("callback"));
+        PublishPipelineManager manager = buildManager(Collections.singletonList(
+            passingService("callback", 1, PublishPipelineResourceType.SKILL)), config);
+        PublishPipelineExecutor executor = new PublishPipelineExecutor(manager, noOpRepository(),
+            directExecutor());
+        AtomicInteger callbackCount = new AtomicInteger();
+        AtomicReference<PipelineExecutionResult> fallback = new AtomicReference<>();
+        
+        executor.execute(buildContext(PublishPipelineResourceType.SKILL, "resource", "ns", "v1"),
+            result -> {
+                if (callbackCount.getAndIncrement() == 0) {
+                    throw new IllegalStateException("callback failed");
+                }
+                fallback.set(result);
+            });
+        
+        assertEquals(2, callbackCount.get());
+        assertEquals(PipelineExecutionStatus.REJECTED, fallback.get().getStatus());
+    }
+    
+    @Test
+    void pipelineAvailabilityShouldUseManagerSelection() {
+        PipelineTestSettings config = buildConfig(true,
+            Collections.singletonList("available"));
+        PublishPipelineManager manager = buildManager(Collections.singletonList(
+            passingService("available", 1, PublishPipelineResourceType.SKILL)), config);
+        PublishPipelineExecutor executor = new PublishPipelineExecutor(manager, noOpRepository(),
+            directExecutor());
+        
+        assertTrue(executor.isPipelineAvailable(PublishPipelineResourceType.SKILL));
+        assertFalse(executor.isPipelineAvailable(PublishPipelineResourceType.PROMPT));
+    }
+    
     static class ExecutionInput {
         
         final List<String> nodeIds;
@@ -761,6 +763,18 @@ class PublishPipelineExecutorTest {
             this.resourceName = resourceName;
             this.namespaceId = namespaceId;
             this.version = version;
+        }
+    }
+    
+    private static final class PipelineTestSettings {
+        
+        private final boolean enabled;
+        
+        private final List<String> nodeIds;
+        
+        private PipelineTestSettings(boolean enabled, List<String> nodeIds) {
+            this.enabled = enabled;
+            this.nodeIds = nodeIds;
         }
     }
     

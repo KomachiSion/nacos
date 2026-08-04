@@ -34,6 +34,11 @@ Current AP-style implementations are:
 | Distro | Naming runtime state | Synchronize ephemeral client-owned service instance state between server nodes. |
 | Config Notify | Config cache and listener visibility | Notify peer nodes that a Config resource changed so local dump cache and listeners can refresh. |
 
+Section 6 defines the target contract for a common HTTP connection-based
+Client. It reuses Naming's existing ClientData Distro resource type and
+processor. The Client type is not implemented or available until its manager is
+complete and an upper-layer API advertises the corresponding capability.
+
 The historical `APProtocol` interface exists in the consistency module, but the
 current active AP implementations are the Distro foundation and the Config
 Notify path. New specs should describe AP semantics directly instead of assuming
@@ -146,7 +151,117 @@ Naming Distro transport is carried by
 `DistroDataRequest` / `DistroDataResponse` over the
 [Internal RPC And Cluster Request Spec](foundation-internal-rpc-spec.md).
 
-## 6. Config Notify Contract
+## 6. Target Common HTTP Connection-based Client Contract
+
+This section defines an ephemeral Naming Client maintained across multiple
+HTTP requests. Agent Endpoints, ordinary Naming Instances, and future runtime
+Endpoints are adapted by their domains before entering the Client. The Client
+manager and Distro handle only standard `InstancePublishInfo` or
+`BatchInstancePublishInfo`.
+
+The target flow is:
+
+```text
+HTTP request
+  -> module-owned Distro Filter routes by internal client id
+  -> mutate HttpConnectionBasedClient
+  -> existing Naming ClientData CHANGE or DELETE
+  -> peer Client state
+  -> Naming indexes and runtime projections
+```
+
+### 6.1 Resource Identity And Routing
+
+| Item | Required target semantics |
+| --- | --- |
+| External identity | Caller-supplied opaque `externalClientId`. |
+| Internal Client id | `HTTP_CLIENT@@<externalClientId>`. |
+| Distro resource type | Reuse `Nacos:Naming:v2:ClientData`. |
+| `resourceKey` and `responsibleId` | The complete internal Client id. |
+| Client manager | `HttpConnectionBasedClientManager`, a peer of `ConnectionBasedClientManager` routed by `ClientManagerDelegate`. |
+| Responsibility | Distro selects one responsible node using the stable internal Client id. |
+| Module reuse | AI, Naming, and other modules using the same external id share one Client, publisher/subscriber container, and lifecycle. |
+| Remote entry | Each module owns an HTTP Distro Filter that forwards stateful requests to the responsible node; AI does not extend Naming's existing Distro Filter. |
+
+The first stateful Client creation binds one authenticated subject and one
+`namespaceId`. State stores a stable subject identity, never a credential or
+access token. Later stateful requests must use the same subject and namespace.
+A mismatch is rejected without refreshing either liveness clock. A Client id
+is routing and state-ownership identity, not an authorization credential.
+
+### 6.2 ClientData And Operations
+
+The common HTTP Client directly reuses Naming `ClientSyncData`,
+`DistroClientDataProcessor`, and their existing
+`ADD/CHANGE/DELETE/VERIFY/SNAPSHOT/QUERY` semantics. It registers no new Distro
+resource type or processor. Synchronized data contains the normal Client
+identity, attributes, complete publications, and revision. HTTP Client
+attributes additionally carry namespace, authenticated-subject identity,
+Client liveness, and Publisher liveness.
+
+Publisher data remains the existing complete service publication owned by a
+Client:
+
+- a single instance uses `InstancePublishInfo`;
+- a complete batch uses `BatchInstancePublishInfo`;
+- Agent and other domain adapters never put domain DTOs into Distro payload;
+- subscribers, as with current connection-based Clients, stay only on the node
+  carrying the subscription and are not part of the ClientData publication
+  snapshot.
+
+Publication changes and semantic health transitions advance Client revision
+and emit the existing `ClientChangedEvent`. Ordinary Client renewal and
+Publisher heartbeat do not broadcast ClientData merely because a timestamp
+changed. Peers converge through the existing verify, snapshot, and repair
+flow.
+
+### 6.3 Layered Client And Publisher Liveness
+
+An HTTP Client maintains two liveness scopes:
+
+| Liveness | Refresh sources | Effect |
+| --- | --- | --- |
+| Client liveness | Valid query, subscription change, publication write, and explicit Publisher heartbeat. | Determines whether the Client and subscriber state remain. |
+| Publisher liveness | Publication write and explicit Publisher heartbeat. | Determines whether publications owned by the Client remain healthy and retained. |
+
+A query renews only an existing Client. It does not create an empty Client or
+change publisher payload, revision, or health. Frequent queries may therefore
+retain Client or subscriber state, but cannot make a timed-out publication
+healthy or prevent Publisher expiration. An explicit Publisher heartbeat
+renews both the Client and all publications owned by that Client.
+
+Publisher timeouts satisfy:
+
+```text
+heartbeatIntervalMillis < unhealthyTimeoutMillis < expireTimeoutMillis
+```
+
+After `unhealthyTimeoutMillis`, publications remain but become unhealthy.
+Publisher recovery returns them to active and emits `CHANGE` only when the
+public health projection changes. After `expireTimeoutMillis`, all
+publications owned by that Client are removed, while a Client with subscriber
+state remains. Client expiration releases all of its publisher and subscriber
+state.
+
+Only the responsible node schedules native Client and Publisher timeouts.
+ClientData replicas converge through the existing snapshot, verify, and repair
+flow. A replica's latest successful verify time participates in local timeout
+calculation if that replica later becomes responsible, so the Client does not
+need a second ownership flag or a separately synchronized failover state.
+Ordinary heartbeat timestamps are not broadcast every interval.
+
+### 6.4 Apply Events And Visibility
+
+Local publication changes, remote `ADD/CHANGE`, repair, and snapshot apply use
+the existing Naming Client/service events to rebuild publisher indexes,
+service storage, and push views. `DELETE` uses the normal Client release path
+to clean derived state. `VERIFY` itself emits no discovery change.
+
+Upper Agent/RAD projections consume only Naming `ServiceStorage` output. The
+HTTP Client manager does not maintain a second Agent Endpoint projection and
+does not depend directly on Agent definitions or AI Resource state.
+
+## 7. Config Notify Contract
 
 Config Notify is an AP-style change propagation path. It is not a durable
 storage protocol and does not carry authoritative config content.
@@ -183,7 +298,7 @@ For Config, AP notification success means peer nodes were told to refresh their
 serving state. It does not replace persistence success, and it does not make the
 push payload authoritative content.
 
-## 7. Failure Semantics
+## 8. Failure Semantics
 
 AP consumers must handle partial success.
 
@@ -198,20 +313,22 @@ Rules:
 - AP recovery must be observable through logs, metrics, trace, or diagnostics;
 - AP failure must not silently turn runtime state into durable metadata.
 
-## 8. Boundary Rules
+## 9. Boundary Rules
 
 - AP consistency is eventual convergence, not strong consistency.
 - Local `NotifyCenter` events are not AP consistency by themselves; they become
   part of AP behavior only when a domain defines remote propagation and repair.
-- Distro is the formal shared AP framework for runtime data. Config Notify is a
-  Config-specific AP notification path for cache/listener visibility.
+- Distro is the formal shared AP framework for runtime data. Naming uses it for
+  ephemeral Client state, including common HTTP connection-based Clients.
+  Config Notify is a Config-specific AP notification path for cache/listener
+  visibility.
 - AP paths must not be used for permissions, namespace metadata, persistent
   service metadata, plugin state, or database schema state.
 - AP payloads are internal cluster contracts unless an interface spec exposes
   them explicitly.
 - AP transport must follow internal RPC auth, source, payload, and retry rules.
 
-## 9. Related Specs
+## 10. Related Specs
 
 - [Foundation Capabilities Spec](foundation-capabilities-spec.md)
 - [Internal RPC And Cluster Request Spec](foundation-internal-rpc-spec.md)
@@ -224,4 +341,6 @@ Rules:
 - [Config Spec](../config/config-spec.md)
 - [Config Listener And Watch Spec](../config/config-listener-watch-spec.md)
 - [Naming Consistency And Client State Spec](../naming/naming-consistency-client-spec.md)
+- [Agent Storage Spec](../ai/agent-storage-spec.md)
+- [RAD Protocol Spec](../ai/rad-protocol-spec.md)
 - [gRPC API Spec](../grpc-api/api-spec.md)

@@ -17,14 +17,17 @@
 package com.alibaba.nacos.console.handler.impl.remote.core;
 
 import com.alibaba.nacos.api.exception.NacosException;
+import com.alibaba.nacos.api.plugin.ConfigItemEffectMode;
 import com.alibaba.nacos.api.plugin.ConfigItemType;
 import com.alibaba.nacos.console.handler.impl.remote.AbstractRemoteHandlerTest;
+import com.alibaba.nacos.core.plugin.model.PluginConfigSourceType;
 import com.alibaba.nacos.core.plugin.model.vo.PluginDetailVO;
 import com.alibaba.nacos.core.plugin.model.vo.PluginInfoVO;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -32,6 +35,7 @@ import java.util.Map;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
@@ -65,6 +69,8 @@ class PluginRemoteHandlerTest extends AbstractRemoteHandlerTest {
         assertEquals("auth", result.get(0).getPluginType());
         assertEquals("test", result.get(0).getPluginName());
         assertTrue(result.get(0).getEnabled());
+        assertTrue(result.get(0).getTypeCritical());
+        assertEquals("EXCLUSIVE", result.get(0).getExecutionMode());
     }
     
     @Test
@@ -83,6 +89,15 @@ class PluginRemoteHandlerTest extends AbstractRemoteHandlerTest {
     }
     
     @Test
+    void testListPluginsReturnsEmptyForNullResponse() throws NacosException {
+        when(namingMaintainerService.listPlugins(null)).thenReturn(null);
+        
+        List<PluginInfoVO> result = pluginRemoteHandler.listPlugins(null);
+        
+        assertTrue(result.isEmpty());
+    }
+    
+    @Test
     void testGetPluginDetailTest() throws NacosException {
         Map<String, Object> mockDetail = createMockPluginDetailData();
         
@@ -95,6 +110,9 @@ class PluginRemoteHandlerTest extends AbstractRemoteHandlerTest {
         assertEquals("auth", result.getPluginType());
         assertEquals("test", result.getPluginName());
         assertTrue(result.getConfigurable());
+        assertTrue(result.getTypeCritical());
+        assertEquals("EXCLUSIVE", result.getExecutionMode());
+        assertTrue(result.getExclusive());
         assertNotNull(result.getConfig());
         assertEquals("value1", result.getConfig().get("key1"));
     }
@@ -168,8 +186,18 @@ class PluginRemoteHandlerTest extends AbstractRemoteHandlerTest {
         configDef.put("defaultValue", "5000");
         configDef.put("type", "NUMBER");
         configDef.put("required", true);
+        configDef.put("aliases", Collections.singletonList("nacos.legacy.timeout"));
+        configDef.put("sensitive", true);
+        configDef.put("effectMode", "RUNTIME");
         configDefinitions.add(configDef);
         mockDetail.put("configDefinitions", configDefinitions);
+        Map<String, Object> valueMetas = new HashMap<>();
+        Map<String, Object> valueMeta = new HashMap<>();
+        valueMeta.put("key", "timeout");
+        valueMeta.put("source", "LOCAL_ONLY");
+        valueMeta.put("overridden", true);
+        valueMetas.put("timeout", valueMeta);
+        mockDetail.put("configValueMetas", valueMetas);
         
         when(namingMaintainerService.getPluginDetail("auth", "test")).thenReturn(mockDetail);
         
@@ -180,6 +208,14 @@ class PluginRemoteHandlerTest extends AbstractRemoteHandlerTest {
         assertEquals(1, result.getConfigDefinitions().size());
         assertEquals("timeout", result.getConfigDefinitions().get(0).getKey());
         assertEquals(ConfigItemType.NUMBER, result.getConfigDefinitions().get(0).getType());
+        assertEquals("nacos.legacy.timeout",
+            result.getConfigDefinitions().get(0).getAliases().get(0));
+        assertTrue(result.getConfigDefinitions().get(0).isSensitive());
+        assertEquals(ConfigItemEffectMode.RUNTIME,
+            result.getConfigDefinitions().get(0).getEffectMode());
+        assertEquals(PluginConfigSourceType.LOCAL_ONLY,
+            result.getConfigValueMetas().get("timeout").getSource());
+        assertTrue(result.getConfigValueMetas().get("timeout").isOverridden());
     }
     
     @Test
@@ -193,6 +229,10 @@ class PluginRemoteHandlerTest extends AbstractRemoteHandlerTest {
         configDef.put("type", "UNKNOWN_TYPE");
         configDefinitions.add(configDef);
         mockDetail.put("configDefinitions", configDefinitions);
+        Map<String, Object> valueMeta = new HashMap<>();
+        valueMeta.put("key", "unknown");
+        valueMeta.put("source", "UNKNOWN_SOURCE");
+        mockDetail.put("configValueMetas", Collections.singletonMap("unknown", valueMeta));
         
         when(namingMaintainerService.getPluginDetail("auth", "test")).thenReturn(mockDetail);
         
@@ -202,6 +242,21 @@ class PluginRemoteHandlerTest extends AbstractRemoteHandlerTest {
         assertNotNull(result.getConfigDefinitions());
         assertEquals(1, result.getConfigDefinitions().size());
         assertEquals(ConfigItemType.STRING, result.getConfigDefinitions().get(0).getType());
+        assertEquals(PluginConfigSourceType.DEFAULT,
+            result.getConfigValueMetas().get("unknown").getSource());
+    }
+    
+    @Test
+    void testConvertNullDefinitionAndValueMetaTest() throws NacosException {
+        Map<String, Object> mockDetail = createMockPluginDetailData();
+        mockDetail.put("configDefinitions", Collections.singletonList(null));
+        mockDetail.put("configValueMetas", Collections.singletonMap("unknown", null));
+        when(namingMaintainerService.getPluginDetail("auth", "test")).thenReturn(mockDetail);
+        
+        PluginDetailVO result = pluginRemoteHandler.getPluginDetail("auth", "test");
+        
+        assertNull(result.getConfigDefinitions().get(0));
+        assertNull(result.getConfigValueMetas().get("unknown"));
     }
     
     private Map<String, Object> createMockPluginData() {
@@ -212,6 +267,8 @@ class PluginRemoteHandlerTest extends AbstractRemoteHandlerTest {
         data.put("enabled", true);
         data.put("critical", false);
         data.put("configurable", true);
+        data.put("typeCritical", true);
+        data.put("executionMode", "EXCLUSIVE");
         data.put("exclusive", true);
         return data;
     }

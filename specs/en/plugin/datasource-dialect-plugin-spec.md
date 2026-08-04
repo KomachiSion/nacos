@@ -22,9 +22,9 @@ The data source dialect plugin type isolates database-specific SQL behavior from
 Nacos persistence logic. It covers SQL dialect functions, pagination, generated
 primary keys, and mapper implementations for Nacos tables.
 
-This is an exclusive-selection plugin. The active dialect is selected by the SQL
-platform configuration, currently `spring.sql.init.platform` with legacy
-compatibility for `spring.datasource.platform`. Common lifecycle and state
+This is an exclusive-selection plugin. The active dialect is selected at
+startup by `nacos.plugin.datasource-dialect.type`;
+`spring.sql.init.platform` remains a legacy alias. Common lifecycle and state
 rules are defined by the [Nacos Plugin Spec](plugin-spec.md), and bundled
 database families are defined by the
 [Default Data Source Dialect Implementation Spec](default-datasource-dialect-plugin-spec.md).
@@ -73,6 +73,23 @@ Dialect implementations provide `DatabaseDialect`.
 | `getPageLastNum(page, pageSize)` | Return second pagination parameter. |
 | `getReturnPrimaryKeys()` | Return generated key columns. |
 | `getFunction(functionName)` | Map logical function names to dialect SQL functions. |
+| `isDuplicateKeyException(throwable)` | Classify whether a datasource throwable is a duplicate unique-key conflict. The default recognizes a Spring `DuplicateKeyException` in the cause chain; dialects may override for driver-specific detection. |
+
+`isDuplicateKeyException(throwable)` is the single entry point config repositories
+use to decide whether a failed insert was a duplicate unique-key conflict. The
+default implementation walks the throwable cause chain and returns `true` when it
+finds Spring's `DuplicateKeyException`, matched by class name so the datasource
+plugin modules stay free of a Spring dependency. This reproduces the previous
+database-agnostic classification as the safe baseline and deliberately does not
+treat a raw vendor SQLState such as `23505` as a duplicate on its own.
+
+Dialects such as PostgreSQL, MySQL, Derby, or Oracle may override this to also
+inspect the original driver exception (SQLState or vendor error code) when the
+standard Spring exception translation is not precise enough, typically combining
+their check with a call to the default via
+`DatabaseDialect.super.isDuplicateKeyException(throwable)`. Classification must
+remain conservative — non-duplicate integrity failures must not be reported as
+duplicates.
 
 Table mapper plugins implement `com.alibaba.nacos.plugin.datasource.mapper.Mapper`
 for table-specific SQL. Dialect and mapper implementations must be packaged and
@@ -81,10 +98,15 @@ loaded together for a database family.
 Mapper implementations must provide base CRUD SQL and table-specific SQL for
 repository operations. Current mapper families cover:
 
-- config data, gray/beta data, tags, and history;
+- current config data, gray data, tags, and history;
 - namespace and capacity records;
-- config migration queries;
 - AI resource metadata and version records.
+
+Starting with the Nacos 3.3 line, datasource dialect plugins are not expected to
+provide runtime Config migration queries for empty-tenant/default-namespace
+duplicates or legacy beta/tag gray tables. Such migration, if needed for a
+pre-3.0 deployment, is an upgrade prerequisite rather than a server runtime
+mapper responsibility.
 
 `MapperManager` loads mapper SPI implementations and indexes them by
 `dataSource + tableName`. Missing data source or table mapper is a startup or
@@ -93,13 +115,21 @@ operation error, not an empty result.
 ## Selection And State
 
 The core plugin manager exposes this plugin type as `datasource-dialect`.
-Only the configured dialect should be enabled by default. Built-in critical
-dialects required by the server cannot be disabled while in use.
+Only the configured dialect is enabled. The type is critical and must retain
+one selected implementation while loaded.
 
-If a requested dialect is disabled, startup or persistence operations must fail
-explicitly. If the requested dialect is missing, the current manager searches for
-another enabled dialect and logs the fallback. This fallback is compatibility
-behavior; new deployments should configure an explicit supported SQL platform.
+The dialect selector supplies bootstrap selection and requires restart.
+Persisted state entries for this exclusive type do not replace the static
+selection, and the runtime status API must reject selection changes.
+
+When neither the standard selector nor its legacy alias is configured, the
+selection follows the server storage default: standalone mode and cluster mode
+with `-DembeddedStorage=true` select `derby`; ordinary cluster mode selects
+`mysql`. This implicit selection is also snapshotted at startup.
+
+The persistence subsystem always makes this critical type active. If the requested dialect is
+disabled or missing, startup must fail explicitly and identify the selected dialect and selection
+property. The server must not continue with another discovered dialect as a fallback.
 
 Current `DatabaseDialectManager` checks unified plugin state for
 `datasource-dialect:{databaseType}` before returning a dialect. A disabled
@@ -110,18 +140,68 @@ dialect must not participate in persistence operations.
 The SQL platform is selected by:
 
 ```properties
-spring.sql.init.platform=${databaseType}
+nacos.plugin.datasource-dialect.type=${databaseType}
 ```
 
-For compatibility with older deployments:
+`spring.sql.init.platform` remains a legacy alias, with the standard key taking
+precedence when both are present. The removed `spring.datasource.platform`
+property is no longer read.
 
-```properties
-spring.datasource.platform=${databaseType}
+### Datasource Module Configuration
+
+Datasource connection properties are owned by the Nacos persistence module and
+the database driver. They are standardized under the following module prefix:
+
+```text
+nacos.plugin.datasource.db.{item}
 ```
 
-Datasource connection properties remain owned by Nacos persistence configuration
-and the database driver. The dialect plugin must not reinterpret unrelated
-database connection settings.
+This namespace does not make a database dialect configurable. `DatabaseDialect` inherits the common
+configuration contract, but the built-in `datasource-dialect:{databaseType}` instances declare no
+definitions and still expose `configurable=false`, because connection credentials and pool settings
+belong to one server datasource rather than to each loaded dialect. These settings are
+static, take effect on restart, and are not accepted by the plugin detail/PUT
+configuration API. A future management surface must first define one unique
+datasource configuration owner instead of copying the same credentials into
+every dialect.
+
+The stable datasource module settings are:
+
+| Canonical key or pattern | Legacy alias | Meaning |
+|--------------------------|--------------|---------|
+| `nacos.plugin.datasource.db.num` | `db.num` | Number of external datasource endpoints. It is required and positive for external storage. |
+| `nacos.plugin.datasource.db.url.{index}` | `db.url.{index}` | JDBC URL for every index from `0` to `num - 1`. |
+| `nacos.plugin.datasource.db.user[.{index}]` | `db.user[.{index}]` | Shared or per-index username. A missing index falls back to the shared value or index `0`. |
+| `nacos.plugin.datasource.db.password[.{index}]` | `db.password[.{index}]` | Shared or per-index password, with the same fallback rule as `user`. This value is sensitive. |
+| `nacos.plugin.datasource.db.pool.config.connection-timeout` | `db.pool.config.connectionTimeout` or kebab-case equivalent | Hikari connection timeout in milliseconds; default `3000`. |
+| `nacos.plugin.datasource.db.pool.config.validation-timeout` | `db.pool.config.validationTimeout` or kebab-case equivalent | Hikari validation timeout in milliseconds; default `10000`. |
+| `nacos.plugin.datasource.db.pool.config.idle-timeout` | `db.pool.config.idleTimeout` or kebab-case equivalent | Hikari idle timeout in milliseconds; default `600000`. |
+| `nacos.plugin.datasource.db.pool.config.maximum-pool-size` | `db.pool.config.maximumPoolSize` or kebab-case equivalent | Hikari maximum pool size; default `20`. |
+| `nacos.plugin.datasource.db.pool.config.minimum-idle` | `db.pool.config.minimumIdle` or kebab-case equivalent | Hikari minimum idle connections; default `2`. |
+| `nacos.plugin.datasource.db.pool.config.driver-class-name` | `db.pool.config.driverClassName` or kebab-case equivalent | JDBC driver class. Blank uses the MySQL driver compatibility default. |
+| `nacos.plugin.datasource.db.pool.config.connection-test-query` | `db.pool.config.connectionTestQuery` or kebab-case equivalent | Connection test query. Blank uses `SELECT 1`. |
+| `nacos.plugin.datasource.db.query-timeout` | JVM property `QUERYTIMEOUT` | JDBC query timeout in seconds; default `3`. |
+
+For each logical item, the canonical key takes precedence over its legacy alias
+even when the two keys come from different Spring property sources. Indexed
+items are resolved independently, so a canonical `url.0` may coexist with a
+legacy `url.1` during migration. Legacy use emits a migration warning without
+logging configuration values. Dotted and bracketed index notation remain
+accepted, and a single unindexed `url` remains compatible with index `0`.
+
+The `nacos.plugin.datasource.db.pool.config.{hikari-property}` prefix continues
+to bind to the Hikari datasource after the legacy pool prefix is bound. This
+preserves existing Hikari pass-through properties while allowing canonical
+values to override matching legacy values. The supported implementation surface
+is the Hikari JavaBean configuration accepted by the bundled version; only the
+stable subset listed above is a long-term Nacos configuration contract.
+
+`nacos.plugin.datasource.log.enabled` remains a separate datasource logging
+switch. The embedded/external persistence mode is also outside dialect-private
+configuration. A custom environment plugin that transforms encrypted datasource
+credentials must declare the canonical password keys in its own `propertyKey()`
+set; existing implementations that declare only `db.password.*` continue to
+process legacy input only.
 
 ## Compatibility Rules
 

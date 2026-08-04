@@ -17,17 +17,24 @@
 package com.alibaba.nacos.console.controller.v3.ai;
 
 import com.alibaba.nacos.ai.constant.Constants;
+import com.alibaba.nacos.ai.form.AiResourceFilterableForm;
+import com.alibaba.nacos.ai.form.skills.admin.SkillListForm;
 import com.alibaba.nacos.ai.form.skills.admin.SkillPublishForm;
+import com.alibaba.nacos.ai.param.SkillListHttpParamExtractor;
 import com.alibaba.nacos.api.ai.model.skills.Skill;
 import com.alibaba.nacos.api.ai.model.skills.SkillMeta;
 import com.alibaba.nacos.api.ai.model.skills.SkillSummary;
+import com.alibaba.nacos.api.ai.model.skills.SkillUploadPrecheckResult;
 import com.alibaba.nacos.api.model.Page;
 import com.alibaba.nacos.api.model.v2.ErrorCode;
 import com.alibaba.nacos.api.model.v2.Result;
 import com.alibaba.nacos.common.utils.JacksonUtils;
 import com.alibaba.nacos.console.proxy.ai.SkillProxy;
+import com.alibaba.nacos.core.model.form.PageForm;
+import com.alibaba.nacos.core.paramcheck.ExtractorManager;
 import com.alibaba.nacos.sys.env.EnvUtil;
 import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.JsonNode;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -45,9 +52,12 @@ import java.util.Collections;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.mockito.AdditionalMatchers.aryEq;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.argThat;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -185,6 +195,17 @@ class ConsoleSkillControllerTest {
     }
     
     @Test
+    void testListSkillsUsesListParamExtractor() throws Exception {
+        ExtractorManager.Extractor extractor = ConsoleSkillController.class
+            .getMethod("listSkills", SkillListForm.class,
+                AiResourceFilterableForm.class, PageForm.class)
+            .getAnnotation(ExtractorManager.Extractor.class);
+        
+        assertNotNull(extractor);
+        assertEquals(SkillListHttpParamExtractor.class, extractor.httpExtractor());
+    }
+    
+    @Test
     void testListSkillsWithOwnerFilter() throws Exception {
         Page<SkillSummary> page = new Page<>();
         page.setTotalCount(0);
@@ -207,6 +228,7 @@ class ConsoleSkillControllerTest {
             && NS.equals(request.getNamespaceId()) && !request.isOverwrite()
             && request.getTargetVersion() == null
             && "upload commit".equals(request.getCommitMsg())
+            && request.getUploadAction() == null
             && request.getZipBytes() != null))).thenReturn(SKILL_NAME);
         
         MockMultipartFile file = new MockMultipartFile("file", "skill.zip",
@@ -224,6 +246,62 @@ class ConsoleSkillControllerTest {
             response.getContentAsString(), new TypeReference<>() {
             });
         assertEquals(SKILL_NAME, result.getData());
+    }
+    
+    @Test
+    void testUploadSkillWithUploadAction() throws Exception {
+        when(skillProxy.uploadSkillFromZip(argThat(request -> request != null
+            && SkillUploadPrecheckResult.ACTION_OVERWRITE_DRAFT
+                .equals(request.getUploadAction()))))
+            .thenReturn(SKILL_NAME);
+        
+        MockMultipartFile file = new MockMultipartFile("file", "skill.zip",
+            "application/zip", new byte[] {0x50, 0x4B, 0x03, 0x04, 0, 0, 0, 0,
+                0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0});
+        
+        MockHttpServletResponse response = mockMvc.perform(
+            MockMvcRequestBuilders.multipart(BASE_PATH + "/upload").file(file)
+                .param("namespaceId", NS)
+                .param("uploadAction", SkillUploadPrecheckResult.ACTION_OVERWRITE_DRAFT))
+            .andReturn().getResponse();
+        
+        assertEquals(200, response.getStatus());
+    }
+    
+    @Test
+    void testPrecheckUploadSkill() throws Exception {
+        byte[] zipBytes = "zip-content".getBytes();
+        SkillUploadPrecheckResult precheckResult = new SkillUploadPrecheckResult();
+        precheckResult.setSkillName(SKILL_NAME);
+        precheckResult.setMaxPublishedVersion("0.9.0");
+        precheckResult.setParsedVersion("1.0.0");
+        precheckResult.setTargetVersion("1.0.0");
+        precheckResult.setPrecheckCode(SkillUploadPrecheckResult.PRECHECK_CODE_READY);
+        when(skillProxy.precheckUploadSkillFromZip(eq(NS), aryEq(zipBytes)))
+            .thenReturn(java.util.Collections.singletonList(precheckResult));
+        MockMultipartFile file = new MockMultipartFile("file", "skill.zip",
+            "application/zip", zipBytes);
+        
+        MockHttpServletResponse response = mockMvc.perform(
+            MockMvcRequestBuilders.multipart(BASE_PATH + "/upload/precheck")
+                .file(file)
+                .param("namespaceId", NS))
+            .andReturn().getResponse();
+        
+        assertEquals(200, response.getStatus());
+        Result<java.util.List<SkillUploadPrecheckResult>> result = JacksonUtils.toObj(
+            response.getContentAsString(), new TypeReference<>() {
+            });
+        assertEquals(1, result.getData().size());
+        assertEquals(SKILL_NAME, result.getData().get(0).getSkillName());
+        JsonNode precheckJson = JacksonUtils.toObj(response.getContentAsString())
+            .get("data").get(0);
+        assertEquals("READY", precheckJson.get("precheckCode").asText());
+        assertEquals("0.9.0", precheckJson.get("maxPublishedVersion").asText());
+        assertFalse(precheckJson.has("latestVersion"));
+        assertEquals("1.0.0", precheckJson.get("targetVersion").asText());
+        assertFalse(precheckJson.has("status"));
+        assertFalse(precheckJson.has("actions"));
     }
     
     @Test

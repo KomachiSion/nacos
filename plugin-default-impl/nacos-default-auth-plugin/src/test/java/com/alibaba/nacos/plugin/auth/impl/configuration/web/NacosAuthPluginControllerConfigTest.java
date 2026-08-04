@@ -17,14 +17,18 @@
 package com.alibaba.nacos.plugin.auth.impl.configuration.web;
 
 import com.alibaba.nacos.plugin.auth.impl.authenticate.IAuthenticationManager;
-import com.alibaba.nacos.plugin.auth.impl.configuration.AuthConfigs;
+import com.alibaba.nacos.plugin.auth.impl.configuration.core.NacosAuthPluginRemoteServiceConfig;
 import com.alibaba.nacos.plugin.auth.impl.controller.UserController;
+import com.alibaba.nacos.plugin.auth.impl.controller.v3.VisibilityGrantControllerV3;
 import com.alibaba.nacos.plugin.auth.impl.controller.v3.PermissionControllerV3;
 import com.alibaba.nacos.plugin.auth.impl.controller.v3.RoleControllerV3;
 import com.alibaba.nacos.plugin.auth.impl.controller.v3.UserControllerV3;
 import com.alibaba.nacos.plugin.auth.impl.roles.NacosRoleService;
 import com.alibaba.nacos.plugin.auth.impl.token.TokenManagerDelegate;
 import com.alibaba.nacos.plugin.auth.impl.users.NacosUserService;
+import com.alibaba.nacos.plugin.auth.impl.visibility.DefaultVisibilityGrantService;
+import com.alibaba.nacos.plugin.auth.impl.visibility.RemoteVisibilityGrantService;
+import com.alibaba.nacos.plugin.auth.impl.visibility.VisibilityGrantService;
 import org.junit.jupiter.api.Test;
 import org.springframework.security.authentication.AuthenticationManager;
 
@@ -38,22 +42,33 @@ class NacosAuthPluginControllerConfigTest {
         NacosAuthPluginControllerConfig config = new NacosAuthPluginControllerConfig();
         NacosUserService userService = mock(NacosUserService.class);
         NacosRoleService roleService = mock(NacosRoleService.class);
-        AuthConfigs authConfigs = mock(AuthConfigs.class);
         IAuthenticationManager authenticationManager = mock(IAuthenticationManager.class);
         TokenManagerDelegate tokenManagerDelegate = mock(TokenManagerDelegate.class);
         
-        assertTrue(config.userControllerV3(userService, roleService, authConfigs,
-            authenticationManager, tokenManagerDelegate) instanceof UserControllerV3);
+        assertTrue(config.userControllerV3(userService, roleService, authenticationManager,
+            tokenManagerDelegate) instanceof UserControllerV3);
         assertTrue(config.roleControllerV3(roleService) instanceof RoleControllerV3);
         assertTrue(config.permissionControllerV3(roleService) instanceof PermissionControllerV3);
+        VisibilityGrantService grantService =
+            config.visibilityGrantService(roleService, userService);
+        assertTrue(grantService instanceof DefaultVisibilityGrantService);
+        assertTrue(config
+            .visibilityGrantControllerV3(grantService) instanceof VisibilityGrantControllerV3);
+    }
+    
+    @Test
+    void testRemoteVisibilityGrantServiceBean() {
+        NacosAuthPluginRemoteServiceConfig config = new NacosAuthPluginRemoteServiceConfig();
+        
+        assertTrue(config.visibilityGrantService() instanceof RemoteVisibilityGrantService);
     }
     
     @Test
     void testOldControllerBean() {
         NacosAuthPluginOldControllerConfig config = new NacosAuthPluginOldControllerConfig();
         
-        assertTrue(config.userController(mock(AuthConfigs.class),
-            mock(IAuthenticationManager.class), mock(TokenManagerDelegate.class),
+        assertTrue(config.userController(mock(IAuthenticationManager.class),
+            mock(TokenManagerDelegate.class),
             mock(AuthenticationManager.class)) instanceof UserController);
     }
 }

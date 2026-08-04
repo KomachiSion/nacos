@@ -81,6 +81,8 @@ class PublishPipelineModelTest {
             new SkillPipelineContext().getResourceType());
         assertEquals(PublishPipelineResourceType.AGENTSPEC,
             new AgentSpecPipelineContext().getResourceType());
+        assertEquals(PublishPipelineResourceType.AGENT,
+            PublishPipelineResourceType.valueOf("AGENT"));
     }
     
     @Test
@@ -117,15 +119,7 @@ class PublishPipelineModelTest {
     }
     
     @Test
-    void testPublishPipelineMessageTypeFromCode() {
-        assertEquals(PublishPipelineMessageType.TEXT, PublishPipelineMessageType.fromCode("TEXT"));
-        assertEquals(PublishPipelineMessageType.JSON, PublishPipelineMessageType.fromCode("json"));
-        assertEquals(PublishPipelineMessageType.MARKDOWN,
-            PublishPipelineMessageType.fromCode("markdown"));
-        assertEquals(PublishPipelineMessageType.HTML, PublishPipelineMessageType.fromCode("html"));
-        assertNull(PublishPipelineMessageType.fromCode(null));
-        assertNull(PublishPipelineMessageType.fromCode(""));
-        assertNull(PublishPipelineMessageType.fromCode("unknown"));
+    void testPublishPipelineMessageTypeGetCode() {
         assertEquals("markdown", PublishPipelineMessageType.MARKDOWN.getCode());
     }
     

@@ -51,6 +51,9 @@ public class ServerAbilities extends AbstractAbilityRegistry {
         supportedAbilities.put(AbilityKey.SERVER_MCP_REGISTRY, true);
         supportedAbilities.put(AbilityKey.SERVER_AGENT_REGISTRY, true);
         supportedAbilities.put(AbilityKey.SERVER_AGENT_CARD_V1, true);
+        supportedAbilities.put(AbilityKey.SERVER_AGENT_DISCOVERY_V1, true);
+        supportedAbilities.put(AbilityKey.SERVER_AGENT_ENDPOINT_V1, true);
+        supportedAbilities.put(AbilityKey.SERVER_AGENT_PUBLISH_V1, true);
     }
     
     /**.

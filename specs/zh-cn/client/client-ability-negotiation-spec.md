@@ -41,7 +41,7 @@ Ability name 在同一 mode 内必须唯一。Ability key 定义是连接两侧�
 | `SDK_CLIENT_FUZZY_WATCH` | 客户端可以使用 Config 或 Naming fuzzy watch。 |
 | `SDK_CLIENT_DISTRIBUTED_LOCK` | 客户端可以使用分布式锁功能。 |
 | `SDK_MCP_REGISTRY` | 客户端可以使用 MCP registry 运行时功能。 |
-| `SDK_AGENT_REGISTRY` | 客户端可以使用 Agent 和 AgentCard 运行时功能。 |
+| `SDK_AGENT_REGISTRY` | 客户端可以使用旧 A2A Agent 和 AgentCard 运行时功能。 |
 
 当前服务端声明支持：
 
@@ -51,10 +51,25 @@ Ability name 在同一 mode 内必须唯一。Ability key 定义是连接两侧�
 | `SERVER_FUZZY_WATCH` | 支持 Config 或 Naming fuzzy watch。 |
 | `SERVER_DISTRIBUTED_LOCK` | 支持分布式锁。 |
 | `SERVER_MCP_REGISTRY` | 支持 MCP registry 操作。 |
-| `SERVER_AGENT_REGISTRY` | 支持 Agent 和 AgentCard registry 操作。 |
+| `SERVER_AGENT_REGISTRY` | 支持旧 A2A Agent 和 AgentCard registry 操作。 |
 | `SERVER_AGENT_CARD_V1` | 支持 A2A AgentCard 1.0 协议字段。 |
 
 新增 ability 需要同时提供具名 key 和领域规则，说明该 ability 控制的行为。
+
+### 2.1 Agent/RAD 能力
+
+[Agent API 规范](../ai/agent-api-spec.md)为 Nacos 3.3 版本线确定下列 Server 能力位。
+它们在对应 Handler 与 Java SDK 闭环完成后加入 Server ability table。
+
+| Mode | 常量 | Wire key | 含义 |
+|---|---|---|---|
+| `SERVER` | `SERVER_AGENT_DISCOVERY_V1` | `agentDiscoveryV1` | Server 接受 RAD Search 和 Discover Payload。 |
+| `SERVER` | `SERVER_AGENT_ENDPOINT_V1` | `agentEndpointV1` | Server 接受 RAD Runtime Endpoint 发布 Payload。 |
+
+首版 `subscribeAgent` 只在 SDK 本地轮询 Discover，不定义 SDK Client ability。
+未来服务端 Watch/Push 必须独立评审 Client ability、Payload 和 ACK 契约。旧
+`SERVER_AGENT_REGISTRY`、`SERVER_AGENT_CARD_V1` 和 `SDK_AGENT_REGISTRY`
+继续只控制旧 A2A 契约，不作为任何 RAD 操作的 fallback。
 
 ## 3. gRPC 协商流程
 
@@ -94,11 +109,17 @@ Unknown 不是成功。新功能应优先返回 fail-fast unsupported error，�
 - Config 和 Naming fuzzy watch 必须要求 `SERVER_FUZZY_WATCH`。
 - 分布式锁必须要求 `SERVER_DISTRIBUTED_LOCK`，因为该功能实验性且不保证所有服务端可用。
 - AI MCP registry 操作必须要求 `SERVER_MCP_REGISTRY`。
-- AI Agent 和 AgentCard 操作必须要求 `SERVER_AGENT_REGISTRY`。
+- 旧 A2A Agent 和 AgentCard 操作必须要求 `SERVER_AGENT_REGISTRY`。
 - A2A AgentCard 1.0 字段应要求 `SERVER_AGENT_CARD_V1`，或使用显式文档化的兼容转换。
+- RAD Search 和 Discover 请求必须要求 `SERVER_AGENT_DISCOVERY_V1`；本地轮询订阅复用
+  同一 Discover 检查。
+- RAD Runtime Endpoint 注册和注销必须要求 `SERVER_AGENT_ENDPOINT_V1`。
 
 功能代码不应把 positive ability result 缓存在当前 connection 生命周期之外。执行操作前应查询
 运行时 connection ability，或确认缓存值属于当前 connection。
+
+Reconnect 后，Client 必须重新协商能力，再恢复 Endpoint Publication。SDK 本地轮询
+订阅不保存 Connection 维度 Watch state，下一次 Discover 直接使用新 Connection。
 
 ## 6. 兼容规则
 

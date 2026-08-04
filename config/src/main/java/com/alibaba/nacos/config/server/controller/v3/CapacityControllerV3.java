@@ -85,7 +85,7 @@ public class CapacityControllerV3 {
     @Since("3.0.0")
     @GetMapping
     @Secured(resource = Constants.CAPACITY_CONTROLLER_V3_ADMIN_PATH, action = ActionTypes.READ,
-        signType = SignType.CONFIG, apiType = ApiType.ADMIN_API)
+        signType = SignType.CONSOLE, apiType = ApiType.ADMIN_API)
     @Operation(summary = "nacos.admin.config.capacity.api.get.summary",
         description = "nacos.admin.config.capacity.api.get.description",
         security = @SecurityRequirement(name = "nacos"))
@@ -128,7 +128,7 @@ public class CapacityControllerV3 {
     @Since("3.0.0")
     @PostMapping
     @Secured(resource = Constants.CAPACITY_CONTROLLER_V3_ADMIN_PATH, action = ActionTypes.WRITE,
-        signType = SignType.CONFIG, apiType = ApiType.ADMIN_API)
+        signType = SignType.CONSOLE, apiType = ApiType.ADMIN_API)
     @Operation(summary = "nacos.admin.config.capacity.api.update.summary",
         description = "nacos.admin.config.capacity.api.update.description",
         security = @SecurityRequirement(name = "nacos"))

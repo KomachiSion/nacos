@@ -36,8 +36,57 @@ Skill 是可复用的 AI Agent 能力包，包含：
 - 描述文件引用的可选资源文件；
 - description、bizTags、owner、scope、labels、version 和 download count 等元数据。
 
-Skill upload 接收 ZIP 包。Batch upload 是 best effort，必须报告每个 Skill 的成功和
-失败。
+Skill upload 接收 ZIP 包。Batch upload 是 best effort，返回兼容对象：保留原有的
+`succeeded` 和 `failed` 字段，并在 `results` 中为每个 Skill 或候选目录返回一条结果。
+每条结果包含 `name`、`success`、`errorCode`、`errorMessage` 和可选的 `owner`。成功项使用
+`success=true`、错误码 `SUCCESS` 和错误信息 `success`；失败项使用 `success=false` 并返回
+具体失败信息。Batch upload 对等失败复用 precheck 业务码
+`NOT_A_SKILL`、`INVALID_SKILL` 和 `NO_PERMISSION`，无法分类的失败使用
+`UPLOAD_FAILED`。当上传已有 Skill 因调用方缺少写权限而失败时，结果必须在可获取时包含
+当前 owner。
+
+上传预检必须接收与上传接口相同的 ZIP 包，并由服务端统一解析单个或批量 Skill。每个
+有效 Skill 返回一条结果；候选目录缺少 `SKILL.md` 时返回 `NOT_A_SKILL`，描述文件无效时
+返回 `INVALID_SKILL`。精简结果包含 `namespaceId`、`entryPath`、`skillName`、`reason`、
+`owner`、`maxPublishedVersion`、`parsedVersion`、`targetVersion`、`exists`、
+`editingVersion`、`reviewingVersion` 和单值 `precheckCode`。`entryPath` 是 Skill 或无效
+目录在 ZIP 中的相对路径；`skillName` 在解析失败时可以为空；`reason` 用于说明解析失败
+原因。客户端只需根据 `precheckCode` 选择下一步：
+
+`maxPublishedVersion` 是已经发布过的最大版本，包含 ONLINE 和 OFFLINE 版本；从未发布
+过版本时为空，不包含 DRAFT、REVIEWING 和 REVIEWED 版本。`targetVersion` 是本次上传
+成功后的草稿版本。
+
+- `READY`：可以按 `targetVersion` 创建草稿；
+- `VERSION_ADJUSTED`：可以创建草稿，但解析版本经过了规范化、替换或递增，实际版本为
+  `targetVersion`；
+- `DRAFT_EXISTS`：已有编辑中草稿，只能覆盖后继续上传；
+- `REVIEWING_EXISTS`：已有审核中版本，阻断上传；
+- `NO_PERMISSION`：调用方无权修改已有 Skill；
+- `NOT_A_SKILL`：ZIP 中的候选目录缺少 `SKILL.md`；
+- `INVALID_SKILL`：候选目录存在 `SKILL.md`，但 Skill 描述文件无效。
+
+同时命中多个条件时，预检必须按以下优先级返回一个编码：`NOT_A_SKILL`、
+`INVALID_SKILL`、`NO_PERMISSION`、`REVIEWING_EXISTS`、`DRAFT_EXISTS`、
+`VERSION_ADJUSTED`、`READY`。客户端必须将未知编码按阻断处理。
+
+预检请求只包含 ZIP 包和可选 namespace，不接受 `targetVersion`。预检结果中的
+`targetVersion` 是服务端根据 ZIP 内容和当前服务端状态推算的版本。预检版本来源优先级为
+`SKILL.md` frontmatter 的 `version`、`SKILL.md` frontmatter 的 `metadata.version`、
+同目录 `_meta.json` 的 `version`、服务端默认版本。
+
+单 Skill 上传请求额外支持可选的 `targetVersion`。上传版本来源优先级为 `SKILL.md`
+frontmatter 的 `version`、`SKILL.md` frontmatter 的 `metadata.version`、同目录
+`_meta.json` 的 `version`、请求参数 `targetVersion`、服务端默认版本。服务端必须按此顺序
+检查显式版本候选，并使用第一个合法且可用的版本。高优先级候选非法或已被占用时，如果存在
+低优先级可用候选，不得直接进入服务端版本生成逻辑。当前编辑中版本可用于覆盖；替换该编辑中
+版本的候选必须更大且未被占用。只有所有显式候选均不可用时，服务端才生成版本。因此，上传
+请求携带 `targetVersion` 时，实际版本可以不同于此前预检推算的版本。
+
+批量场景中，`NOT_A_SKILL` 和 `INVALID_SKILL` 项不计入 Skill 数量，也不计入阻断 Skill
+数量。只有没有有效 Skill，或所有有效 Skill 都被阻断时，客户端才应禁止上传；只要至少
+一个有效 Skill 可以上传，就可以调用 batch upload。上传接口必须重新执行权限、版本和
+工作版本校验，不能信任预检结果作为写入授权。
 
 ## 3. Agent Skills 标准兼容
 
@@ -56,6 +105,9 @@ Skill 定义为“一个目录，至少包含一个 `SKILL.md` 文件”。Nacos
   仍是包内容的事实来源。
 - 标准包根目录可以包含可选的 `scripts/`、`references/` 与 `assets/` 目录。
   Nacos 将这些文件作为 Skill resource 存储和分发。
+- 上传解析必须忽略平台生成的 ZIP 元数据文件，例如 macOS 的 `.DS_Store`、
+  `._*` AppleDouble 文件和 `__MACOSX/` 目录；这些文件不得作为 Skill resource
+  存储或分发。该过滤不得影响普通资源文件，也不得把嵌套 Skill 目录特殊隐藏。
 - Skill name 应遵循上游命名规则：小写字母、数字和连字符，不能以连字符开头或结尾，
   不能包含连续连字符，长度不超过 64 个字符。
 
@@ -93,7 +145,8 @@ Skill 遵循共享的 [AI 资源生命周期规范](ai-resource-lifecycle-spec.m
 - upload 根据请求选项创建或覆盖 draft；
 - upload 可以接收可选 commit message，创建或覆盖 draft 版本时必须保存为该版本描述；
 - bootstrap 内置 Skill 可以直接创建 online 元数据和版本行；
-- submit 可以运行发布流水线，并发布或退回 draft；
+- 提交 draft 或 reviewed 版本可以运行发布流水线，并发布或保留为 reviewed；提交
+  reviewing 版本应按幂等调用返回；
 - labels、online/offline、scope、bizTags 和 delete 操作按需通过 CAS 更新元数据。
 
 导入的 Skill 遵循 upload 和 draft 规则，除非该操作是服务端拥有的显式 bootstrap 流程。

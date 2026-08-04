@@ -202,7 +202,7 @@ inner server-to-server rules are defined by the
 | `ConfigFuzzyWatchChangeNotifyRequest` | `ConfigFuzzyWatchChangeNotifyResponse` | server push | `groupKey`, `changeType` | Notify client of fuzzy-watch resource changes. |
 | `ConfigFuzzyWatchSyncRequest` | `ConfigFuzzyWatchSyncResponse` | server push | `syncType`, `groupKeyPattern`, `contexts`, `totalBatch`, `currentBatch` | Sync fuzzy-watch initial or diff state. |
 | `ClientConfigMetricRequest` | `ClientConfigMetricResponse` | read | `metricsKeys` | Query client config metrics. |
-| `ConfigChangeClusterSyncRequest` | `ConfigChangeClusterSyncResponse` | inner | `dataId`, `group`, `tenant`, `lastModified`, `isBeta`, `tag`, `grayName` | Sync config change events between server nodes through the [internal RPC model](../design/foundation-internal-rpc-spec.md); Config Notify semantics are defined by the [AP Consistency Spec](../design/foundation-ap-consistency-spec.md). |
+| `ConfigChangeClusterSyncRequest` | `ConfigChangeClusterSyncResponse` | inner | `dataId`, `group`, `tenant`, `lastModified`, `grayName`, legacy `isBeta`/`tag` | Sync config change events between server nodes through the [internal RPC model](../design/foundation-internal-rpc-spec.md); Config Notify semantics are defined by the [AP Consistency Spec](../design/foundation-ap-consistency-spec.md). Starting with the Nacos 3.3 line, server-side handling must not use legacy `isBeta` or `tag` fields to migrate beta/tag changes into `grayName`. |
 
 ### 7.3 Naming
 
@@ -235,6 +235,30 @@ AI payload semantics are defined by the
 | `AgentEndpointRequest` | `AgentEndpointResponse` | write | `agentName`, `endpoint`, `type` | Register or deregister one Agent endpoint. |
 | `BatchAgentEndpointRequest` | `AgentEndpointResponse` | write | `agentName`, `endpoints` | Replace this client's endpoints for an Agent. |
 | `QueryPromptRequest` | `QueryPromptResponse` | read | `namespace`, `promptKey`, `version`, `label`, `md5` | Query Prompt by version, label, latest, or md5. |
+
+The following Agent/RAD payloads are the approved Experimental target defined
+by the [Agent API Spec](../ai/agent-api-spec.md). They are not part of the
+current implemented payload inventory until their classes, handlers, SPI
+registrations, and negotiated abilities are present in the runtime.
+
+| Target request type | Target response type | Direction | Contract |
+| --- | --- | --- | --- |
+| `AgentSearchRpcRequest` | `AgentSearchResponse` | read | Search the Agent catalog and return one page of `AgentCatalogEntry` values. |
+| `AgentDiscoveryRpcRequest` | `AgentDiscoveryResponse` | read | Discover one Agent and return one complete `AgentDiscoveryResult`. |
+| `AgentPublishRpcRequest` | `AgentPublishRpcResponse` | write | Create an Agent draft in code and optionally run ordinary submit according to `autoSubmit`. |
+| `AgentSubscribeRequest` | `AgentSubscribeResponse` | read | Subscribe or unsubscribe an Agent reference and optional filter; subscribe returns an opaque `watchKey` and the current complete result. |
+| `AgentDiscoveryNotifyRequest` | `AgentDiscoveryNotifyResponse` | server push | Push one `SNAPSHOT` or `TERMINATED` event for a `watchKey` and receive an acknowledgement. |
+| `AgentEndpointRegisterRpcRequest` | `AgentEndpointOperationResponse` | write | Replace the complete runtime Endpoint batch owned by the current connection for one Agent and protocol. |
+| `AgentEndpointDeregisterRpcRequest` | `AgentEndpointOperationResponse` | write | Idempotently remove the current connection's whole runtime Endpoint publication for one Agent and protocol. |
+
+For this target binding, `AgentDiscoveryNotifyRequest` contains `watchKey` and
+`eventType`. `SNAPSHOT` requires a complete `AgentDiscoveryResult` and no
+error. `TERMINATED` requires no result and `errorCode=NOT_FOUND`. The client
+acknowledges both event types. A terminal event ends only the identified Watch
+on the shared Payload connection; it does not end the connection or another
+Watch. `AgentSubscribeResponse` is the source of the connection-scoped opaque
+`watchKey`, including after reconnect. These wrappers remain gRPC binding
+objects and do not extend RAD's six root messages.
 
 Skill ZIP download and AgentSpec assembly are Java SDK interface capabilities,
 but current Java client implementation uses HTTP/config composition rather than a

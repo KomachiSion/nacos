@@ -17,6 +17,8 @@
 package com.alibaba.nacos.plugin.ai.storage;
 
 import com.alibaba.nacos.api.exception.NacosException;
+import com.alibaba.nacos.api.plugin.PluginStateCheckerHolder;
+import com.alibaba.nacos.api.plugin.PluginType;
 import com.alibaba.nacos.plugin.ai.storage.model.StorageKey;
 import com.alibaba.nacos.plugin.ai.storage.spi.AiResourceStorage;
 import org.junit.jupiter.api.AfterEach;
@@ -35,17 +37,20 @@ class AiResourceStorageRouterTest {
     
     @AfterEach
     void tearDown() {
+        PluginStateCheckerHolder.setInstance(null);
         AiResourceStorageRouter.reset();
     }
     
     @Test
     void testJoinAndRouteStorage() throws NacosException {
         FakeStorage storage = new FakeStorage("fake");
+        FakeStorage duplicate = new FakeStorage("fake");
         StorageKey emptyStorageKey = new StorageKey();
         emptyStorageKey.setProvider("fake");
         emptyStorageKey.setKey("resource");
         
         assertTrue(AiResourceStorageRouter.join(storage));
+        assertFalse(AiResourceStorageRouter.join(duplicate));
         
         AiResourceStorage routed = AiResourceStorageRouter.getInstance().route(emptyStorageKey);
         routed.save(emptyStorageKey, "content".getBytes(StandardCharsets.UTF_8));
@@ -67,6 +72,20 @@ class AiResourceStorageRouterTest {
             () -> AiResourceStorageRouter.getInstance().route(new StorageKey("", "key")));
         assertThrows(IllegalStateException.class,
             () -> AiResourceStorageRouter.getInstance().route(new StorageKey("missing", "key")));
+    }
+    
+    @Test
+    void testRouteRejectsDisabledStorage() {
+        AiResourceStorageRouter.join(new FakeStorage("disabled"));
+        PluginStateCheckerHolder.setInstance(
+            (pluginType, pluginName) -> !PluginType.AI_STORAGE.getType().equals(pluginType)
+                || !"disabled".equals(pluginName));
+        
+        IllegalStateException exception = assertThrows(IllegalStateException.class,
+            () -> AiResourceStorageRouter.getInstance()
+                .route(new StorageKey("disabled", "resource")));
+        
+        assertTrue(exception.getMessage().contains("disabled"));
     }
     
     private static class FakeStorage implements AiResourceStorage {

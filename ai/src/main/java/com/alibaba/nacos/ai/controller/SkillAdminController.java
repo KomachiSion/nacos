@@ -16,7 +16,6 @@
 
 package com.alibaba.nacos.ai.controller;
 
-import com.alibaba.nacos.api.annotation.Since;
 import com.alibaba.nacos.ai.constant.Constants;
 import com.alibaba.nacos.ai.form.AiResourceFilterableForm;
 import com.alibaba.nacos.ai.form.skills.admin.SkillBizTagsUpdateForm;
@@ -29,15 +28,18 @@ import com.alibaba.nacos.ai.form.skills.admin.SkillPublishForm;
 import com.alibaba.nacos.ai.form.skills.admin.SkillScopeForm;
 import com.alibaba.nacos.ai.form.skills.admin.SkillSubmitForm;
 import com.alibaba.nacos.ai.form.skills.admin.SkillUpdateForm;
-import com.alibaba.nacos.api.ai.model.skills.BatchUploadResult;
 import com.alibaba.nacos.ai.param.SkillHttpParamExtractor;
+import com.alibaba.nacos.ai.param.SkillListHttpParamExtractor;
 import com.alibaba.nacos.ai.service.skills.SkillOperationService;
 import com.alibaba.nacos.ai.service.skills.SkillUploadRequest;
 import com.alibaba.nacos.ai.utils.SkillRequestUtil;
+import com.alibaba.nacos.api.ai.model.skills.BatchUploadResult;
 import com.alibaba.nacos.api.ai.model.skills.Skill;
 import com.alibaba.nacos.api.ai.model.skills.SkillMeta;
 import com.alibaba.nacos.api.ai.model.skills.SkillSummary;
+import com.alibaba.nacos.api.ai.model.skills.SkillUploadPrecheckResult;
 import com.alibaba.nacos.api.annotation.NacosApi;
+import com.alibaba.nacos.api.annotation.Since;
 import com.alibaba.nacos.api.common.ApiType;
 import com.alibaba.nacos.api.exception.NacosException;
 import com.alibaba.nacos.api.model.Page;
@@ -73,6 +75,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.util.List;
 import java.util.Map;
 
 import static com.alibaba.nacos.ai.constant.Constants.Skills.ADMIN_PATH;
@@ -220,6 +223,7 @@ public class SkillAdminController {
     @GetMapping("/list")
     @Secured(action = ActionTypes.READ, signType = SignType.AI, apiType = ApiType.ADMIN_API,
         tags = {ALLOW_ANONYMOUS})
+    @ExtractorManager.Extractor(httpExtractor = SkillListHttpParamExtractor.class)
     @Operation(summary = "nacos.admin.ai.skill.api.list.summary",
         description = "nacos.admin.ai.skill.api.list.description",
         security = @SecurityRequirement(name = "nacos"))
@@ -291,6 +295,7 @@ public class SkillAdminController {
             defaultValue = "false") boolean overwrite,
         @RequestParam(value = "targetVersion", required = false) String targetVersion,
         @RequestParam(value = "commitMsg", required = false) String commitMsg,
+        @RequestParam(value = "uploadAction", required = false) String uploadAction,
         @RequestParam("file") MultipartFile file) throws NacosException {
         namespaceId = NamespaceUtil.processNamespaceParameter(namespaceId);
         byte[] zipBytes = SkillRequestUtil.validateAndExtractZipBytes(file);
@@ -300,9 +305,33 @@ public class SkillAdminController {
             .overwrite(overwrite)
             .targetVersion(targetVersion)
             .commitMsg(commitMsg)
+            .uploadAction(uploadAction)
             .build();
         String skillName = skillOperationService.uploadSkillFromZip(uploadRequest);
         return Result.success(skillName);
+    }
+    
+    /**
+     * Precheck one or more skill uploads from a zip file.
+     *
+     * @param request HTTP servlet request
+     * @param namespaceId namespace ID
+     * @param file zip file containing one skill or multiple skill subdirectories
+     * @return list of precheck results
+     * @throws NacosException if zip parsing fails entirely
+     */
+    @Since("3.3.0")
+    @PostMapping(value = "/upload/precheck", consumes = "multipart/form-data")
+    @Secured(action = ActionTypes.WRITE, signType = SignType.AI, apiType = ApiType.ADMIN_API)
+    @ExtractorManager.Extractor(httpExtractor = ExtractorManager.DefaultHttpExtractor.class)
+    public Result<List<SkillUploadPrecheckResult>> precheckUploadSkill(
+        HttpServletRequest request,
+        @RequestParam(value = "namespaceId", required = false) String namespaceId,
+        @RequestParam("file") MultipartFile file) throws NacosException {
+        namespaceId = NamespaceUtil.processNamespaceParameter(namespaceId);
+        byte[] zipBytes = SkillRequestUtil.validateAndExtractZipBytes(file);
+        return Result.success(
+            skillOperationService.precheckUploadSkillFromZip(namespaceId, zipBytes));
     }
     
     /**
@@ -313,7 +342,7 @@ public class SkillAdminController {
      * @param namespaceId namespace ID
      * @param overwrite   whether to overwrite existing drafts
      * @param file        zip file containing multiple skill subdirectories
-     * @return batch upload result with succeeded and failed lists
+     * @return batch upload result with per-skill results
      * @throws NacosException if zip parsing fails entirely
      */
     @Since("3.2.2")
@@ -468,9 +497,8 @@ public class SkillAdminController {
         @Parameter(name = "form", hidden = true)})
     public Result<String> publish(SkillPublishForm form) throws NacosException {
         form.validate();
-        boolean updateLatest = form.getUpdateLatestLabel() == null || form.getUpdateLatestLabel();
         skillOperationService.publish(form.getNamespaceId(), form.getSkillName(), form.getVersion(),
-            updateLatest);
+            true);
         return Result.success("ok");
     }
     
@@ -481,7 +509,7 @@ public class SkillAdminController {
     @Since("3.2.1")
     @PostMapping("/force-publish")
     @Secured(resource = ADMIN_PATH
-        + "/force-publish", action = ActionTypes.WRITE, signType = SignType.CONSOLE,
+        + "/force-publish", action = ActionTypes.WRITE, signType = SignType.AI,
         apiType = ApiType.ADMIN_API)
     @Operation(summary = "nacos.admin.ai.skill.api.force.publish.summary",
         description = "nacos.admin.ai.skill.api.force.publish.description",
@@ -498,9 +526,8 @@ public class SkillAdminController {
         @Parameter(name = "form", hidden = true)})
     public Result<String> forcePublish(SkillPublishForm form) throws NacosException {
         form.validate();
-        boolean updateLatest = form.getUpdateLatestLabel() == null || form.getUpdateLatestLabel();
         skillOperationService.forcePublish(form.getNamespaceId(), form.getSkillName(),
-            form.getVersion(), updateLatest);
+            form.getVersion(), true);
         return Result.success("ok");
     }
     

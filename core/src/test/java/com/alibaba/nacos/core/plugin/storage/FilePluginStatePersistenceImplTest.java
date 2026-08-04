@@ -23,6 +23,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import org.springframework.mock.env.MockEnvironment;
+import org.springframework.test.util.ReflectionTestUtils;
 
 import java.io.File;
 import java.io.IOException;
@@ -30,12 +31,14 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -117,6 +120,38 @@ class FilePluginStatePersistenceImplTest {
     }
     
     @Test
+    void replaceAllStatesTest() {
+        persistence.saveState("trace:old", true);
+        Map<String, Boolean> replacement = new HashMap<>();
+        replacement.put("trace:new", false);
+        
+        persistence.replaceAllStates(replacement);
+        
+        assertEquals(replacement, persistence.loadAllStates());
+        
+        persistence.replaceAllStates(null);
+        assertTrue(persistence.loadAllStates().isEmpty());
+    }
+    
+    @Test
+    void replaceAllStatesFailureTest() throws IOException {
+        useInvalidDataDir();
+        
+        assertThrows(PluginPersistenceException.class,
+            () -> persistence.replaceAllStates(Collections.emptyMap()));
+    }
+    
+    @Test
+    void saveOperationsFailureTest() throws IOException {
+        useInvalidDataDir();
+        
+        assertThrows(PluginPersistenceException.class,
+            () -> persistence.saveState("trace:test", true));
+        assertThrows(PluginPersistenceException.class, () -> persistence.saveConfig("trace:test",
+            Collections.singletonMap("endpoint", "value")));
+    }
+    
+    @Test
     void saveConfigTest() {
         Map<String, String> config = new HashMap<>();
         config.put("key1", "value1");
@@ -147,6 +182,28 @@ class FilePluginStatePersistenceImplTest {
         assertEquals(2, configs.size());
         assertEquals("value1", configs.get("trace:test1").get("key1"));
         assertEquals("value2", configs.get("auth:test2").get("key2"));
+    }
+    
+    @Test
+    void replaceAllConfigsTest() {
+        persistence.saveConfig("trace:old", Collections.singletonMap("key", "old"));
+        Map<String, Map<String, String>> replacement = new HashMap<>();
+        replacement.put("trace:new", Collections.singletonMap("key", "new"));
+        
+        persistence.replaceAllConfigs(replacement);
+        
+        assertEquals(replacement, persistence.loadAllConfigs());
+        
+        persistence.replaceAllConfigs(null);
+        assertTrue(persistence.loadAllConfigs().isEmpty());
+    }
+    
+    @Test
+    void replaceAllConfigsFailureTest() throws IOException {
+        useInvalidDataDir();
+        
+        assertThrows(PluginPersistenceException.class,
+            () -> persistence.replaceAllConfigs(Collections.emptyMap()));
     }
     
     @Test
@@ -207,10 +264,7 @@ class FilePluginStatePersistenceImplTest {
         Files.createDirectories(pluginDataDir);
         Files.write(configFile, "not a valid json".getBytes(StandardCharsets.UTF_8));
         
-        Map<String, Map<String, String>> configs = persistence.loadAllConfigs();
-        
-        assertNotNull(configs);
-        assertEquals(0, configs.size());
+        assertThrows(PluginPersistenceException.class, persistence::loadAllConfigs);
     }
     
     @Test
@@ -269,11 +323,41 @@ class FilePluginStatePersistenceImplTest {
     }
     
     @Test
-    void ensureDataDirExistsTest() {
+    void deleteOperationsFailureTest() throws IOException {
+        useInvalidDataDir();
+        
+        assertThrows(PluginPersistenceException.class,
+            () -> persistence.deleteState("trace:test"));
+        assertThrows(PluginPersistenceException.class,
+            () -> persistence.deleteConfig("trace:test"));
+    }
+    
+    @Test
+    void dataDirCreationIsDeferredUntilWriteTest() {
         File dataDir = new File(pluginDataDir.toString());
+        
+        assertFalse(dataDir.exists());
+        persistence.saveState("trace:test", true);
         
         assertTrue(dataDir.exists());
         assertTrue(dataDir.isDirectory());
+    }
+    
+    @Test
+    void ensureDataDirExistsFailureTest() throws IOException {
+        useInvalidDataDir();
+        
+        assertThrows(PluginPersistenceException.class,
+            () -> ReflectionTestUtils.invokeMethod(persistence, "ensureDataDirExists"));
+    }
+    
+    @Test
+    void ensureDataDirExistsAcceptsExistingDirectoryTest() throws IOException {
+        Files.createDirectories(pluginDataDir);
+        
+        ReflectionTestUtils.invokeMethod(persistence, "ensureDataDirExists");
+        
+        assertTrue(Files.isDirectory(pluginDataDir));
     }
     
     @Test
@@ -299,6 +383,13 @@ class FilePluginStatePersistenceImplTest {
         assertEquals(2, states.size());
         assertTrue(states.containsKey("plugin1"));
         assertTrue(states.containsKey("plugin2"));
+    }
+    
+    private void useInvalidDataDir() throws IOException {
+        Path parentFile = tempDir.resolve("not-a-directory");
+        Files.write(parentFile, Collections.singletonList("content"), StandardCharsets.UTF_8);
+        ReflectionTestUtils.setField(persistence, "dataDir",
+            parentFile.resolve("plugin").toString());
     }
     
     @Test

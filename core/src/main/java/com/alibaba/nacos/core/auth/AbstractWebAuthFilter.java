@@ -22,6 +22,7 @@ import com.alibaba.nacos.api.exception.runtime.NacosRuntimeException;
 import com.alibaba.nacos.api.model.v2.ErrorCode;
 import com.alibaba.nacos.api.model.v2.Result;
 import com.alibaba.nacos.auth.HttpProtocolAuthService;
+import com.alibaba.nacos.auth.annotation.ProtocolAuthError;
 import com.alibaba.nacos.auth.annotation.Secured;
 import com.alibaba.nacos.auth.config.NacosAuthConfig;
 import com.alibaba.nacos.auth.serveridentity.ServerIdentityResult;
@@ -45,9 +46,12 @@ import jakarta.servlet.ServletRequest;
 import jakarta.servlet.ServletResponse;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import org.springframework.core.annotation.AnnotatedElementUtils;
 
 import java.io.IOException;
 import java.lang.reflect.Method;
+import java.util.LinkedHashMap;
+import java.util.Map;
 
 /**
  * Abstract Auth filter.
@@ -90,6 +94,8 @@ public abstract class AbstractWebAuthFilter implements Filter {
                 chain.doFilter(request, response);
                 return;
             }
+            IdentityContext identityContext = protocolAuthService.parseIdentity(req);
+            requestContext.getAuthContext().setIdentityContext(identityContext);
             if (!isAuthEnabled()) {
                 chain.doFilter(request, response);
                 return;
@@ -101,10 +107,10 @@ public abstract class AbstractWebAuthFilter implements Filter {
             ServerIdentityResult serverIdentityResult = checkServerIdentity(req, secured);
             switch (serverIdentityResult.getStatus()) {
                 case FAIL:
-                    writeResultResponse(resp, HttpServletResponse.SC_FORBIDDEN,
-                        Result.failure(ErrorCode.ACCESS_DENIED, serverIdentityResult.getMessage()));
+                    writeAccessDeniedResponse(resp, method, serverIdentityResult.getMessage());
                     return;
                 case MATCHED:
+                    identityContext.setParameter(Constants.Identity.SERVER_IDENTITY, Boolean.TRUE);
                     chain.doFilter(request, response);
                     return;
                 default:
@@ -115,10 +121,8 @@ public abstract class AbstractWebAuthFilter implements Filter {
                 return;
             }
             Resource resource = protocolAuthService.parseResource(req, secured);
-            IdentityContext identityContext = protocolAuthService.parseIdentity(req);
-            AuthResult result = protocolAuthService.validateIdentity(identityContext, resource);
-            requestContext.getAuthContext().setIdentityContext(identityContext);
             requestContext.getAuthContext().setResource(resource);
+            AuthResult result = protocolAuthService.validateIdentity(identityContext, resource);
             requestContext.getAuthContext().setAuthResult(result);
             if (!result.isSuccess()) {
                 throw new AccessException(result.format());
@@ -141,12 +145,12 @@ public abstract class AbstractWebAuthFilter implements Filter {
             }
             chain.doFilter(request, response);
         } catch (Exception e) {
-            handleFilterException(req, resp, e);
+            handleFilterException(req, resp, method, e);
         }
     }
     
     private void handleFilterException(HttpServletRequest req, HttpServletResponse resp,
-        Exception e)
+        Method method, Exception e)
         throws IOException, ServletException {
         if (e instanceof AccessException accessException) {
             if (Loggers.AUTH.isDebugEnabled()) {
@@ -154,8 +158,7 @@ public abstract class AbstractWebAuthFilter implements Filter {
                     req.getRequestURI(),
                     accessException.getErrMsg());
             }
-            writeResultResponse(resp, HttpServletResponse.SC_FORBIDDEN,
-                Result.failure(ErrorCode.ACCESS_DENIED, accessException.getErrMsg()));
+            writeAccessDeniedResponse(resp, method, accessException.getErrMsg());
             return;
         }
         if (e instanceof IllegalArgumentException) {
@@ -182,6 +185,25 @@ public abstract class AbstractWebAuthFilter implements Filter {
             return;
         }
         handleUnexpectedException(e);
+    }
+    
+    private void writeAccessDeniedResponse(HttpServletResponse response, Method method,
+        String message) throws IOException {
+        ProtocolAuthError protocolError =
+            AnnotatedElementUtils.findMergedAnnotation(method, ProtocolAuthError.class);
+        if (protocolError == null) {
+            protocolError = AnnotatedElementUtils.findMergedAnnotation(method.getDeclaringClass(),
+                ProtocolAuthError.class);
+        }
+        if (protocolError == null) {
+            writeResultResponse(response, HttpServletResponse.SC_FORBIDDEN,
+                Result.failure(ErrorCode.ACCESS_DENIED, message));
+            return;
+        }
+        Map<String, String> body = new LinkedHashMap<>(2);
+        body.put("errorCode", protocolError.errorCode());
+        body.put("message", message == null ? "Unauthorized" : message);
+        WebUtils.response(response, JacksonUtils.toJson(body), protocolError.status());
     }
     
     private void handleUnexpectedException(Exception e) throws IOException, ServletException {

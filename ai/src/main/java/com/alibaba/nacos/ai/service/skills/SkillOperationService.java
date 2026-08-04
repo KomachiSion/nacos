@@ -18,12 +18,13 @@ package com.alibaba.nacos.ai.service.skills;
 
 import com.alibaba.nacos.api.ai.model.skills.BatchUploadResult;
 import com.alibaba.nacos.api.ai.model.skills.Skill;
-import com.alibaba.nacos.api.ai.model.skills.SkillBasicInfo;
 import com.alibaba.nacos.api.ai.model.skills.SkillMeta;
 import com.alibaba.nacos.api.ai.model.skills.SkillSummary;
+import com.alibaba.nacos.api.ai.model.skills.SkillUploadPrecheckResult;
 import com.alibaba.nacos.api.exception.NacosException;
 import com.alibaba.nacos.api.model.Page;
 
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -45,14 +46,24 @@ public interface SkillOperationService {
     String uploadSkillFromZip(SkillUploadRequest request) throws NacosException;
     
     /**
+     * Precheck one or more skill uploads from a zip archive.
+     *
+     * @param namespaceId namespace ID
+     * @param zipBytes zip file bytes containing one skill or multiple skill subdirectories
+     * @return list of precheck results
+     * @throws NacosException if zip parsing fails entirely
+     */
+    List<SkillUploadPrecheckResult> precheckUploadSkillFromZip(String namespaceId,
+        byte[] zipBytes) throws NacosException;
+    
+    /**
      * Batch upload multiple skills from a single zip archive. The zip must contain one-level subdirectories,
-     * each with its own SKILL.md. Uses best-effort strategy: processes all skills individually, returning
-     * succeeded and failed lists.
+     * each with its own SKILL.md. Uses best-effort strategy and returns one result for each skill.
      *
      * @param namespaceId namespace ID
      * @param zipBytes zip file bytes containing multiple skill subdirectories
      * @param overwrite whether to overwrite existing drafts
-     * @return batch upload result with succeeded and failed skill names
+     * @return batch upload result with per-skill results
      * @throws NacosException if zip parsing fails entirely (e.g. invalid format, no SKILL.md found)
      */
     BatchUploadResult batchUploadSkillsFromZip(String namespaceId, byte[] zipBytes,
@@ -249,6 +260,8 @@ public interface SkillOperationService {
     
     /**
      * Publish a reviewing version. Must have pipeline all passed when pipeline exists.
+     *
+     * @param updateLatestLabel retained for compatibility and ignored; latest is server-managed
      */
     void publish(String namespaceId, String name, String version, boolean updateLatestLabel)
         throws NacosException;
@@ -261,7 +274,7 @@ public interface SkillOperationService {
      * @param namespaceId      namespace ID
      * @param name             skill name
      * @param version          version to force-publish
-     * @param updateLatestLabel whether to update the "latest" label
+     * @param updateLatestLabel retained for compatibility and ignored; latest is server-managed
      */
     void forcePublish(String namespaceId, String name, String version, boolean updateLatestLabel)
         throws NacosException;
@@ -308,18 +321,6 @@ public interface SkillOperationService {
     void updateScope(String namespaceId, String name, String scope) throws NacosException;
     
     // ========== Client APIs ==========
-    
-    /**
-     * Search skills for runtime client usage. Only returns enabled skills that have at least one online version.
-     * Returns only name and description for client consumption.
-     *
-     * @param namespaceId namespace ID
-     * @param keyword keyword (optional)
-     * @param pageNo page number
-     * @param pageSize page size
-     */
-    Page<SkillBasicInfo> searchSkills(String namespaceId, String keyword, int pageNo, int pageSize)
-        throws NacosException;
     
     /**
      * Query skill for runtime client usage. Priority: label > version > latest(label).

@@ -41,6 +41,7 @@ import com.alibaba.nacos.api.exception.NacosException;
 import com.alibaba.nacos.api.model.Page;
 import com.alibaba.nacos.api.model.v2.Result;
 import com.alibaba.nacos.auth.annotation.Secured;
+import com.alibaba.nacos.auth.parser.http.AgentSpecCardHttpResourceParser;
 import com.alibaba.nacos.common.utils.JacksonUtils;
 import com.alibaba.nacos.common.utils.NamespaceUtil;
 import com.alibaba.nacos.core.model.form.PageForm;
@@ -321,7 +322,8 @@ public class AgentSpecAdminController {
      */
     @Since("3.2.0")
     @PutMapping("/draft")
-    @Secured(action = ActionTypes.WRITE, signType = SignType.AI, apiType = ApiType.ADMIN_API)
+    @Secured(action = ActionTypes.WRITE, signType = SignType.AI, apiType = ApiType.ADMIN_API,
+        parser = AgentSpecCardHttpResourceParser.class)
     @Operation(summary = "nacos.admin.ai.agentspec.api.draft.update.summary",
         description = "nacos.admin.ai.agentspec.api.draft.update.description",
         security = @SecurityRequirement(name = "nacos"))
@@ -409,10 +411,9 @@ public class AgentSpecAdminController {
         @Parameter(name = "form", hidden = true)})
     public Result<String> publish(AgentSpecPublishForm form) throws NacosException {
         form.validate();
-        boolean updateLatest = form.getUpdateLatestLabel() == null || form.getUpdateLatestLabel();
         agentSpecOperationService.publish(form.getNamespaceId(), form.getAgentSpecName(),
             form.getVersion(),
-            updateLatest);
+            true);
         return Result.success("ok");
     }
     
@@ -423,7 +424,7 @@ public class AgentSpecAdminController {
     @Since("3.2.1")
     @PostMapping("/force-publish")
     @Secured(resource = Constants.AgentSpecs.ADMIN_PATH
-        + "/force-publish", action = ActionTypes.WRITE, signType = SignType.CONSOLE,
+        + "/force-publish", action = ActionTypes.WRITE, signType = SignType.AI,
         apiType = ApiType.ADMIN_API)
     @Operation(summary = "nacos.admin.ai.agentspec.api.force.publish.summary",
         description = "nacos.admin.ai.agentspec.api.force.publish.description",
@@ -440,10 +441,9 @@ public class AgentSpecAdminController {
         @Parameter(name = "form", hidden = true)})
     public Result<String> forcePublish(AgentSpecPublishForm form) throws NacosException {
         form.validate();
-        boolean updateLatest = form.getUpdateLatestLabel() == null || form.getUpdateLatestLabel();
         agentSpecOperationService.forcePublish(form.getNamespaceId(), form.getAgentSpecName(),
             form.getVersion(),
-            updateLatest);
+            true);
         return Result.success("ok");
     }
     

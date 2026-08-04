@@ -990,6 +990,7 @@ const I18N_CONF = {
     statusOffline: 'Offline',
     // Lifecycle actions
     submitForReview: 'Submit for Review',
+    resubmitForReview: 'Resubmit for Review',
     forcePublish: 'Force Publish',
     onlineAction: 'Online',
     offlineAction: 'Offline',
@@ -1030,7 +1031,6 @@ const I18N_CONF = {
     manageLabels: 'Manage Labels',
     customLabels: 'Custom Labels',
     newLabel: 'New Label',
-    updateLatestLabel: 'Update latest label',
     deleteDraftConfirm: 'Are you sure you want to delete this draft?',
     publishConfirm: 'Are you sure you want to publish version {0}?',
     forcePublishConfirm:
@@ -1206,12 +1206,12 @@ const I18N_CONF = {
     createDraftFromVersion: 'Create Draft from This Version',
     // Submit & Publish
     submitForReview: 'Submit for Review',
+    resubmitForReview: 'Resubmit for Review',
     submitSuccess: 'Submitted for review successfully',
     submitFailed: 'Failed to submit for review',
     publishVersion: 'Publish Version',
     publishSuccess: 'Published successfully',
     publishFailed: 'Failed to publish',
-    updateLatestLabel: 'Update latest label',
     publishNotApproved: 'Cannot publish: pipeline not approved',
     publishConfirm: 'Are you sure you want to publish version {0}?',
     actionRedraft: 'Re-edit',
@@ -1233,6 +1233,7 @@ const I18N_CONF = {
     labelRequired: 'Please enter label name',
     labelInvalid: 'Label only supports letters, numbers, .-_',
     labelExists: 'Label already exists',
+    latestLabelReserved: 'latest is managed by server',
     bindLabelSuccess: 'Labels updated successfully',
     bindLabelFailed: 'Failed to update labels',
     newLabel: 'New label',

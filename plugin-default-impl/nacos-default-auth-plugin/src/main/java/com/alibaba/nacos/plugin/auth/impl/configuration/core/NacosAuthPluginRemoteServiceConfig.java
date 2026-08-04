@@ -16,32 +16,36 @@
 
 package com.alibaba.nacos.plugin.auth.impl.configuration.core;
 
-import com.alibaba.nacos.plugin.auth.impl.configuration.AuthConfigs;
 import com.alibaba.nacos.plugin.auth.impl.condition.ConditionOnRemoteDatasource;
 import com.alibaba.nacos.plugin.auth.impl.roles.NacosRoleService;
 import com.alibaba.nacos.plugin.auth.impl.roles.NacosRoleServiceRemoteImpl;
 import com.alibaba.nacos.plugin.auth.impl.users.NacosUserService;
 import com.alibaba.nacos.plugin.auth.impl.users.NacosUserServiceRemoteImpl;
+import com.alibaba.nacos.plugin.auth.impl.visibility.RemoteVisibilityGrantService;
+import com.alibaba.nacos.plugin.auth.impl.visibility.VisibilityGrantService;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Conditional;
-import org.springframework.context.annotation.Import;
 
 /**
  * Nacos auth plugin remote bean config, working on nacos deployment type is `console`.
  *
  * @author xiweng.yy
  */
-@Import({AuthConfigs.class})
 @Conditional(ConditionOnRemoteDatasource.class)
 public class NacosAuthPluginRemoteServiceConfig {
     
     @Bean
-    public NacosRoleService nacosRoleService(AuthConfigs authConfigs) {
-        return new NacosRoleServiceRemoteImpl(authConfigs);
+    public NacosRoleService nacosRoleService() {
+        return new NacosRoleServiceRemoteImpl();
     }
     
     @Bean
-    public NacosUserService nacosUserService(AuthConfigs authConfigs) {
-        return new NacosUserServiceRemoteImpl(authConfigs);
+    public NacosUserService nacosUserService() {
+        return new NacosUserServiceRemoteImpl();
+    }
+    
+    @Bean
+    public VisibilityGrantService visibilityGrantService() {
+        return new RemoteVisibilityGrantService();
     }
 }

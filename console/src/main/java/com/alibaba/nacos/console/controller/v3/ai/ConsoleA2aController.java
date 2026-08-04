@@ -249,7 +249,8 @@ public class ConsoleA2aController {
      */
     @Since("3.1.0")
     @GetMapping("/version/list")
-    @Secured(action = ActionTypes.READ, signType = SignType.AI, apiType = ApiType.ADMIN_API)
+    @Secured(action = ActionTypes.READ, signType = SignType.AI,
+        apiType = ApiType.CONSOLE_API)
     @Operation(summary = "nacos.console.ai.a2a.api.version.list.summary",
         description = "nacos.console.ai.a2a.api.version.list.description",
         security = @SecurityRequirement(name = "nacos"))

@@ -16,10 +16,10 @@
 
 package com.alibaba.nacos.persistence.datasource;
 
-import com.alibaba.nacos.common.utils.ConvertUtils;
 import com.alibaba.nacos.common.utils.InternetAddressUtil;
 import com.alibaba.nacos.common.utils.StringUtils;
 import com.alibaba.nacos.persistence.configuration.DatasourceConfiguration;
+import com.alibaba.nacos.persistence.constants.PersistenceConstant;
 import com.alibaba.nacos.persistence.monitor.DatasourceMetrics;
 import com.alibaba.nacos.persistence.utils.ConnectionCheckUtil;
 import com.alibaba.nacos.persistence.utils.DatasourcePlatformUtil;
@@ -35,7 +35,6 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.datasource.DataSourceTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
 
-import javax.sql.DataSource;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
@@ -91,11 +90,12 @@ public class ExternalDataSourceServiceImpl implements DataSourceService {
     
     private String dataSourceType = "";
     
-    private final String defaultDataSourceType = "";
+    private final String defaultDataSourceType = PersistenceConstant.MYSQL;
     
     @Override
     public void init() {
-        queryTimeout = ConvertUtils.toInt(System.getProperty("QUERYTIMEOUT"), 3);
+        queryTimeout = new DatasourceConfigResolver(EnvUtil.getEnvironment())
+            .resolveQueryTimeout(3);
         jt = new JdbcTemplate();
         // Set the maximum number of records to prevent memory expansion
         jt.setMaxRows(50000);
@@ -212,35 +212,6 @@ public class ExternalDataSourceServiceImpl implements DataSourceService {
     @Override
     public TransactionTemplate getTransactionTemplate() {
         return this.tjt;
-    }
-    
-    @Override
-    public String getCurrentDbUrl() {
-        DataSource ds = this.jt.getDataSource();
-        if (ds == null) {
-            return StringUtils.EMPTY;
-        }
-        HikariDataSource bds = (HikariDataSource) ds;
-        return bds.getJdbcUrl();
-    }
-    
-    @Override
-    public String getHealth() {
-        for (int i = 0; i < isHealthList.size(); i++) {
-            if (!isHealthList.get(i)) {
-                if (i == masterIndex) {
-                    // The master is unhealthy.
-                    return "DOWN:"
-                        + InternetAddressUtil.getIpFromString(dataSourceList.get(i).getJdbcUrl());
-                } else {
-                    // The slave  is unhealthy.
-                    return "WARN:"
-                        + InternetAddressUtil.getIpFromString(dataSourceList.get(i).getJdbcUrl());
-                }
-            }
-        }
-        
-        return "UP";
     }
     
     @Override

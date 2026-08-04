@@ -19,6 +19,9 @@
 本文档定义 Java SDK 如何实现共享的 [SDK 规范](./sdk-spec.md)，覆盖 Java
 Client SDK 和 Java Maintainer SDK。
 
+Java SDK 的 JSON 序列化兼容模型由
+[Java SDK JSON 适配规范](./sdk-java-json-adapter-spec.md)定义。
+
 ## 1. 范围
 
 Java SDK 当前包含两类公开能力：
@@ -31,6 +34,10 @@ Java SDK 当前包含两类公开能力：
 Java Client SDK 是现有运行时应用行为的基准。它的连接、server list、能力协商、
 本地缓存和 redo 行为由[客户端运行时规范](../client/README.md)定义。Java Maintainer SDK
 是管理、UI、网关和运维场景的推荐 Java 接入方式。
+
+当公开 SDK interface、factory、模型、监听行为、生命周期行为或异常映射发生
+变化时，必须按照[Java SDK 集成测试规范](../testing/java-sdk-integration-test-spec.md)
+使用场景化 IT 验证 Java SDK 行为。
 
 ## 2. Java Client SDK Factory 和生命周期
 
@@ -45,8 +52,12 @@ Java Client SDK 是现有运行时应用行为的基准。它的连接、server 
 `NamingMaintainService` 在 3.3.0 后已废弃。新的管理类接入应使用
 `nacos-maintainer-client`。
 
-一个 Java SDK 实例绑定一个命名空间。需要访问多个命名空间的应用应创建多个
-SDK 实例，并在不再使用时关闭实例。
+一个 Java Client SDK 实例绑定一个命名空间。需要访问多个命名空间的应用应创建多个
+Client SDK 实例，并在不再使用时关闭实例。公开运行时接口不暴露 namespace 参数，
+实现使用构造时绑定的 namespace。该规则不适用于 Maintainer SDK：其 Agent 管理接口
+不绑定 namespace，可显式传入 namespace，并提供使用 `public` 的默认 namespace 重载。
+Agent 管理 Request 和 Command 对象不包含 namespace；显式方法参数是自定义 namespace
+的唯一来源。
 
 ## 3. Java Client SDK 配置模型
 
@@ -144,10 +155,56 @@ context，而不是修改请求 payload 或让无关 SDK 调用失败。默认 N
 
 `getServicesOfServer` 的 selector overload 已废弃，仅作为兼容面保留。
 
-### 5.3 AiService 和 A2aService
+### 5.3 AiService、AgentDiscoveryService 和 A2aService
 
-`AiService` 继承 `A2aService`。
-资源语义由 [AI Registry 规范](../ai/ai-registry-spec.md)和各 AI 资源类型规范定义。
+本节的 Agent/RAD 契约是目标契约，不是当前已经实现的 Java 方法清单。只有新的
+Agent/RAD 能力完成实现并经过协商后才生效；在此之前，现有 `AiService` 和
+`A2aService` 方法仍是生效的兼容面。
+
+目标继承关系为：
+
+```text
+AiService extends AgentDiscoveryService, A2aService
+```
+
+增加该父接口时，不能让已经编译的第三方 `AiService` 实现立即发生 linkage failure。新增的
+继承方法使用兼容 default bridge，在实现未 override 时报告不支持；Nacos 官方实现 override
+完整目标接口面。
+
+`AiService` 直接提供 namespace-bound 的
+`publishAgent(AgentPublishRequest)`，返回 `AgentVersionDetail`。该新增方法使用同样的兼容
+default bridge；它不放入 `AgentDiscoveryService`，因为定义发布不是发现操作。官方实现复制
+Request、注入 SDK namespace，并按 `autoSubmit` 创建 draft 或执行普通 submit Pipeline，且不
+修改调用方对象。等价重试、冲突和状态收敛遵循 [Agent API 规范](../ai/agent-api-spec.md)。
+
+`AgentDiscoveryService` 提供以下 namespace-bound 方法：
+
+| 能力 | 方法 | 契约 |
+| --- | --- | --- |
+| Search | `searchAgents` | 接受 `AgentSearchRequest`，返回 `Page<AgentCatalogEntry>`。 |
+| Discover | `discoverAgent` 重载 | 接受 `AgentReference` 和可选 `AgentDiscoveryFilter`，返回一个完整 `AgentDiscoveryResult`。 |
+| Watch | `subscribeAgent` 重载 | 接受相同 Reference、可选 Filter 和 Listener；返回当前完整结果，后续传递完整替换结果。 |
+| 取消 Watch | `unsubscribeAgent` 重载 | 按相同 Reference、Filter 和 Listener identity 移除 Watch。 |
+| 注册 Endpoint | `registerAgentEndpoints` | 注册一个 `AgentEndpointRegistrationBatch`，并保留为 redo 意图。 |
+| 注销 Endpoint | `deregisterAgentEndpoints` | 注销该 SDK Publisher 拥有的一个 `AgentEndpointDeregistrationBatch`。 |
+
+这些公开方法不接受 `namespaceId`。Proxy 复制调用方的 Request 或 Batch，把 SDK
+namespace 注入传输对象，并且不修改调用方对象。如果共享输入模型已经携带与 SDK namespace
+不同的非空值，Proxy 在本地拒绝。目标 Watch、Cache 和 Redo 行为遵循
+[客户端本地缓存与 Redo 规范](../client/client-local-cache-redo-spec.md)和
+[运行时推送与重连规范](../client/runtime-push-reconnect-spec.md)。
+
+继承的 `A2aService` 继续作为兼容 Facade。新的 Agent 应用使用
+`AgentDiscoveryService`；现有 AgentCard 调用继续通过 A2A 兼容 Adapter 工作。
+
+旧 A2A Endpoint redo 按 namespace-bound SDK 内的 `(agentName, exactVersion)` 区分意图，
+并保存 Endpoint Payload 的防御性快照。旧 AgentCard 订阅必须同时正确处理 exact Version、latest
+指针变化和取消后以已有 Cache 重新订阅；`shutdown()` 必须停止其轮询任务。Endpoint 可以先于
+Agent 定义发布，且不得隐式创建定义。
+
+资源语义由 [AI Registry 规范](../ai/ai-registry-spec.md)、
+[Agent API 规范](../ai/agent-api-spec.md)、[RAD 协议规范](../ai/rad-protocol-spec.md)
+以及各 AI 资源类型规范定义。当前已经实现的兼容方法包括：
 
 | 能力 | 方法 | 契约 |
 | --- | --- | --- |
@@ -208,7 +265,7 @@ Maintainer service 在适用场景下继承 `CoreMaintainerService`。它们属�
 
 `ConfigMaintainerService` 包含：
 
-- 配置获取、发布、删除和批量删除；
+- 配置获取、发布、删除和按 namespace 限定的批量删除；
 - 按 namespace、dataId、group、type、tag、app 等条件进行配置列表和搜索；
 - clone、import/export 等管理模型；
 - 通过 `BetaConfigMaintainerService` 提供 beta 和灰度发布能力；
@@ -217,6 +274,12 @@ Maintainer service 在适用场景下继承 `CoreMaintainerService`。它们属�
 - 配置描述、标签等元数据更新。
 
 管理类写入和大范围查询应加入这里，而不是继续扩展 `ConfigService`。
+按存储 ID 批量删除必须显式传入或默认出 namespace；未传 namespace 的便捷方法只表示默认
+namespace，不表示跨 namespace 全局删除。
+按存储 ID 克隆必须显式传入或默认出源 namespace 和目标 namespace。旧的单 namespace 克隆方法只表示
+同 namespace 克隆，不表示按 ID 跨 namespace 读取源配置。
+Maintainer SDK 中暴露存储 ID 选择器的方法，例如批量删除中的 `ids`，属于兼容方法并待移除。
+新的 maintainer 契约应按 `namespaceId`、`groupName`、`dataId`，或这些身份元组的显式列表选择配置。
 
 ### 7.3 NamingMaintainerService
 
@@ -243,12 +306,22 @@ Maintainer service 在适用场景下继承 `CoreMaintainerService`。它们属�
 - `agentSpec()`：AgentSpec 管理；
 - `pipeline()`：Pipeline 管理。
 
+Agent 管理委托为 `agent()`，返回 `AgentMaintainerService`，并与 Agent Admin HTTP
+API 一一映射。实例不绑定 namespace；各操作提供显式 namespace 形式，以及使用默认
+namespace `public` 的便利重载。Agent Request 和 Command 对象不包含 `namespaceId`；
+显式重载将其作为独立方法参数。Agent 定义统一通过 `createDraft` 创建：首个 draft
+在 metadata 不存在时创建 Agent，后续 draft 复用已有 metadata。`a2a()` 在兼容窗口内
+继续保留。
+
 运行时 AI 注册和订阅可以继续保留在 `AiService`；大范围 AI 资源管理属于
 `AiMaintainerService`。
 
 ## 8. Java 兼容规则
 
 - `api`、`client` 和 `plugin` 模块保持 Java 8 兼容，除非模块策略发生变化。
+- Java SDK 的 JSON 序列化与反序列化必须通过
+  [Java SDK JSON 适配规范](./sdk-java-json-adapter-spec.md)定义的中立 JSON
+  adapter 模型。新的公开 SDK API 不得暴露具体 Jackson core/databind 类型。
 - 服务端和 maintainer 模块遵循仓库 Java 版本策略。
 - Client SDK 和 Maintainer SDK 的 service interface（`XxxService`）新增 API 方法
   时，必须添加 `@Since`，声明该方法起始支持的 Nacos 版本号。

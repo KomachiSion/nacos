@@ -77,7 +77,7 @@ guide, not as a final OpenAPI export.
 | `/v3/admin/core/*` | 25 | GET, POST, PUT, DELETE | Loader, cluster, ops, namespace, state, plugin. |
 | `/v3/admin/cs/*` | 25 | GET, POST, PUT, DELETE | Config CRUD, history, listener, capacity, metrics, ops. |
 | `/v3/admin/ns/*` | 29 | GET, POST, PUT, DELETE | Service, instance, client, cluster, health, ops. |
-| `/v3/admin/ai/*` | 71 | GET, POST, PUT, DELETE | MCP, A2A, Prompt, Skill, AgentSpec, Pipeline. |
+| `/v3/admin/ai/*` | 89 | GET, POST, PUT, DELETE | MCP, A2A, Agent, Prompt, Skill, AgentSpec, Pipeline. |
 | `/v3/console/core/*` | 7 | GET, POST, PUT, DELETE | Cluster and namespace console operations. |
 | `/v3/console/cs/*` | 17 | GET, POST, DELETE | Config and history console operations. |
 | `/v3/console/ns/*` | 11 | GET, POST, PUT, DELETE | Naming console service and instance operations. |
@@ -86,6 +86,7 @@ guide, not as a final OpenAPI export.
 | `/v3/auth/user` | 7 | GET, POST, PUT, DELETE | User login and management in default auth plugin. |
 | `/v3/auth/role` | 4 | GET, POST, DELETE | Role management in default auth plugin. |
 | `/v3/auth/permission` | 4 | GET, POST, DELETE | Permission management in default auth plugin. |
+| `/v3/auth/visibility` | 2 | POST, DELETE | Plugin-owned visibility grant management in default auth plugin. |
 
 ## 4. Open API Implemented Behavior
 
@@ -104,9 +105,16 @@ Implemented Open API surface:
 
 ## 5. Admin API Implemented Behavior
 
-Admin APIs are operator-oriented and default to `ApiType.ADMIN_API`. Existing docs
-state that v3 Admin API is not compatible with v1/v2 Admin API, and that v1/v2
-Admin API compatibility requires `nacos.core.auth.admin.enabled=true`.
+Admin APIs are operator-oriented and default to `ApiType.ADMIN_API`. The standard
+Nacos 3.x Admin API uses the `/v3/admin/*` path. v1/v2 Admin APIs have been
+removed from the current Nacos main distribution, and new integrations should
+migrate to the v3 Admin API. If v1/v2 Admin APIs are still required during
+migration, use the
+[nacos-api-legacy-adapter](https://github.com/nacos-group/nacos-api-legacy-adapter)
+approach and follow the
+[Compatibility And Deprecation Spec](../design/compatibility-deprecation-spec.md).
+`nacos.core.auth.admin.enabled` only controls whether Admin API authentication is
+enabled; it is not a legacy Admin API compatibility switch.
 
 Current modules:
 
@@ -115,7 +123,7 @@ Current modules:
 - `cs`: config CRUD, metadata, batch operations, history, listener, capacity,
   metrics, and ops.
 - `ns`: service, instance, cluster, health, client, and naming ops.
-- `ai`: MCP, A2A, Prompt, Skill, AgentSpec, and Pipeline management.
+- `ai`: MCP, A2A, Agent, Prompt, Skill, AgentSpec, and Pipeline management.
 
 Implemented behavior to document more explicitly:
 
@@ -127,6 +135,19 @@ Implemented behavior to document more explicitly:
   configured encryption handler applies.
 - AI Prompt contains deprecated compatibility endpoints and newer lifecycle
   endpoints in the same controller.
+- Agent management exposes definition CRUD, bounded Agent and Version reads,
+  draft and Version lifecycle operations, custom labels, and read-only Runtime
+  Endpoint snapshots under `/v3/admin/ai/agents`. Omitted or blank
+  `namespaceId` is normalized to `public`.
+- Plugin detail returns the current effective plugin config in its existing
+  `config` field and may add value metadata such as source and overridden state
+  without changing existing fields.
+- Plugin config update keeps full override map replacement semantics. Runtime
+  updates reject restart-effective changes, including removal by omission, and
+  preserve a masked sensitive input only from the same target source. If that
+  source has no value, the masked item is ignored instead of creating an
+  override. An accepted source update that fails during plugin apply returns an
+  explicit server error and is not automatically rolled back.
 
 ## 6. Console API Implemented Behavior
 
@@ -156,6 +177,7 @@ The v3 auth API lives in the default auth plugin, not in core:
 /v3/auth/user
 /v3/auth/role
 /v3/auth/permission
+/v3/auth/visibility
 ```
 
 Implemented behavior:
@@ -164,13 +186,57 @@ Implemented behavior:
   search.
 - role management supports add, delete, list, and search.
 - permission management supports add, delete, and list.
+- visibility grant management supports grant and revoke for explicit
+  resource visibility access.
 - first-admin bootstrap is implemented by `POST /v3/auth/user/admin`.
 
 The default auth plugin is shipped with Nacos, so its v3 auth endpoints should
 follow the Nacos HTTP API rules and the
 [Auth Plugin Spec](../auth/auth-plugin-spec.md).
 
-## 8. Documentation Gap Notes
+## 8. Approved Agent/RAD Surface
+
+The following paths are the approved Experimental surface from the
+[Agent API Spec](../ai/agent-api-spec.md). The Admin management paths are part
+of the implemented inventory and controller counts in Section 3. Client
+transport bindings and the Console facade remain target surfaces until their
+controllers, authorization, transport bindings, and tests are implemented.
+
+Client target paths:
+
+| Method | Path | Contract |
+| --- | --- | --- |
+| GET | `/v3/client/ai/agents/search` | Search the Agent catalog. |
+| GET | `/v3/client/ai/agents` | Discover one Agent, with an optional discovery filter. |
+| POST | `/v3/client/ai/agents/endpoints` | Replace the current publisher's complete runtime Endpoint batch. |
+| DELETE | `/v3/client/ai/agents/endpoints` | Remove the current publisher's whole runtime Endpoint publication identified by a JSON body. |
+| PUT | `/v3/client/ai/agents/endpoints/heartbeat` | Refresh one HTTP publisher client's liveness. |
+
+Admin paths use the implemented `/v3/admin/ai/agents` prefix. Console target
+paths use `/v3/console/ai/agents`; Console is a UI facade over the same relative
+management contract.
+
+| Relative path | Methods | Contract |
+| --- | --- | --- |
+| *(base path)* | GET, PUT, DELETE | Read or update Agent metadata, or delete an Agent definition. |
+| `/list` | GET | List Agent summaries. |
+| `/versions` | GET | List Version summaries. |
+| `/version` | GET | Read one exact Version definition. |
+| `/runtime-endpoints` | GET | Read one complete, non-paged runtime Endpoint snapshot. |
+| `/draft` | POST, PUT, DELETE | Create a new draft (and metadata when absent), update current draft content, or delete a draft. |
+| `/submit` | POST | Submit a draft. |
+| `/publish` | POST | Publish a reviewed Version. |
+| `/force-publish` | POST | Perform an audited Pipeline bypass. |
+| `/redraft` | POST | Return a reviewed Version to draft. |
+| `/online` | POST | Bring an offline Version online. |
+| `/offline` | POST | Take an online Version offline. |
+| `/labels` | PUT | Update custom Version labels. |
+
+The target does not add Client HTTP Watch or Endpoint-list GET APIs. Watch and
+push use the negotiated gRPC binding; runtime inspection uses the Admin or
+Console `/runtime-endpoints` path.
+
+## 9. Documentation Gap Notes
 
 This is not a bug list. It records places where the current documentation and
 code appear to describe different surfaces.
@@ -188,8 +254,9 @@ code appear to describe different surfaces.
   AgentSpec; docs do not consistently describe the privileged operation.
 - AgentSpec version meta: code has `GET /v3/admin/ai/agentspecs/version/meta`;
   it is not documented in the admin API doc.
-- Auth v3: code exposes `/v3/auth/user`, `/role`, and `/permission`; the three
-  website API files do not cover this API surface.
+- Auth v3: code exposes `/v3/auth/user`, `/role`, `/permission`, and
+  `/v3/auth/visibility`; the three website API files do not cover this API
+  surface.
 - Config Open API exception handling: `ConfigOpenApiController` lacks
   `@NacosApi` while most v3 controllers have it; Open API docs assume unified
   response.
@@ -197,7 +264,7 @@ code appear to describe different surfaces.
   module-level `ControllerAdvice` classes that may return plain text error
   bodies. They should converge to `NacosApiExceptionHandler` for v3 APIs.
 
-## 9. Deprecated Compatibility Notes
+## 10. Deprecated Compatibility Notes
 
 Some v3 AI APIs were released before this spec existed and were later replaced by
 clearer lifecycle or REST-style APIs. These old endpoints should be treated as

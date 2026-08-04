@@ -32,8 +32,24 @@ public class Constants {
         
         public static final String NACOS_CORE_AUTH_ADMIN_ENABLED = "nacos.core.auth.admin.enabled";
         
+        public static final String NACOS_PLUGIN_AUTH_TYPE = "nacos.plugin.auth.type";
+        
+        /**
+         * Legacy auth plugin selection property.
+         *
+         * @deprecated use {@link #NACOS_PLUGIN_AUTH_TYPE} instead. Planned for removal in
+         *     Nacos 4.0.0.
+         */
+        @Deprecated
         public static final String NACOS_CORE_AUTH_SYSTEM_TYPE = "nacos.core.auth.system.type";
         
+        /**
+         * Legacy default auth plugin authorization cache property.
+         *
+         * @deprecated use {@code nacos.plugin.auth.nacos.caching.enabled} instead. Planned for
+         *     removal in Nacos 4.0.0.
+         */
+        @Deprecated
         public static final String NACOS_CORE_AUTH_CACHING_ENABLED =
             "nacos.core.auth.caching.enabled";
         
@@ -68,6 +84,8 @@ public class Constants {
         public static final String AI_TYPE_PROMPT = "prompt";
         
         public static final String AI_TYPE_AGENT_SPEC = "agentSpec";
+        
+        public static final String AI_TYPE_ARD = "ard";
     }
     
     public static class Identity {
@@ -79,6 +97,8 @@ public class Constants {
         public static final String REMOTE_IP = "remote_ip";
         
         public static final String IDENTITY_CONTEXT = "identity_context";
+        
+        public static final String SERVER_IDENTITY = "server_identity";
     }
     
     public static class Tag {

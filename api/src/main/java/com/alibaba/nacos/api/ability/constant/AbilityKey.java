@@ -70,6 +70,30 @@ public enum AbilityKey {
         AbilityMode.SERVER),
     
     /**
+     * Negotiation key for AI module RAD Search and Discover payloads.
+     *
+     * <p>Defining the wire key does not advertise the capability. The server ability registry
+     * enables it only after the matching SDK transport is available.</p>
+     */
+    SERVER_AGENT_DISCOVERY_V1("agentDiscoveryV1",
+        "Server whether support RAD Search and Discover payloads", AbilityMode.SERVER),
+    
+    /**
+     * Negotiation key for AI module RAD Endpoint publication payloads.
+     *
+     * <p>Defining the wire key does not advertise the capability. The server ability registry
+     * enables it only after the matching SDK transport is available.</p>
+     */
+    SERVER_AGENT_ENDPOINT_V1("agentEndpointV1",
+        "Server whether support RAD Endpoint publication payloads", AbilityMode.SERVER),
+    
+    /**
+     * Negotiation key for generic code-first Agent publication payloads.
+     */
+    SERVER_AGENT_PUBLISH_V1("agentPublishV1",
+        "Server whether support generic Agent publication payloads", AbilityMode.SERVER),
+    
+    /**
      * For fuzzy watch naming or config.
      */
     SDK_CLIENT_FUZZY_WATCH("fuzzyWatch", "Client whether support fuzzy watch service or config",
@@ -164,22 +188,6 @@ public enum AbilityKey {
      */
     public static boolean isLegalKey(AbilityMode mode, String name) {
         return ALL_ABILITIES.get(mode).containsKey(name);
-    }
-    
-    /**
-     * Map the string key to enum.
-     *
-     * @param abilities map
-     * @return enum map
-     */
-    public static Map<AbilityKey, Boolean> mapEnum(AbilityMode mode,
-        Map<String, Boolean> abilities) {
-        if (abilities == null || abilities.isEmpty()) {
-            return Collections.emptyMap();
-        }
-        return abilities.entrySet().stream().filter(entry -> isLegalKey(mode, entry.getKey()))
-            .collect(
-                Collectors.toMap((entry) -> getEnum(mode, entry.getKey()), Map.Entry::getValue));
     }
     
     /**.

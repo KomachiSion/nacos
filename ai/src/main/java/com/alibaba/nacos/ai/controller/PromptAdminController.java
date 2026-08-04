@@ -393,9 +393,8 @@ public class PromptAdminController {
         @Parameter(name = "form", hidden = true)})
     public Result<String> publish(PromptVersionPublishForm form) throws NacosException {
         form.validate();
-        boolean updateLatest = form.getUpdateLatestLabel() == null || form.getUpdateLatestLabel();
         promptOperationService.publish(form.getNamespaceId(), form.getPromptKey(),
-            form.getVersion(), updateLatest);
+            form.getVersion(), true);
         return Result.success("ok");
     }
     
@@ -405,7 +404,7 @@ public class PromptAdminController {
     @Since("3.2.1")
     @PostMapping("/force-publish")
     @Secured(resource = Constants.Prompt.ADMIN_PATH
-        + "/force-publish", action = ActionTypes.WRITE, signType = SignType.CONSOLE,
+        + "/force-publish", action = ActionTypes.WRITE, signType = SignType.AI,
         apiType = ApiType.ADMIN_API)
     @Operation(summary = "nacos.admin.ai.prompt.api.force.publish.summary",
         description = "nacos.admin.ai.prompt.api.force.publish.description",
@@ -422,10 +421,9 @@ public class PromptAdminController {
         @Parameter(name = "form", hidden = true)})
     public Result<String> forcePublish(PromptVersionPublishForm form) throws NacosException {
         form.validate();
-        boolean updateLatest = form.getUpdateLatestLabel() == null || form.getUpdateLatestLabel();
         promptOperationService.forcePublish(form.getNamespaceId(), form.getPromptKey(),
             form.getVersion(),
-            updateLatest);
+            true);
         return Result.success("ok");
     }
     

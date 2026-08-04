@@ -19,8 +19,11 @@ package com.alibaba.nacos.ai.plugin;
 import com.alibaba.nacos.ai.pipeline.PublishPipelineManager;
 import com.alibaba.nacos.api.plugin.PluginProvider;
 import com.alibaba.nacos.api.plugin.PluginType;
+import com.alibaba.nacos.common.spi.PluginRegistryUtils;
 import com.alibaba.nacos.plugin.ai.pipeline.spi.PublishPipelineService;
 import com.alibaba.nacos.sys.utils.ApplicationUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.BeansException;
 
 import java.util.Collections;
@@ -33,13 +36,16 @@ import java.util.Map;
  * <p>Publish pipeline nodes are <b>optional</b>: if none are configured or all fail to load, publishing
  * still proceeds without pipeline interception.</p>
  *
- * <p>Listing and enable/disable in {@code PluginManager} are not yet wired into pipeline execution;
- * disabling here does not stop {@link com.alibaba.nacos.ai.pipeline.PublishPipelineManager} until
- * that integration exists.</p>
+ * <p>{@code PluginManager} state is enforced by
+ * {@link com.alibaba.nacos.ai.pipeline.PublishPipelineManager} while selecting pipeline services
+ * for execution.</p>
  *
  * @author nacos
  */
 public class AiPipelinePluginProvider implements PluginProvider<PublishPipelineService> {
+    
+    private static final Logger LOGGER =
+        LoggerFactory.getLogger(AiPipelinePluginProvider.class);
     
     @Override
     public PluginType getPluginType() {
@@ -53,11 +59,12 @@ public class AiPipelinePluginProvider implements PluginProvider<PublishPipelineS
         }
         try {
             PublishPipelineManager manager = ApplicationUtils.getBean(PublishPipelineManager.class);
+            manager.init();
             Map<String, PublishPipelineService> map = new LinkedHashMap<>();
             for (PublishPipelineService service : manager.getAllServices()) {
-                if (service != null && service.pipelineId() != null) {
-                    map.putIfAbsent(service.pipelineId(), service);
-                }
+                String pluginName = service == null ? null : service.pipelineId();
+                PluginRegistryUtils.registerFirst(map, PluginType.AI_PIPELINE.getType(),
+                    pluginName, service, LOGGER);
             }
             return map;
         } catch (BeansException | IllegalStateException ignored) {

@@ -16,6 +16,7 @@
 package com.alibaba.nacos.core.plugin.model.vo;
 
 import com.alibaba.nacos.api.plugin.ConfigItemDefinition;
+import com.alibaba.nacos.core.plugin.model.PluginConfigSourceType;
 import org.junit.jupiter.api.Test;
 
 import java.util.Collections;
@@ -37,12 +38,20 @@ class PluginDetailVOTest {
         vo.setEnabled(false);
         vo.setCritical(false);
         vo.setConfigurable(true);
+        vo.setTypeCritical(false);
+        vo.setExecutionMode("BROADCAST");
+        vo.setExclusive(false);
         Map<String, String> config = new HashMap<>();
         config.put("endpoint", "http://localhost");
         vo.setConfig(config);
         ConfigItemDefinition def = new ConfigItemDefinition();
         def.setKey("endpoint");
         vo.setConfigDefinitions(Collections.singletonList(def));
+        PluginConfigValueMeta meta = new PluginConfigValueMeta();
+        meta.setKey("endpoint");
+        meta.setSource(PluginConfigSourceType.STATIC);
+        meta.setOverridden(true);
+        vo.setConfigValueMetas(Collections.singletonMap("endpoint", meta));
         
         assertEquals("trace:otel", vo.getPluginId());
         assertEquals("trace", vo.getPluginType());
@@ -50,12 +59,23 @@ class PluginDetailVOTest {
         assertEquals(false, vo.getEnabled());
         assertEquals(false, vo.getCritical());
         assertEquals(true, vo.getConfigurable());
+        assertEquals(false, vo.getTypeCritical());
+        assertEquals("BROADCAST", vo.getExecutionMode());
+        assertEquals(false, vo.getExclusive());
         assertEquals("http://localhost", vo.getConfig().get("endpoint"));
         assertNotNull(vo.getConfigDefinitions());
         assertEquals(1, vo.getConfigDefinitions().size());
+        assertNotNull(vo.getConfigValueMetas());
+        assertEquals(1, vo.getConfigValueMetas().size());
+        assertEquals("endpoint", vo.getConfigValueMetas().get("endpoint").getKey());
+        assertEquals(PluginConfigSourceType.STATIC,
+            vo.getConfigValueMetas().get("endpoint").getSource());
+        assertTrue(vo.getConfigValueMetas().get("endpoint").isOverridden());
         
         String s = vo.toString();
         assertNotNull(s);
         assertTrue(s.contains("trace:otel"));
+        assertTrue(s.contains("configValueMetas"));
+        assertTrue(s.contains("executionMode='BROADCAST'"));
     }
 }

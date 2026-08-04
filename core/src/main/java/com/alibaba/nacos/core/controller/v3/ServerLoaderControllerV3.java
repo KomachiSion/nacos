@@ -28,6 +28,7 @@ import com.alibaba.nacos.core.remote.Connection;
 import com.alibaba.nacos.core.service.NacosServerLoaderService;
 import com.alibaba.nacos.core.utils.WebUtils;
 import com.alibaba.nacos.plugin.auth.constant.ActionTypes;
+import com.alibaba.nacos.plugin.auth.constant.SignType;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.Parameters;
@@ -84,7 +85,7 @@ public class ServerLoaderControllerV3 {
     @Since("3.0.0")
     @GetMapping("/current")
     @Secured(resource = NACOS_ADMIN_CORE_CONTEXT_V3 + "/loader", action = ActionTypes.READ,
-        apiType = ApiType.ADMIN_API)
+        signType = SignType.CONSOLE, apiType = ApiType.ADMIN_API)
     @Operation(summary = "nacos.admin.core.loader.api.list.summary",
         description = "nacos.admin.core.loader.api.list.description",
         security = @SecurityRequirement(name = "nacos"))
@@ -102,7 +103,8 @@ public class ServerLoaderControllerV3 {
      * @return state json.
      */
     @Secured(resource = NACOS_ADMIN_CORE_CONTEXT_V3
-        + "/loader", action = ActionTypes.WRITE, apiType = ApiType.ADMIN_API)
+        + "/loader", action = ActionTypes.WRITE, signType = SignType.CONSOLE,
+        apiType = ApiType.ADMIN_API)
     @Since("3.0.0")
     @PostMapping("/reloadCurrent")
     @Operation(summary = "nacos.admin.core.loader.api.reload.batch.summary",
@@ -131,7 +133,8 @@ public class ServerLoaderControllerV3 {
     @Since("3.0.0")
     @PostMapping("/smartReloadCluster")
     @Secured(resource = NACOS_ADMIN_CORE_CONTEXT_V3
-        + "/loader", action = ActionTypes.WRITE, apiType = ApiType.ADMIN_API)
+        + "/loader", action = ActionTypes.WRITE, signType = SignType.CONSOLE,
+        apiType = ApiType.ADMIN_API)
     @Operation(summary = "nacos.admin.core.loader.api.reload.smart.summary",
         description = "nacos.admin.core.loader.api.reload.smart.description",
         security = @SecurityRequirement(name = "nacos"))
@@ -160,7 +163,8 @@ public class ServerLoaderControllerV3 {
     @Since("3.0.0")
     @PostMapping("/reloadClient")
     @Secured(resource = NACOS_ADMIN_CORE_CONTEXT_V3
-        + "/loader", action = ActionTypes.WRITE, apiType = ApiType.ADMIN_API)
+        + "/loader", action = ActionTypes.WRITE, signType = SignType.CONSOLE,
+        apiType = ApiType.ADMIN_API)
     @Operation(summary = "nacos.admin.core.loader.api.reload.single.summary",
         description = "nacos.admin.core.loader.api.reload.single.description",
         security = @SecurityRequirement(name = "nacos"))
@@ -185,7 +189,7 @@ public class ServerLoaderControllerV3 {
     @Since("3.0.0")
     @GetMapping("/cluster")
     @Secured(resource = NACOS_ADMIN_CORE_CONTEXT_V3 + "/loader", action = ActionTypes.READ,
-        apiType = ApiType.ADMIN_API)
+        signType = SignType.CONSOLE, apiType = ApiType.ADMIN_API)
     @Operation(summary = "nacos.admin.core.loader.api.metrics.summary",
         description = "nacos.admin.core.loader.api.metrics.description",
         security = @SecurityRequirement(name = "nacos"))

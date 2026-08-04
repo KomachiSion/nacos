@@ -34,7 +34,7 @@
 | --- | --- |
 | `draft` | 正在编辑的版本。 |
 | `reviewing` | 已提交到发布流水线审核。 |
-| `reviewed` | 流水线已通过，等待显式发布。 |
+| `reviewed` | 流水线审核已完成，等待显式发布、强制发布、退回编辑或重新提交。 |
 | `online` | 已发布且可查询。 |
 | `offline` | 已存在但从普通运行时路由中移除。 |
 
@@ -69,18 +69,36 @@ create/upload draft
 
 ## 4. 审核和发布规则
 
-- Submit 会解析明确版本或当前 `editingVersion`。
-- 当不存在 draft 目标时，Submit 必须失败。
-- Submit 仅允许目标版本处于 `draft` 状态；对 `reviewing` / `reviewed` / `online`
-  / `offline` 等非 draft 版本调用 Submit 必须返回 `INVALID_PARAM`，且不得修改版本
-  状态或元数据指针，避免污染正式版本。
+- Submit 会解析明确版本、当前 `editingVersion`，或处于 `reviewing` / `reviewed` 状态的
+  `reviewingVersion`。
+- 当不存在 draft、reviewing 或 reviewed 目标时，Submit 必须失败。
+- Submit 允许目标版本处于 `draft`、`reviewing` 或 `reviewed` 状态。`draft` 和
+  `reviewed` 进入审核或直接发布流程；`reviewed` 目标按重新提交处理，不能绕过流水线
+  直接进入发布流程；`reviewing` 目标按幂等调用处理，返回当前版本且不得重复启动流水线。
+- `reviewing` 版本遗留当前审核轮次的 `APPROVED` / `REJECTED` 终态结果时，视为审核完成
+  回调未完成状态切换，先收敛为 `reviewed` 再重新提交。标记为 `historical=true` 的结果属于
+  之前的审核轮次，不能据此判定当前审核已完成，Submit 仍按幂等调用返回。
+- 对 `online` / `offline` 等状态的版本调用 Submit 必须返回
+  `INVALID_PARAM`，且不得修改版本状态或元数据指针。
 - 审核中版本必须在元数据中记录为 `reviewingVersion`。
 - 流水线执行状态可以写入 `publishPipelineInfo` 和 `pipeline_execution`。
 - 流水线通过和拒绝都会把版本改为 `reviewed`；拒绝后如果需要继续编辑，用户必须显式
   redraft 该版本。
-- Publish 会把版本改为 `online`，清理 working 指针，按需增加 `onlineCnt`，并可更新
-  `latest` label。
+- Publish 会把版本改为 `online`，清理 working 指针，按需增加 `onlineCnt`，并由服务端按照
+  资源类型规范维护 `latest` label。
+- Publish 和 force-publish 请求可以为兼容历史调用保留 `updateLatestLabel` 参数；
+  该参数已废弃，新客户端不得继续发送。未指定或指定为 `true` 时，发布版本成为服务端维护的
+  最新版本。标签更新 API 必须忽略客户端传入的 `latest` label key，并把当前服务端维护的
+  `latest` 值合并回最终 labels map。
 - Force publish 会在跳过流水线通过校验的同时，执行与 publish 成功时一致的状态转换。
+- 除非类型规范给出确定性细化，成功的 publish 或 online 操作会使目标版本成为 `latest`。
+  当前 latest 被删除或下线时，默认选择剩余 online Version 中最大的一个；不存在 online
+  Version 时删除 `latest`。类型细化仍必须保证 `latest` 由服务端管理、只指向 online Version，
+  并定义删除或下线时的回退规则。
+- Agent 类型只对旧 A2A 直接上线 facade 细化该规则：`setAsLatest=false` 可以保留当前有效指针。
+  标准 Agent publish 和 online 仍会移动 `latest`；当前指针被删除或下线时，选择剩余 online
+  Agent Version 中最大的一个。详见 [Agent 管理规范](agent-management-spec.md)和
+  [A2A Agent 规范](a2a-agent-spec.md)。
 
 流水线扩展行为由 [AI 发布流水线插件规范](../plugin/ai-pipeline-plugin-spec.md)定义。
 本领域规范只定义 AI 资源生命周期如何响应流水线结果。
@@ -88,6 +106,9 @@ create/upload draft
 ## 5. Labels
 
 - `latest` 是保留的默认 label，表示最近发布版本。
+- `latest` 由服务端维护。为了兼容性，手动更新 labels 的请求可以包含
+  `latest`，但服务端必须忽略客户端传入的 `latest` 值，并将当前服务端维护的
+  `latest` 合并到最终 labels 中。
 - Labels 映射到版本字符串，且不得指向 `draft` 或 `reviewing` 版本。
 - 修改 labels 不应直接修改版本内容或版本状态。
 - 运行时通过 label 查询时，应在请求时解析 label。

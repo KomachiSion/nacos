@@ -32,6 +32,7 @@ import com.alibaba.nacos.api.ai.model.skills.BatchUploadResult;
 import com.alibaba.nacos.api.ai.model.skills.Skill;
 import com.alibaba.nacos.api.ai.model.skills.SkillMeta;
 import com.alibaba.nacos.api.ai.model.skills.SkillSummary;
+import com.alibaba.nacos.api.ai.model.skills.SkillUploadPrecheckResult;
 import com.alibaba.nacos.api.exception.NacosException;
 import com.alibaba.nacos.api.exception.api.NacosApiException;
 import com.alibaba.nacos.api.model.Page;
@@ -40,6 +41,8 @@ import com.alibaba.nacos.console.handler.ai.SkillHandler;
 import com.alibaba.nacos.core.model.form.PageForm;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.stereotype.Service;
+
+import java.util.List;
 
 /**
  * Noop implementation of Skill handler.
@@ -93,6 +96,14 @@ public class SkillNoopHandler implements SkillHandler {
     
     @Override
     public String uploadSkillFromZip(SkillUploadRequest request) throws NacosException {
+        throw new NacosApiException(NacosException.SERVER_NOT_IMPLEMENTED,
+            ErrorCode.API_FUNCTION_DISABLED,
+            SKILL_NOT_ENABLED_MESSAGE);
+    }
+    
+    @Override
+    public List<SkillUploadPrecheckResult> precheckUploadSkillFromZip(String namespaceId,
+        byte[] zipBytes) throws NacosException {
         throw new NacosApiException(NacosException.SERVER_NOT_IMPLEMENTED,
             ErrorCode.API_FUNCTION_DISABLED,
             SKILL_NOT_ENABLED_MESSAGE);

@@ -34,7 +34,7 @@ Version status:
 | --- | --- |
 | `draft` | Editable version under construction. |
 | `reviewing` | Submitted for publish pipeline review. |
-| `reviewed` | Pipeline approved and waiting for explicit publish. |
+| `reviewed` | Pipeline review completed and waiting for explicit publish, force publish, redraft, or resubmit. |
 | `online` | Published and queryable. |
 | `offline` | Existing version removed from normal runtime routing. |
 
@@ -73,12 +73,21 @@ operation. It accepts only `draft`, `reviewing`, and `reviewed` versions;
 
 ## 4. Review And Publish Rules
 
-- Submit resolves an explicit version or the current `editingVersion`.
-- Submit must fail when no draft target exists.
-- Submit only accepts a target version in `draft` status; calling submit on a
-  version in any other status (`reviewing` / `reviewed` / `online` / `offline`)
-  must return `INVALID_PARAM` and must not mutate version status or metadata
-  pointers, to prevent corrupting formal versions.
+- Submit resolves an explicit version, the current `editingVersion`, or a
+  `reviewingVersion` in `reviewing` or `reviewed` status.
+- Submit must fail when no draft, reviewing, or reviewed target exists.
+- Submit accepts a target version in `draft`, `reviewing`, or `reviewed` status.
+  `draft` and `reviewed` targets enter the review/direct-publish flow. A
+  `reviewed` target is treated as a resubmission and must not bypass the
+  pipeline into the publish flow. A `reviewing` target is an idempotent no-op
+  that returns the current version without starting another pipeline.
+- A current terminal pipeline result (`APPROVED` or `REJECTED`) left on a
+  `reviewing` version is treated as an interrupted completion transition and
+  normalized to `reviewed` before resubmission. A result marked
+  `historical=true` belongs to a previous review cycle and must not complete
+  the current review; submit remains idempotent.
+- Calling submit on a version in `online` or `offline` status must return
+  `INVALID_PARAM` and must not mutate version status or metadata pointers.
 - A reviewing version must be recorded in metadata as `reviewingVersion`.
 - Pipeline execution state may be written to `publishPipelineInfo` and
   `pipeline_execution`.
@@ -86,9 +95,29 @@ operation. It accepts only `draft`, `reviewing`, and `reviewed` versions;
   must explicitly redraft the version when further editing is required after a
   rejected result.
 - Publish moves the version to `online`, clears working pointers, increments
-  `onlineCnt` when needed, and optionally updates the `latest` label.
+  `onlineCnt` when needed, and the server manages the `latest` label according
+  to the resource type spec.
+- Publish and force-publish requests may keep the historical
+  `updateLatestLabel` parameter for compatibility. This parameter is deprecated;
+  new clients must not send it. When it is absent or `true`, the published
+  version becomes the server-managed latest version.
+  Label update APIs must ignore any client-provided `latest` label key and
+  merge the current server-managed `latest` value back into the effective label
+  map.
 - Force publish applies the same successful state transition as publish while
   skipping pipeline approval checks.
+- Unless a type spec defines a deterministic refinement, a successful publish
+  or online operation makes the target version `latest`. When the current
+  latest version is deleted or taken offline, the default replacement is the
+  greatest remaining online version; if no online version remains, the server
+  removes `latest`. A type refinement must still keep `latest` server-managed,
+  point it to an online version, and define deletion/offline fallback.
+- The Agent type refines this rule only for its legacy A2A direct-online
+  facade: `setAsLatest=false` may preserve the current valid pointer. Standard
+  Agent publish and online operations still move `latest`, and deletion or
+  offline of the current pointer selects the greatest remaining online Agent
+  version. See the [Agent Management Spec](agent-management-spec.md) and the
+  [A2A Agent Spec](a2a-agent-spec.md).
 
 Pipeline extension behavior is defined by the
 [AI Publish Pipeline Plugin Spec](../plugin/ai-pipeline-plugin-spec.md). This
@@ -97,6 +126,10 @@ domain spec defines only how AI resource lifecycle reacts to pipeline results.
 ## 5. Labels
 
 - `latest` is the reserved default label for the latest published version.
+- `latest` is managed by the server. Manual label update requests may contain
+  `latest` for compatibility, but the server must ignore the client-provided
+  `latest` value and merge the current server-managed `latest` value into the
+  effective labels.
 - Labels map to version strings and must not point to `draft` or `reviewing`
   versions.
 - Changing labels does not by itself mutate version content or version status.

@@ -27,7 +27,6 @@ import com.alibaba.nacos.common.http.client.NacosRestTemplate;
 import com.alibaba.nacos.common.http.param.Query;
 import com.alibaba.nacos.common.utils.JacksonUtils;
 import com.alibaba.nacos.common.utils.StringUtils;
-import com.alibaba.nacos.plugin.auth.impl.configuration.AuthConfigs;
 import com.alibaba.nacos.plugin.auth.impl.constant.AuthConstants;
 import com.alibaba.nacos.plugin.auth.impl.persistence.PermissionInfo;
 import com.alibaba.nacos.plugin.auth.impl.persistence.RoleInfo;
@@ -51,11 +50,7 @@ public class NacosRoleServiceRemoteImpl extends AbstractCheckedRoleService
     
     private final NacosRestTemplate nacosRestTemplate;
     
-    private final AuthConfigs authConfigs;
-    
-    public NacosRoleServiceRemoteImpl(AuthConfigs authConfigs) {
-        super(authConfigs);
-        this.authConfigs = authConfigs;
+    public NacosRoleServiceRemoteImpl() {
         this.nacosRestTemplate = new DefaultHttpClientFactory(LOGGER).createNacosRestTemplate();
     }
     
@@ -65,8 +60,9 @@ public class NacosRoleServiceRemoteImpl extends AbstractCheckedRoleService
         try {
             HttpRestResult<String> result = nacosRestTemplate.postForm(
                 buildRemotePermissionUrlPath(AuthConstants.PERMISSION_PATH),
-                RemoteServerUtil.buildServerRemoteHeader(authConfigs), null, body, String.class);
+                RemoteServerUtil.buildServerRemoteHeader(), null, body, String.class);
             RemoteServerUtil.singleCheckResult(result);
+            invalidateRolePermissions(role);
         } catch (NacosException e) {
             throw new NacosRuntimeException(e.getErrCode(), e.getErrMsg());
         } catch (Exception unpectedException) {
@@ -82,8 +78,9 @@ public class NacosRoleServiceRemoteImpl extends AbstractCheckedRoleService
         try {
             HttpRestResult<String> result = nacosRestTemplate.delete(
                 buildRemotePermissionUrlPath(AuthConstants.PERMISSION_PATH),
-                RemoteServerUtil.buildServerRemoteHeader(authConfigs), query, String.class);
+                RemoteServerUtil.buildServerRemoteHeader(), query, String.class);
             RemoteServerUtil.singleCheckResult(result);
+            invalidateRolePermissions(role);
         } catch (NacosException e) {
             throw new NacosRuntimeException(e.getErrCode(), e.getErrMsg());
         } catch (Exception unpectedException) {
@@ -147,7 +144,7 @@ public class NacosRoleServiceRemoteImpl extends AbstractCheckedRoleService
         try {
             HttpRestResult<String> httpResult = nacosRestTemplate.get(
                 buildRemoteRoleUrlPath(AuthConstants.ROLE_PATH + "/search"),
-                RemoteServerUtil.buildServerRemoteHeader(authConfigs), query, String.class);
+                RemoteServerUtil.buildServerRemoteHeader(), query, String.class);
             RemoteServerUtil.singleCheckResult(httpResult);
             Result<List<String>> result =
                 JacksonUtils.toObj(httpResult.getData(), new TypeReference<>() {
@@ -181,9 +178,10 @@ public class NacosRoleServiceRemoteImpl extends AbstractCheckedRoleService
         try {
             HttpRestResult<String> httpResult = nacosRestTemplate.postForm(
                 buildRemoteRoleUrlPath(AuthConstants.ROLE_PATH),
-                RemoteServerUtil.buildServerRemoteHeader(authConfigs), body, String.class);
+                RemoteServerUtil.buildServerRemoteHeader(), body, String.class);
             RemoteServerUtil.singleCheckResult(httpResult);
             getCachedRoleSet().add(role);
+            invalidateUserRoles(username);
         } catch (NacosException e) {
             throw new NacosRuntimeException(e.getErrCode(), e.getErrMsg());
         } catch (Exception unpectedException) {
@@ -199,8 +197,9 @@ public class NacosRoleServiceRemoteImpl extends AbstractCheckedRoleService
         try {
             HttpRestResult<String> result =
                 nacosRestTemplate.delete(buildRemoteRoleUrlPath(AuthConstants.ROLE_PATH),
-                    RemoteServerUtil.buildServerRemoteHeader(authConfigs), query, String.class);
+                    RemoteServerUtil.buildServerRemoteHeader(), query, String.class);
             RemoteServerUtil.singleCheckResult(result);
+            invalidateUserRoles(userName);
         } catch (NacosException e) {
             throw new NacosRuntimeException(e.getErrCode(), e.getErrMsg());
         } catch (Exception unpectedException) {
@@ -216,7 +215,7 @@ public class NacosRoleServiceRemoteImpl extends AbstractCheckedRoleService
         try {
             HttpRestResult<String> result =
                 nacosRestTemplate.delete(buildRemoteRoleUrlPath(AuthConstants.ROLE_PATH),
-                    RemoteServerUtil.buildServerRemoteHeader(authConfigs), query, String.class);
+                    RemoteServerUtil.buildServerRemoteHeader(), query, String.class);
             RemoteServerUtil.singleCheckResult(result);
             getCachedRoleSet().remove(role);
         } catch (NacosException e) {
@@ -236,7 +235,7 @@ public class NacosRoleServiceRemoteImpl extends AbstractCheckedRoleService
         // No need to call add admin role. In {@link NacosUserServiceRemoteImpl#createUser},
         // it will call create admin role which include add admin role operation.
         getCachedRoleSet().add(AuthConstants.GLOBAL_ADMIN_ROLE);
-        authConfigs.setHasGlobalAdminRole(true);
+        markGlobalAdminRolePresent();
     }
     
     private String buildRemotePermissionUrlPath(String apiPath) {
@@ -248,7 +247,7 @@ public class NacosRoleServiceRemoteImpl extends AbstractCheckedRoleService
         try {
             HttpRestResult<String> httpResult = nacosRestTemplate.get(
                 buildRemotePermissionUrlPath(AuthConstants.PERMISSION_PATH + "/list"),
-                RemoteServerUtil.buildServerRemoteHeader(authConfigs), query, String.class);
+                RemoteServerUtil.buildServerRemoteHeader(), query, String.class);
             RemoteServerUtil.singleCheckResult(httpResult);
             Result<Page<PermissionInfo>> result =
                 JacksonUtils.toObj(httpResult.getData(), new TypeReference<>() {
@@ -271,7 +270,7 @@ public class NacosRoleServiceRemoteImpl extends AbstractCheckedRoleService
         try {
             HttpRestResult<String> httpResult = nacosRestTemplate.get(
                 buildRemoteRoleUrlPath(AuthConstants.ROLE_PATH + "/list"),
-                RemoteServerUtil.buildServerRemoteHeader(authConfigs), query, String.class);
+                RemoteServerUtil.buildServerRemoteHeader(), query, String.class);
             RemoteServerUtil.singleCheckResult(httpResult);
             Result<Page<RoleInfo>> result =
                 JacksonUtils.toObj(httpResult.getData(), new TypeReference<>() {

@@ -28,7 +28,7 @@ import com.alibaba.nacos.common.executor.NameThreadFactory;
 import com.alibaba.nacos.common.lifecycle.Closeable;
 import com.alibaba.nacos.common.notify.NotifyCenter;
 import com.alibaba.nacos.common.utils.CollectionUtils;
-import com.alibaba.nacos.common.utils.JacksonUtils;
+import com.alibaba.nacos.api.utils.json.JsonUtils;
 import com.alibaba.nacos.common.utils.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -61,6 +61,8 @@ public class NacosAgentCardCacheHolder implements Closeable {
     
     private final Map<String, AgentCardUpdater> updateTaskMap;
     
+    private final AtomicBoolean shutdown = new AtomicBoolean();
+    
     public NacosAgentCardCacheHolder(AiGrpcClient aiGrpcClient, NacosClientProperties properties) {
         this.aiGrpcClient = aiGrpcClient;
         this.agentCardCache = new ConcurrentHashMap<>(4);
@@ -89,15 +91,23 @@ public class NacosAgentCardCacheHolder implements Closeable {
         String key = CacheKeyUtils.buildAgentCardKey(agentName, version);
         AgentCardDetailInfo oldAgentCard = agentCardCache.get(key);
         agentCardCache.put(key, detailInfo);
+        publishIfChanged(oldAgentCard, detailInfo, version);
         if (null != isLatest && isLatest) {
             String latestVersionKey = CacheKeyUtils.buildAgentCardKey(agentName, null);
+            AgentCardDetailInfo oldLatest = agentCardCache.get(latestVersionKey);
             agentCardCache.put(latestVersionKey, detailInfo);
+            publishIfChanged(oldLatest, detailInfo, CacheKeyUtils.LATEST_VERSION);
         }
-        if (isAgentCardChanged(oldAgentCard, detailInfo)) {
-            LOGGER.info("agent card {} changed, from {} -> {}.", detailInfo.getName(),
-                JacksonUtils.toJson(oldAgentCard), JacksonUtils.toJson(detailInfo));
-            NotifyCenter.publishEvent(new AgentCardChangedEvent(detailInfo));
+    }
+    
+    private void publishIfChanged(AgentCardDetailInfo oldAgentCard,
+        AgentCardDetailInfo newAgentCard, String version) {
+        if (!isAgentCardChanged(oldAgentCard, newAgentCard)) {
+            return;
         }
+        LOGGER.info("agent card {} changed for {}, from {} -> {}.", newAgentCard.getName(),
+            version, JsonUtils.toJson(oldAgentCard), JsonUtils.toJson(newAgentCard));
+        NotifyCenter.publishEvent(new AgentCardChangedEvent(newAgentCard, version));
     }
     
     /**
@@ -133,7 +143,7 @@ public class NacosAgentCardCacheHolder implements Closeable {
         AgentCardDetailInfo newAgentCard) {
         if (null == oldAgentCard) {
             LOGGER.info("init new agent card: {} -> {}", newAgentCard.getName(),
-                JacksonUtils.toJson(newAgentCard));
+                JsonUtils.toJson(newAgentCard));
             return true;
         }
         if (!Objects.equals(oldAgentCard.getVersion(), newAgentCard.getVersion())) {
@@ -167,6 +177,13 @@ public class NacosAgentCardCacheHolder implements Closeable {
     
     @Override
     public void shutdown() throws NacosException {
+        if (!shutdown.compareAndSet(false, true)) {
+            return;
+        }
+        for (AgentCardUpdater updater : updateTaskMap.values()) {
+            updater.cancel();
+        }
+        updateTaskMap.clear();
         this.updaterExecutor.shutdownNow();
     }
     
@@ -202,7 +219,7 @@ public class NacosAgentCardCacheHolder implements Closeable {
                 }
                 LOGGER.warn("AgentCard updater execute query failed", e);
             } finally {
-                if (!cancel.get()) {
+                if (!cancel.get() && !shutdown.get()) {
                     updaterExecutor.schedule(this, updateIntervalMillis, TimeUnit.MILLISECONDS);
                 }
             }

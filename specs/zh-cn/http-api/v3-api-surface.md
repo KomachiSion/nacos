@@ -75,7 +75,7 @@ V3 HTTP 行为当前由以下代码位置定义：
 | `/v3/admin/core/*` | 25 | GET, POST, PUT, DELETE | Loader、集群、ops、命名空间、状态、插件。 |
 | `/v3/admin/cs/*` | 25 | GET, POST, PUT, DELETE | 配置 CRUD、历史、监听者、容量、指标、ops。 |
 | `/v3/admin/ns/*` | 29 | GET, POST, PUT, DELETE | 服务、实例、客户端、集群、健康状态、ops。 |
-| `/v3/admin/ai/*` | 71 | GET, POST, PUT, DELETE | MCP、A2A、Prompt、Skill、AgentSpec、Pipeline。 |
+| `/v3/admin/ai/*` | 89 | GET, POST, PUT, DELETE | MCP、A2A、Agent、Prompt、Skill、AgentSpec、Pipeline。 |
 | `/v3/console/core/*` | 7 | GET, POST, PUT, DELETE | 控制台集群和命名空间操作。 |
 | `/v3/console/cs/*` | 17 | GET, POST, DELETE | 控制台配置和历史操作。 |
 | `/v3/console/ns/*` | 11 | GET, POST, PUT, DELETE | 控制台服务和实例操作。 |
@@ -84,6 +84,7 @@ V3 HTTP 行为当前由以下代码位置定义：
 | `/v3/auth/user` | 7 | GET, POST, PUT, DELETE | 默认鉴权插件中的用户登录和管理。 |
 | `/v3/auth/role` | 4 | GET, POST, DELETE | 默认鉴权插件中的角色管理。 |
 | `/v3/auth/permission` | 4 | GET, POST, DELETE | 默认鉴权插件中的权限管理。 |
+| `/v3/auth/visibility` | 2 | POST, DELETE | 默认鉴权插件中的插件自有资源可见性授权管理。 |
 
 ## 4. Open API 已实现行为
 
@@ -102,9 +103,14 @@ V3 HTTP 行为当前由以下代码位置定义：
 
 ## 5. Admin API 已实现行为
 
-Admin API 面向运维人员，默认使用 `ApiType.ADMIN_API`。现有文档说明 v3
-Admin API 不兼容 v1/v2 Admin API；如果必须使用 v1/v2 Admin API 兼容能力，
-需要设置 `nacos.core.auth.admin.enabled=true`。
+Admin API 面向运维人员，默认使用 `ApiType.ADMIN_API`。Nacos 3.x 标准
+Admin API 使用 `/v3/admin/*` 路径。v1/v2 Admin API 已从当前 Nacos 主
+发行包中移除，新接入应迁移到 v3 Admin API；如果迁移期仍需使用 v1/v2
+Admin API，应参考
+[nacos-api-legacy-adapter](https://github.com/nacos-group/nacos-api-legacy-adapter)
+方案和[兼容与废弃策略规范](../design/compatibility-deprecation-spec.md)。
+`nacos.core.auth.admin.enabled` 仅表示是否启用 Admin API 鉴权，不是旧
+Admin API 兼容开关。
 
 当前模块：
 
@@ -112,7 +118,7 @@ Admin API 不兼容 v1/v2 Admin API；如果必须使用 v1/v2 Admin API 兼容�
   服务端状态。
 - `cs`：配置 CRUD、元数据、批量操作、历史、监听者、容量、指标和 ops。
 - `ns`：服务、实例、集群、健康状态、客户端和注册中心 ops。
-- `ai`：MCP、A2A、Prompt、Skill、AgentSpec 和 Pipeline 管理。
+- `ai`：MCP、A2A、Agent、Prompt、Skill、AgentSpec 和 Pipeline 管理。
 
 需要更明确文档化的已实现行为：
 
@@ -122,6 +128,15 @@ Admin API 不兼容 v1/v2 Admin API；如果必须使用 v1/v2 Admin API 兼容�
 - Config 查询在返回 Admin API 详情前会解密加密内容。
 - Config 发布在未提供 encrypted data key 且适用加密处理器时会加密内容。
 - AI Prompt 在同一个 Controller 中同时包含已废弃兼容端点和新的生命周期端点。
+- Agent 管理在 `/v3/admin/ai/agents` 下提供定义 CRUD、受限 Agent 与 Version
+  读取、Draft 与 Version 生命周期、自定义 Label 以及只读 Runtime Endpoint
+  Snapshot；省略或传入空白 `namespaceId` 时统一规范化为 `public`。
+- Plugin detail 在已有 `config` 字段中返回当前 effective plugin config，并可以
+  追加来源、overridden 等值元数据，不改变已有字段。
+- Plugin config 更新保持完整 override map 替换语义。运行时更新必须拒绝
+  restart-effective 字段的变化，包括通过省略 key 移除 override。敏感字段脱敏输入只
+  保留同一目标 source 的原始值；目标 source 不存在该值时忽略此项，不创建 override。
+  source 更新成功但插件 apply 失败时返回明确的服务端错误，且不自动回滚。
 
 ## 6. Console API 已实现行为
 
@@ -149,6 +164,7 @@ V3 Auth API 位于默认鉴权插件中，而不是 core 模块中：
 /v3/auth/user
 /v3/auth/role
 /v3/auth/permission
+/v3/auth/visibility
 ```
 
 已实现行为：
@@ -156,12 +172,51 @@ V3 Auth API 位于默认鉴权插件中，而不是 core 模块中：
 - 用户管理支持创建、删除、密码更新、登录、列表和搜索。
 - 角色管理支持添加、删除、列表和搜索。
 - 权限管理支持添加、删除和列表。
+- 可见性授权管理支持对显式资源可见性访问执行 grant 和 revoke。
 - 第一个管理员初始化由 `POST /v3/auth/user/admin` 实现。
 
 默认鉴权插件随 Nacos 一起发布，因此它的 v3 auth 端点应遵循 Nacos HTTP API 规范和
 [鉴权插件规范](../auth/auth-plugin-spec.md)。
 
-## 8. 文档 Gap 记录
+## 8. 已批准的 Agent/RAD API 面
+
+下列路径是 [Agent API 规范](../ai/agent-api-spec.md)确定的实验性 API 面。Admin
+管理路径已经计入第 3 节的已实现 API 清单和 Controller 统计；Client 传输 Binding 与
+Console Facade 在对应 Controller、鉴权、传输 Binding 和测试完成前仍属于目标 API 面。
+
+Client 目标路径：
+
+| Method | Path | 契约 |
+| --- | --- | --- |
+| GET | `/v3/client/ai/agents/search` | 搜索 Agent 目录。 |
+| GET | `/v3/client/ai/agents` | 发现一个 Agent，可附带 Discovery Filter。 |
+| POST | `/v3/client/ai/agents/endpoints` | 完整替换当前 Publisher 的 Runtime Endpoint Batch。 |
+| DELETE | `/v3/client/ai/agents/endpoints` | 使用 JSON body 标识并移除当前 Publisher 的整份 Runtime Endpoint Publication。 |
+| PUT | `/v3/client/ai/agents/endpoints/heartbeat` | 刷新一个 HTTP Publisher Client 的活性。 |
+
+Admin 路径使用已实现的 `/v3/admin/ai/agents` 前缀；Console 目标路径使用
+`/v3/console/ai/agents` 前缀，Console 是相同相对管理契约的 UI Facade。
+
+| 相对路径 | Method | 契约 |
+| --- | --- | --- |
+| *（Base path）* | GET, PUT, DELETE | 读取、更新 Agent metadata 或删除 Agent 定义。 |
+| `/list` | GET | 列举 Agent Summary。 |
+| `/versions` | GET | 列举 Version Summary。 |
+| `/version` | GET | 读取一个精确 Version 定义。 |
+| `/runtime-endpoints` | GET | 读取一个完整、不分页的 Runtime Endpoint Snapshot。 |
+| `/draft` | POST, PUT, DELETE | 创建新 Draft（Agent 缺失时同时首建 metadata）、更新当前 Draft 内容或删除 Draft。 |
+| `/submit` | POST | 提交 Draft。 |
+| `/publish` | POST | 发布 Reviewed Version。 |
+| `/force-publish` | POST | 经审计地绕过 Pipeline。 |
+| `/redraft` | POST | 将 Reviewed Version 退回 Draft。 |
+| `/online` | POST | 将 Offline Version 上线。 |
+| `/offline` | POST | 将 Online Version 下线。 |
+| `/labels` | PUT | 更新自定义 Version Label。 |
+
+目标 API 不增加 Client HTTP Watch 或 Endpoint List GET。Watch 和 Push 使用协商后的
+gRPC Binding；Runtime 查看使用 Admin 或 Console 的 `/runtime-endpoints` 路径。
+
+## 9. 文档 Gap 记录
 
 这不是 bug 列表，而是记录当前文档和代码可能描述了不同 API 面的地方。
 
@@ -177,15 +232,15 @@ V3 Auth API 位于默认鉴权插件中，而不是 core 模块中：
   文档没有一致描述这个高权限操作。
 - AgentSpec version meta：代码中有
   `GET /v3/admin/ai/agentspecs/version/meta`；admin API 文档未记录。
-- Auth v3：代码暴露 `/v3/auth/user`、`/role` 和 `/permission`；三份网站
-  API 文档未覆盖这个 API 面。
+- Auth v3：代码暴露 `/v3/auth/user`、`/role`、`/permission` 和
+  `/v3/auth/visibility`；三份网站 API 文档未覆盖这个 API 面。
 - Config Open API 异常处理：`ConfigOpenApiController` 没有 `@NacosApi`，
   而大多数 v3 Controller 都有；Open API 文档假设统一响应。
 - Config 和 Naming ExceptionHandler：Config 和 Naming 仍有历史模块级
   `ControllerAdvice`，可能返回纯文本错误体。它们应在 v3 API 上收敛到
   `NacosApiExceptionHandler`。
 
-## 9. 废弃兼容说明
+## 10. 废弃兼容说明
 
 部分 v3 AI API 在本规范建立之前已经发布，后续又被更清晰的生命周期 API 或
 REST 风格 API 替代。这些旧端点应视为废弃兼容 API：

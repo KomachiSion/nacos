@@ -20,6 +20,9 @@ This document defines how the Java SDK implements the shared
 [SDK Spec](./sdk-spec.md). It covers both the Java Client SDK and the Java
 Maintainer SDK.
 
+JSON serialization compatibility for the Java SDK is defined by the
+[Java SDK JSON Adapter Spec](./sdk-java-json-adapter-spec.md).
+
 ## 1. Scope
 
 The Java SDK has two public families:
@@ -35,6 +38,12 @@ is defined by the [Client Runtime Specs](../client/README.md). The Java
 Maintainer SDK is the preferred Java entry point for management, UI, gateway,
 and operation scenarios.
 
+Java SDK behavior must be verified with scenario-oriented integration tests
+according to the
+[Java SDK Integration Test Spec](../testing/java-sdk-integration-test-spec.md)
+whenever public SDK interfaces, factories, models, listener behavior,
+lifecycle behavior, or exception mapping change.
+
 ## 2. Java Client SDK Factories and Lifecycle
 
 | Interface | Factory | Shutdown method |
@@ -48,9 +57,15 @@ and operation scenarios.
 `NamingMaintainService` is deprecated after 3.3.0. New management integrations
 should use `nacos-maintainer-client`.
 
-One Java SDK instance is bound to one namespace. Applications that need multiple
-namespaces should create separate SDK instances and close them when no longer
-used.
+One Java Client SDK instance is bound to one namespace. Applications that need
+multiple namespaces should create separate Client SDK instances and close them
+when no longer used. Public runtime interfaces do not expose a namespace
+argument; their implementations use the namespace bound at construction.
+This rule does not apply to the Maintainer SDK: its Agent management interface
+is not namespace-bound, accepts an explicit namespace, and provides
+default-namespace overloads that use `public`. Agent management Request and
+Command objects do not contain a namespace; the explicit method argument is
+the sole custom-namespace source.
 
 ## 3. Java Client SDK Configuration
 
@@ -162,11 +177,72 @@ SDK instead of `ConfigService`.
 The selector overload of `getServicesOfServer` is deprecated and remains only as
 a compatibility surface.
 
-### 5.3 AiService and A2aService
+### 5.3 AiService, AgentDiscoveryService, And A2aService
 
-`AiService` extends `A2aService`.
-Resource semantics are defined by the [AI Registry Spec](../ai/ai-registry-spec.md)
-and the individual AI resource type specs.
+The Agent/RAD contract in this subsection is a target contract, not an
+inventory of currently implemented Java methods. It becomes active only after
+the new Agent/RAD abilities are implemented and negotiated. Until then, the
+existing `AiService` and `A2aService` methods remain the active compatibility
+surface.
+
+The target inheritance is:
+
+```text
+AiService extends AgentDiscoveryService, A2aService
+```
+
+Adding this parent must not make an already compiled third-party `AiService`
+implementation fail linkage immediately. Newly inherited methods use
+compatibility default bridges that report unsupported behavior until an
+implementation overrides them; the official Nacos implementation overrides the
+complete target surface.
+
+`AiService` directly provides the namespace-bound
+`publishAgent(AgentPublishRequest)` method and returns `AgentVersionDetail`.
+This new method uses the same compatibility default bridge. It does not belong
+to `AgentDiscoveryService`, because definition publication is not discovery.
+The official implementation copies the request, injects the SDK namespace, and
+creates a draft or runs the ordinary submit Pipeline according to
+`autoSubmit`, without mutating the caller's object. Equivalent retries,
+conflicts, and state convergence follow the
+[Agent API Spec](../ai/agent-api-spec.md).
+
+`AgentDiscoveryService` provides these namespace-bound methods:
+
+| Capability | Methods | Contract |
+| --- | --- | --- |
+| Search | `searchAgents` | Accept `AgentSearchRequest` and return `Page<AgentCatalogEntry>`. |
+| Discover | `discoverAgent` overloads | Accept `AgentReference`, with an optional `AgentDiscoveryFilter`, and return one complete `AgentDiscoveryResult`. |
+| Watch | `subscribeAgent` overloads | Accept the same reference, optional Filter, and listener; return the current complete result and later deliver complete replacement results. |
+| Cancel Watch | `unsubscribeAgent` overloads | Remove the Watch identified by the same reference, Filter, and listener identity. |
+| Register Endpoint | `registerAgentEndpoints` | Register one `AgentEndpointRegistrationBatch` and retain it as redo intent. |
+| Deregister Endpoint | `deregisterAgentEndpoints` | Deregister one `AgentEndpointDeregistrationBatch` owned by this SDK publisher. |
+
+These public methods do not accept `namespaceId`. The proxy copies the caller's
+request or Batch, injects the SDK namespace into the transport object, and does
+not mutate the caller's object. If a shared input model already carries a
+nonempty namespace different from the SDK namespace, the proxy rejects it
+locally. Target Watch, cache, and redo behavior follows the
+[Client Local Cache And Redo Spec](../client/client-local-cache-redo-spec.md)
+and the
+[Runtime Push And Reconnect Spec](../client/runtime-push-reconnect-spec.md).
+
+The inherited `A2aService` remains a compatibility facade. New Agent
+applications use `AgentDiscoveryService`; existing AgentCard calls continue
+through the A2A compatibility adapter.
+
+Legacy A2A Endpoint redo distinguishes desired intent by
+`(agentName, exactVersion)` inside a namespace-bound SDK and stores a defensive
+snapshot of Endpoint payloads. Legacy AgentCard subscription must correctly
+handle exact versions, latest-pointer changes, and resubscription from an
+existing cache entry after cancellation. `shutdown()` stops its polling tasks.
+Endpoint publication may precede Agent definition creation and never creates a
+definition implicitly.
+
+Resource semantics are defined by the [AI Registry Spec](../ai/ai-registry-spec.md),
+the [Agent API Spec](../ai/agent-api-spec.md), the
+[RAD Protocol Spec](../ai/rad-protocol-spec.md), and the individual AI resource
+type specs. The currently implemented compatibility methods include:
 
 | Capability | Methods | Contract |
 | --- | --- | --- |
@@ -230,7 +306,7 @@ Client SDK.
 
 `ConfigMaintainerService` includes:
 
-- get, publish, delete, and batch delete config;
+- get, publish, delete, and namespace-scoped batch delete config;
 - list and search configs with namespace, dataId, group, type, tag, and app
   filters where supported;
 - clone and import/export style management models;
@@ -243,6 +319,16 @@ Client SDK.
 
 Management writes and broad queries should be added here instead of expanding
 `ConfigService`.
+Batch delete by storage ID must explicitly carry or default a namespace. A
+convenience method without namespace means default-namespace delete, not a
+cross-namespace global delete.
+Clone by storage ID must explicitly carry or default both source and target
+namespaces. The legacy single-namespace clone method means same-namespace clone,
+not an ID-only cross-namespace source lookup.
+Maintainer SDK methods that expose storage-ID selectors, such as `ids` for
+batch delete, are compatibility methods and are pending removal. New maintainer
+contracts should select configs by `namespaceId`, `groupName`, and `dataId`, or
+by explicit lists of that identity tuple.
 
 ### 7.3 NamingMaintainerService
 
@@ -271,6 +357,16 @@ maintenance belong to the Maintainer SDK.
 - `agentSpec()` for AgentSpec management;
 - `pipeline()` for Pipeline management.
 
+The Agent management delegate is `agent()`, which returns
+`AgentMaintainerService` and maps one-to-one to the Agent Admin HTTP API. Its
+instance is not namespace-bound. Operations provide explicit-namespace forms
+and convenience overloads that use the default namespace `public`. Agent
+Request and Command objects do not contain `namespaceId`; explicit overloads
+take it as a separate method argument. Agent definition creation uses
+`createDraft`: the first draft creates missing Agent metadata, while later
+drafts reuse that metadata. `a2a()` remains available for its compatibility
+window.
+
 Runtime AI registration and subscription can remain in `AiService`; broad AI
 resource management belongs to `AiMaintainerService`.
 
@@ -278,6 +374,10 @@ resource management belongs to `AiMaintainerService`.
 
 - `api`, `client`, and `plugin` modules remain Java 8 compatible unless the
   module policy changes.
+- Java SDK JSON serialization and deserialization must go through the neutral
+  JSON adapter model defined by the
+  [Java SDK JSON Adapter Spec](./sdk-java-json-adapter-spec.md). New public
+  SDK APIs must not expose concrete Jackson core/databind types.
 - Server-side and maintainer modules follow the repository Java version policy.
 - Newly added API methods on Client SDK and Maintainer SDK service interfaces
   (`XxxService`) must declare `@Since` with the first Nacos version that

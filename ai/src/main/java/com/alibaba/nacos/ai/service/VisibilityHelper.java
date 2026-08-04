@@ -43,6 +43,13 @@ import java.util.Optional;
  */
 public class VisibilityHelper {
     
+    /**
+     * Legacy visibility implementation selector.
+     *
+     * @deprecated use unified visibility implementation state instead. Planned for removal in
+     *     Nacos 4.0.0.
+     */
+    @Deprecated
     private static final String VISIBILITY_PLUGIN_TYPE_CONFIG_KEY = "nacos.plugin.visibility.type";
     
     private static final String DEFAULT_VISIBILITY_SERVICE_NAME = "nacos";
@@ -134,6 +141,24 @@ public class VisibilityHelper {
         }
         ValidationResult result = visibilityService.get()
             .validateVisibility(resolveCurrentIdentity(), VisibilityConstants.ACTION_READ,
+                resolveCurrentApiType(),
+                resource);
+        return result.isAllowed();
+    }
+    
+    /**
+     * Check write permission for current user on the given resource.
+     *
+     * @param resource the resource to check
+     * @return true when writable, false otherwise
+     */
+    public static boolean canWriteResource(VisibilityResource resource) {
+        Optional<VisibilityService> visibilityService = findVisibilityService();
+        if (visibilityService.isEmpty()) {
+            return true;
+        }
+        ValidationResult result = visibilityService.get()
+            .validateVisibility(resolveCurrentIdentity(), VisibilityConstants.ACTION_WRITE,
                 resolveCurrentApiType(),
                 resource);
         return result.isAllowed();

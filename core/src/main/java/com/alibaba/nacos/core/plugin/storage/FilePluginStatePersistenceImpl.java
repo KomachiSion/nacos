@@ -69,20 +69,20 @@ public class FilePluginStatePersistenceImpl implements PluginStatePersistenceSer
     public FilePluginStatePersistenceImpl() {
         this.dataDir =
             EnvUtil.getNacosHome() + File.separator + "data" + File.separator + PLUGIN_DATA_DIR;
-        ensureDataDirExists();
     }
     
     private void ensureDataDirExists() {
-        File dir = new File(dataDir);
-        if (!dir.exists()) {
-            boolean created = dir.mkdirs();
-            if (created) {
-                LOGGER.info("[FilePluginStatePersistenceImpl] Created plugin data directory: {}",
-                    dataDir);
-            } else {
-                throw new PluginPersistenceException(
-                    "Failed to create plugin data directory: " + dataDir);
-            }
+        Path directory = Paths.get(dataDir);
+        if (Files.isDirectory(directory)) {
+            return;
+        }
+        try {
+            Files.createDirectories(directory);
+            LOGGER.info("[FilePluginStatePersistenceImpl] Created plugin data directory: {}",
+                dataDir);
+        } catch (IOException e) {
+            throw new PluginPersistenceException(
+                "Failed to create plugin data directory: " + dataDir, e);
         }
     }
     
@@ -103,6 +103,20 @@ public class FilePluginStatePersistenceImpl implements PluginStatePersistenceSer
                     enabled);
             } catch (Exception e) {
                 throw new PluginPersistenceException("Failed to save plugin state: " + pluginId, e);
+            }
+        }
+    }
+    
+    @Override
+    public void replaceAllStates(Map<String, Boolean> states) {
+        synchronized (stateLock) {
+            try {
+                Map<String, Boolean> statesToStore = states == null
+                    ? new HashMap<>() : new HashMap<>(states);
+                writeJsonToFile(PLUGIN_STATE_FILE, statesToStore);
+                LOGGER.debug("[FilePluginStatePersistenceImpl] Replaced all plugin states");
+            } catch (Exception e) {
+                throw new PluginPersistenceException("Failed to replace all plugin states", e);
             }
         }
     }
@@ -129,6 +143,20 @@ public class FilePluginStatePersistenceImpl implements PluginStatePersistenceSer
         }
     }
     
+    @Override
+    public void replaceAllConfigs(Map<String, Map<String, String>> configs) {
+        synchronized (configLock) {
+            try {
+                Map<String, Map<String, String>> configsToStore = configs == null
+                    ? new HashMap<>() : new HashMap<>(configs);
+                writeJsonToFile(PLUGIN_CONFIG_FILE, configsToStore);
+                LOGGER.debug("[FilePluginStatePersistenceImpl] Replaced all plugin configs");
+            } catch (Exception e) {
+                throw new PluginPersistenceException("Failed to replace all plugin configs", e);
+            }
+        }
+    }
+    
     /**
      * Load all plugin states.
      *
@@ -149,7 +177,7 @@ public class FilePluginStatePersistenceImpl implements PluginStatePersistenceSer
     @Override
     public Map<String, Map<String, String>> loadAllConfigs() {
         synchronized (configLock) {
-            return readJsonFromFile(PLUGIN_CONFIG_FILE, CONFIG_TYPE_REF);
+            return readJsonFromFile(PLUGIN_CONFIG_FILE, CONFIG_TYPE_REF, true);
         }
     }
     
@@ -196,6 +224,11 @@ public class FilePluginStatePersistenceImpl implements PluginStatePersistenceSer
     }
     
     private <T> T readJsonFromFile(String fileName, TypeReference<T> typeRef) {
+        return readJsonFromFile(fileName, typeRef, false);
+    }
+    
+    private <T> T readJsonFromFile(String fileName, TypeReference<T> typeRef,
+        boolean failOnError) {
         Path filePath = Paths.get(dataDir, fileName);
         if (!Files.exists(filePath)) {
             return createEmptyMap(typeRef);
@@ -209,6 +242,10 @@ public class FilePluginStatePersistenceImpl implements PluginStatePersistenceSer
             return JacksonUtils.toObj(content, typeRef);
         } catch (Exception e) {
             LOGGER.error("[FilePluginStatePersistenceImpl] Failed to read file: {}", fileName, e);
+            if (failOnError) {
+                throw new PluginPersistenceException(
+                    "Failed to read plugin persistence file: " + fileName, e);
+            }
             return createEmptyMap(typeRef);
         }
     }
@@ -219,6 +256,7 @@ public class FilePluginStatePersistenceImpl implements PluginStatePersistenceSer
     }
     
     private void writeJsonToFile(String fileName, Object data) throws IOException {
+        ensureDataDirExists();
         Path filePath = Paths.get(dataDir, fileName);
         String content = JacksonUtils.toJson(data);
         Files.write(filePath, content.getBytes(StandardCharsets.UTF_8));

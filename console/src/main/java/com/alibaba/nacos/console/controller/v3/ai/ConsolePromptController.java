@@ -385,9 +385,8 @@ public class ConsolePromptController {
         @Parameter(name = "form", hidden = true)})
     public Result<String> publish(PromptVersionPublishForm form) throws NacosException {
         form.validate();
-        boolean updateLatest = form.getUpdateLatestLabel() == null || form.getUpdateLatestLabel();
         promptProxy.publish(form.getNamespaceId(), form.getPromptKey(), form.getVersion(),
-            updateLatest);
+            true);
         return Result.success("ok");
     }
     
@@ -397,7 +396,7 @@ public class ConsolePromptController {
     @Since("3.2.1")
     @PostMapping("/force-publish")
     @Secured(resource = Constants.Prompt.CONSOLE_PATH
-        + "/force-publish", action = ActionTypes.WRITE, signType = SignType.CONSOLE,
+        + "/force-publish", action = ActionTypes.WRITE, signType = SignType.AI,
         apiType = ApiType.CONSOLE_API)
     @Operation(summary = "nacos.console.ai.prompt.api.force.publish.summary",
         description = "nacos.console.ai.prompt.api.force.publish.description",
@@ -414,9 +413,8 @@ public class ConsolePromptController {
         @Parameter(name = "form", hidden = true)})
     public Result<String> forcePublish(PromptVersionPublishForm form) throws NacosException {
         form.validate();
-        boolean updateLatest = form.getUpdateLatestLabel() == null || form.getUpdateLatestLabel();
         promptProxy.forcePublish(form.getNamespaceId(), form.getPromptKey(), form.getVersion(),
-            updateLatest);
+            true);
         return Result.success("ok");
     }
     

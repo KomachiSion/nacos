@@ -5,9 +5,16 @@ import type {
   SkillListResponse,
   SkillAdminDetail,
   SkillDocument,
+  SkillUploadPrecheckResult,
 } from '@/types/skill';
 
 const BASE = 'v3/console/ai/skills';
+
+interface UploadOptions {
+  overwrite?: boolean;
+  targetVersion?: string;
+  commitMsg?: string;
+}
 
 export const skillApi = {
   /** List skills with pagination and search */
@@ -41,26 +48,76 @@ export const skillApi = {
     }) as unknown as Promise<Blob>,
 
   /** Upload skill from ZIP */
-  upload: (namespaceId: string, file: File): ApiResult<string> => {
+  upload: (namespaceId: string, file: File, options?: UploadOptions): ApiResult<string> => {
     const formData = new FormData();
     // Pass filename explicitly so backend can reliably read original upload filename.
     formData.append('file', file, file.name);
     formData.append('namespaceId', namespaceId);
+    if (options?.overwrite !== undefined) {
+      formData.append('overwrite', String(options.overwrite));
+    }
+    if (options?.targetVersion) {
+      formData.append('targetVersion', options.targetVersion);
+    }
+    if (options?.commitMsg) {
+      formData.append('commitMsg', options.commitMsg);
+    }
     return client.post(`${BASE}/upload`, formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
       timeout: 60000,
     }) as ApiResult<string>;
   },
 
-  /** Batch upload skills from a multi-skill ZIP archive */
-  batchUpload: (namespaceId: string, file: File): ApiResult<{ succeeded: string[]; failed: { name: string; reason: string }[] }> => {
+  /** Precheck one or more skills from the original ZIP */
+  precheckUpload: (
+    namespaceId: string,
+    file: File,
+  ): ApiResult<SkillUploadPrecheckResult[]> => {
     const formData = new FormData();
     formData.append('file', file, file.name);
     formData.append('namespaceId', namespaceId);
+    return client.post(`${BASE}/upload/precheck`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+      timeout: 120000,
+    }) as ApiResult<SkillUploadPrecheckResult[]>;
+  },
+
+  /** Batch upload skills from a multi-skill ZIP archive */
+  batchUpload: (
+    namespaceId: string,
+    file: File,
+    options?: { overwrite?: boolean },
+  ): ApiResult<{
+    succeeded: string[];
+    failed: { name: string; reason: string; owner?: string }[];
+    results: {
+      name: string;
+      success: boolean;
+      errorCode: string;
+      errorMessage: string;
+      owner?: string;
+    }[];
+  }> => {
+    const formData = new FormData();
+    formData.append('file', file, file.name);
+    formData.append('namespaceId', namespaceId);
+    if (options?.overwrite !== undefined) {
+      formData.append('overwrite', String(options.overwrite));
+    }
     return client.post(`${BASE}/upload/batch`, formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
       timeout: 120000,
-    }) as ApiResult<{ succeeded: string[]; failed: { name: string; reason: string }[] }>;
+    }) as ApiResult<{
+      succeeded: string[];
+      failed: { name: string; reason: string; owner?: string }[];
+      results: {
+        name: string;
+        success: boolean;
+        errorCode: string;
+        errorMessage: string;
+        owner?: string;
+      }[];
+    }>;
   },
 
   /** Delete skill */
@@ -112,7 +169,6 @@ export const skillApi = {
     namespaceId?: string;
     skillName: string;
     version: string;
-    updateLatestLabel?: boolean;
   }): ApiResult<string> =>
     client.post(`${BASE}/publish`, data) as ApiResult<string>,
 
@@ -121,7 +177,6 @@ export const skillApi = {
     namespaceId?: string;
     skillName: string;
     version: string;
-    updateLatestLabel?: boolean;
   }): ApiResult<string> =>
     client.post(`${BASE}/force-publish`, data) as ApiResult<string>,
 

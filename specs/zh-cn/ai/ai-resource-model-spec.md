@@ -43,7 +43,7 @@ namespaceId + resourceType + resourceName + version
 | 字段 | 含义 |
 | --- | --- |
 | `namespaceId` | Namespace 隔离边界。 |
-| `type` | 资源类型，例如 `prompt`、`skill`、`agentspec`。 |
+| `type` | 资源类型，例如 `agent`、`prompt`、`skill`、`agentspec`。 |
 | `name` | 稳定资源名。 |
 | `desc` | 资源描述。 |
 | `status` | 资源元数据状态，目前为 `enable` 或 `disable`。 |
@@ -103,6 +103,12 @@ Labels 不得指向 draft 或 reviewing 版本。运行时客户端可以通过�
 存储扩展行为由 [AI 存储插件规范](../plugin/ai-storage-plugin-spec.md)定义。数据库
 方言行为由 [数据源方言插件规范](../plugin/datasource-dialect-plugin-spec.md)定义。
 
+类型自有 JSON 必须具有明确的 Schema 契约。对 `type=agent`，`ext` 保存目录扩展和
+派生的在线版本目录，Version `storage` 指向一个完整的 Agent Version 内容对象。
+精确字段和重建规则由 [Agent 管理规范](agent-management-spec.md)与
+[Agent 存储规范](agent-storage-spec.md)定义。Runtime Agent Endpoint 遵循客户端拥有的
+Naming 生命周期，不写入 `AiResourceVersion.storage`。
+
 ## 6. 可见性
 
 AI 资源通过共享的可见性插件模型实现可见性。
@@ -113,6 +119,8 @@ AI 资源通过共享的可见性插件模型实现可见性。
 - 读操作中，如果资源存在但调用者不可见，应返回 not found；
 - 写操作在修改元数据、版本或 scope 之前必须检查写权限；
 - 查询操作应尽量使用 visibility query advice，而不是先读取大结果集再过滤。
+- 查询请求中的 owner、scope 等业务筛选条件必须与 visibility query advice 取交集后再
+  执行 count 和分页；类型实现不得在转换完成后覆盖可见性条件。
 
 扩展契约由 [可见性插件规范](../auth/visibility-plugin-spec.md)定义。
 

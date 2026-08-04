@@ -31,26 +31,74 @@ Java 客户端为默认插件暴露的用户名/密码和 token 流程提供
 默认实现用于在可信内网环境中降低误用风险。它不是面向恶意公网环境的完整强鉴权方案。
 如果需要暴露到公网，应使用外部安全边界，或选择更强的鉴权插件。
 
-## 必要配置
+## 鉴权框架配置
 
 | 配置 | 目的 |
 |------|------|
 | `nacos.core.auth.enabled` | 启用通用鉴权系统和 Open API 鉴权。 |
 | `nacos.core.auth.admin.enabled` | 启用 Admin API 鉴权。 |
 | `nacos.core.auth.console.enabled` | 启用 Console API 鉴权和默认登录行为。 |
-| `nacos.core.auth.system.type` | 选择鉴权插件，默认 `nacos`。 |
-| `nacos.core.auth.plugin.nacos.token.secret.key` | 默认 token 签名密钥，部署时必须配置。 |
-| `nacos.core.auth.plugin.nacos.token.expire.seconds` | token 过期时间。 |
-| `nacos.core.auth.plugin.nacos.token.cache.enable` | 启用 token 解析和校验缓存。 |
+| `nacos.plugin.auth.type` | 启动时选择鉴权插件，默认 `nacos`；`nacos.core.auth.system.type` 是历史 alias。 |
 | `nacos.core.auth.server.identity.key` | 服务端之间调用的身份 key。 |
 | `nacos.core.auth.server.identity.value` | 服务端之间调用的身份 value。 |
-| `nacos.core.auth.caching.enabled` | 启用用户、角色和权限缓存。 |
-| `nacos.core.auth.nacos.anonymous.ai.enabled` | 当端点明确选择匿名访问时，允许匿名 AI 访问。 |
 
-token 密钥和服务端身份值必须由部署环境独立配置。使用默认值或共享值是不安全的。
+这些配置负责鉴权模块、API 范围、启动期插件选择和服务端身份，不属于 `auth:nacos` 插件
+自身的配置项。插件选择需要重启生效，服务端身份值必须由部署环境独立配置。
 
-`ldap` 插件变体额外使用 `nacos.core.auth.ldap.*` 配置族。LDAP 只改变身份认证方式，授权仍然
-使用 Nacos 角色和权限。
+## 统一管理的插件配置
+
+`nacos` 实现直接实现 `PluginConfigSpec`，并以可配置插件 `auth:nacos` 注册。其 canonical
+配置前缀为 `nacos.plugin.auth.nacos.`。
+
+| item key | canonical 静态 key | 历史静态 alias | 类型 | 生效模式 | 默认值 | 敏感 |
+|----------|--------------------|----------------|------|----------|--------|------|
+| `token.secret.key` | `nacos.plugin.auth.nacos.token.secret.key` | `nacos.core.auth.plugin.nacos.token.secret.key` | String | `RESTART` | 空 | 是 |
+| `token.expire.seconds` | `nacos.plugin.auth.nacos.token.expire.seconds` | `nacos.core.auth.plugin.nacos.token.expire.seconds` | Number | `RUNTIME` | `18000` | 否 |
+| `token.cache.enable` | `nacos.plugin.auth.nacos.token.cache.enable` | `nacos.core.auth.plugin.nacos.token.cache.enable` | Boolean | `RUNTIME` | `false` | 否 |
+| `caching.enabled` | `nacos.plugin.auth.nacos.caching.enabled` | `nacos.core.auth.caching.enabled` | Boolean | `RUNTIME` | `true` | 否 |
+| `anonymous.ai.enabled` | `nacos.plugin.auth.nacos.anonymous.ai.enabled` | `nacos.core.auth.nacos.anonymous.ai.enabled` | Boolean | `RUNTIME` | `false` | 否 |
+
+`token.expire.seconds` 必须大于零。当任一 Nacos API 鉴权范围需要 token 能力时，
+`token.secret.key` 必须是有效的 Base64 内容，且解码后不少于 32 字节。token 密钥必须由
+部署环境独立设置，使用默认值或共享值是不安全的。插件管理 API 必须返回脱敏后的密钥，
+并禁止通过运行时更新修改该字段。
+
+canonical key 与历史 alias 同时存在时，canonical key 优先。历史 alias 为兼容已有部署
+继续可读，并在使用时输出不包含配置值的迁移提示。运行时和 localOnly 更新使用表中的
+item key，并遵循 [Nacos 插件化规范](../plugin/plugin-spec.md)定义的 source 完整 Map 语义。
+
+插件持有不可变的 effective 配置快照。应用新快照时更新 token 过期时间、token 缓存选择、
+鉴权信息缓存和匿名访问，消费者不再直接读取 Spring 环境。JWT parser 由已接受的
+restart-only 密钥构建。开启 token 缓存时，在同一个基础 manager 外选择缓存包装；关闭时
+切回基础 manager，并清空 token 缓存。token 过期时间变化时也会清空包装缓存，使下一次
+取 token 使用新的运行时有效期；已经返回给客户端的 token 仍按签名中的原过期时间有效。
+
+`ldap` 实现同样实现 `PluginConfigSpec`，并以可配置插件 `auth:ldap` 注册。其 canonical
+配置前缀为 `nacos.plugin.auth.ldap.`。
+
+| item key | canonical 静态 key | 历史静态 alias | 类型 | 生效模式 | 默认值 | 敏感 |
+|----------|--------------------|----------------|------|----------|--------|------|
+| `url` | `nacos.plugin.auth.ldap.url` | `nacos.core.auth.ldap.url` | String | `RESTART` | `ldap://localhost:389` | 否 |
+| `base-dn` | `nacos.plugin.auth.ldap.base-dn` | `nacos.core.auth.ldap.basedc` | String | `RESTART` | `dc=example,dc=org` | 否 |
+| `timeout` | `nacos.plugin.auth.ldap.timeout` | `nacos.core.auth.ldap.timeout` | Number | `RESTART` | `3000` | 否 |
+| `user-dn` | `nacos.plugin.auth.ldap.user-dn` | `nacos.core.auth.ldap.userDn` | String | `RESTART` | `cn=admin,dc=example,dc=org` | 否 |
+| `password` | `nacos.plugin.auth.ldap.password` | `nacos.core.auth.ldap.password` | String | `RESTART` | `password` | 是 |
+| `filter-prefix` | `nacos.plugin.auth.ldap.filter-prefix` | `nacos.core.auth.ldap.filter.prefix` | String | `RESTART` | `uid` | 否 |
+| `case-sensitive` | `nacos.plugin.auth.ldap.case-sensitive` | `nacos.core.auth.ldap.case.sensitive` | Boolean | `RESTART` | `true` | 否 |
+| `ignore-partial-result-exception` | `nacos.plugin.auth.ldap.ignore-partial-result-exception` | `nacos.core.auth.ldap.ignore.partial.result.exception` | Boolean | `RESTART` | `false` | 否 |
+
+`timeout` 单位为毫秒且必须大于零。插件管理 API 必须对绑定密码脱敏。第一阶段 LDAP 自有
+字段全部为 `RESTART`，因此运行时或 local-only 更新只要新增、修改或移除这些字段都必须
+拒绝。
+
+canonical key 与历史 alias 同时存在时 canonical key 优先。历史模板中的
+`nacos.core.auth.ldap.userdn` 没有生产读取点，且原本想表达的 user DN pattern 语义不明确，
+因此不作为兼容 alias。
+
+LDAP 插件持有不可变的 effective 配置快照。Spring LDAP context 和 template 从已接受快照
+延迟构建，LDAP 消费者不再通过第二套 `@Value` 属性读取配置。LDAP 只改变身份认证方式；
+token 签名和有效期、Nacos 用户与角色存储及授权仍使用 `auth:nacos` 配置的基础设施，相关
+共享字段不复制到 `auth:ldap` definitions。
 
 ## 身份
 
@@ -69,10 +117,23 @@ token 密钥和服务端身份值必须由部署环境独立配置。使用默�
 匿名 AI 访问只有在以下条件同时满足时才允许：
 
 - 端点标记该请求允许匿名访问。
-- `nacos.core.auth.nacos.anonymous.ai.enabled` 已启用。
+- `auth:nacos` 的 `anonymous.ai.enabled` 已启用。
 - 默认插件将请求接受为内置匿名身份。
 
-当匿名 AI 访问启用时，实现会初始化保留的匿名用户和角色，并授予 `public:*:ai/*` 读权限。
+只有当请求没有显式提供任何默认鉴权凭据 key 时，才允许降级为匿名身份。提供
+`Authorization`、`accessToken`、`username` 或 `password` 都视为显式凭据存在，
+即使对应值为空白也一样。如果这些凭据为空白或无效，插件必须返回认证失败，而不能降级为
+匿名身份。在 HTTP 过滤器层，身份或权限校验失败会被转换为 HTTP 403 的
+`ACCESS_DENIED` 响应；插件级失败码和消息可以保留在响应详情中。
+
+开启匿名访问后，只会立即开启匿名身份接受。后台协调任务随后保证保留的匿名用户和角色
+存在；首次初始化时增加 `public:*:ai/*` 读权限，并最后写入匿名角色绑定，将该绑定作为
+持久化完成标记。多节点并发创建发生冲突时，只有重新读取到预期持久化状态才视为成功。
+
+如果匿名角色绑定已经存在，则视为已经初始化，协调任务不会重新补回宽泛的默认权限，
+从而保留管理员自定义的匿名权限范围。关闭匿名访问只会停止匿名身份接受，不删除保留的
+用户、角色或权限。协调任务的本地状态只用于减少数据库操作，不参与鉴权判断；当找不到
+匹配的角色或权限时，普通 RBAC 权限校验仍然必须拒绝匿名身份。
 
 ## 默认 Java 客户端鉴权集成
 
@@ -140,6 +201,7 @@ Java Client SDK 扩展在 [Java SDK 实现规范](../sdk/sdk-java-impl-spec.md)�
 | `/v3/auth/user/admin` | 当不存在全局管理员时进行管理员初始化。 |
 | `/v3/auth/role` | 角色管理。 |
 | `/v3/auth/permission` | 权限管理。 |
+| `/v3/auth/visibility` | 显式资源可见性授权管理。 |
 
 管理端点必须使用控制台域的 `@Secured` 资源保护，例如 `console/users`、
 `console/roles`、`console/permissions` 和 `console/user/password`。
@@ -147,6 +209,11 @@ Java Client SDK 扩展在 [Java SDK 实现规范](../sdk/sdk-java-impl-spec.md)�
 登录端点是有意公开的。管理员初始化端点只在无管理员初始化状态下有意暴露；一旦全局管理员
 已经存在，必须拒绝该端点。这些 API 属于 [V3 API 范围](../http-api/v3-api-surface.md)，
 并必须遵守 [HTTP 鉴权规范](../http-api/authorization-spec.md)。
+
+可见性授权 API 属于插件自有接口，而不是任何领域 controller 家族的一部分。它使用
+`ApiType.ADMIN_API` 与 identity-only 请求鉴权，并在授权服务层执行资源管理权限判断。
+启用鉴权时，只有资源 owner 或全局管理员可以对该资源执行 grant 或 revoke
+显式可见性授权。
 
 ## 默认可见性实现
 
@@ -169,8 +236,65 @@ Java Client SDK 扩展在 [Java SDK 实现规范](../sdk/sdk-java-impl-spec.md)�
 @@visibility/{namespaceId}/{resourceType}/{resourceName}
 ```
 
+默认 RBAC `permissions.resource` 列必须保存完整、精确的 canonical 资源字符串。
+该列至少需要支持 512 个字符，以避免命名空间资源持久化时被截断。资源匹配语义是精确且
+大小写敏感的；因此默认 MySQL schema 对该列使用 `utf8mb4_bin`，并为
+`permissions` 表使用 `ROW_FORMAT=DYNAMIC`，以保证现有 `(role, resource, action)`
+索引在 `utf8mb4` 下可用。
+
+已有 MySQL 部署在应用升级 SQL 前，应检查 MySQL 版本、InnoDB page size、row format
+以及当前 `permissions` 表结构。运维人员必须先配置兼容的 InnoDB 存储模式，再执行
+MySQL 迁移，以确保现有 `UNIQUE(role, resource, action)` 索引能够接受扩展后的
+`utf8mb4` resource 列。
+
+本次变更的升级脚本通过 `distribution/conf` 交付：
+
+| 数据库 | 升级脚本 | 精确 schema 变更 |
+|--------|----------|------------------|
+| MySQL | `mysql-upgrade-visibility-permission-resource.sql` | `ALTER TABLE permissions ROW_FORMAT=DYNAMIC, MODIFY COLUMN resource VARCHAR(512) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL;` |
+| Derby | `derby-upgrade-visibility-permission-resource.sql` | `ALTER TABLE permissions ALTER COLUMN resource SET DATA TYPE VARCHAR(512);` |
+| PostgreSQL | `pg-upgrade-visibility-permission-resource.sql` | `ALTER TABLE permissions ALTER COLUMN resource TYPE VARCHAR(512);` |
+| Oracle | `oracle-upgrade-visibility-permission-resource.sql` | `ALTER TABLE permissions MODIFY (resource VARCHAR2(512 CHAR) NOT NULL);` |
+
+MySQL 脚本包含以下预检查：
+
+```sql
+SELECT VERSION();
+SHOW VARIABLES LIKE 'innodb_page_size';
+SHOW VARIABLES LIKE 'innodb_default_row_format';
+SHOW CREATE TABLE permissions;
+```
+
+这些脚本只扩展原始 canonical resource 列，不得添加仅服务于授权列表反查的
+`permissions(resource, action, role)` 或 `roles(role, username)` 索引。
+面向运维人员的升级说明见
+[`doc/visibility-permission-resource-upgrade.md`](../../../doc/visibility-permission-resource-upgrade.md)。
+
+当前支持资源的显式可见性授权通过以下接口管理：
+
+```text
+POST /v3/auth/visibility
+DELETE /v3/auth/visibility
+```
+
+两个端点均使用 `ApiType.ADMIN_API` 保护。
+
+授权行为：
+
+- 只读授权存储为动作 `r`。
+- 写或读写授权请求统一存储为 `rw`，并且 `rw` 在列表/搜索查询建议中隐式包含读权限。
+- 授权数据复用默认 RBAC 持久化，在鉴权后端以插件自有的内部角色和权限形式存储。
+- 默认实现最多为每个被授权用户创建一个保留的内部可见性角色。角色名必须确定性生成、
+  对被授权用户唯一，并受限于现有角色名列长度。资源和动作信息只能存储在绑定到该角色
+  的权限行中，不得编码进角色名。
+- 列表/搜索鉴权必须从调用方保留可见性角色绑定的实际权限行推导显式可见资源。只有角色
+  绑定、但没有匹配权限行时，不得授予可见性。
+- 资源存在性和 owner 元数据通过领域提供的可见性资源定位桥接解析，而不是让鉴权插件直接
+  编译依赖领域持久化类型。
+
 范围查询必须组合基础可见性谓词和显式授权资源。当前默认实现已经暴露显式授权资源结构；
-API 和存储集成在补齐后必须使用该结构。
+默认可见性实现会从授权服务填充显式授权资源，使列表/搜索路径能够返回授权给当前调用方
+的私有资源。
 
 对于 AI 列表和搜索路径，可见性必须在 count 和分页查询前转换为仓储层查询条件。这可以让
 `totalCount` 与可见资源集合保持一致，并避免全量加载后在内存中过滤。
@@ -180,9 +304,12 @@ API 和存储集成在补齐后必须使用该结构。
 旧端点或兼容端点可以为已有客户端保留，但新的文档和新的开发应以 v3 鉴权 API 以及本文档
 定义的插件契约为准。
 
+统一管理表中的历史静态 alias 继续兼容。新的发行版模板使用 canonical key，并在注释中
+标明历史 key。canonical token 密钥缺失或为空时，启动脚本会把合法的历史密钥迁移到
+canonical key；二者同时存在时 canonical 值优先。迁移过程不得输出密钥内容。
+
 ## 待处理问题
 
-- `ldap` 插件当前通过继承 `NacosAuthPluginService` 耦合在默认鉴权实现包中。从概念上看，
-  LDAP 是由外部身份提供方支撑的独立鉴权插件，不属于默认 Nacos 用户名/密码和 token
-  实现。后续应将它拆分为独立鉴权插件包和规范，同时保持已有
-  `nacos.core.auth.system.type=ldap` 部署兼容。
+- `ldap` 插件已经通过 `PluginConfigSpec` 接管 LDAP 连接和查找配置，但仍消费由
+  `auth:nacos` 配置的 token、用户、角色和授权基础设施。后续应把这些共享能力迁移到显式的
+  auth 模块服务，使身份提供方插件不再依赖默认插件的配置所有权。

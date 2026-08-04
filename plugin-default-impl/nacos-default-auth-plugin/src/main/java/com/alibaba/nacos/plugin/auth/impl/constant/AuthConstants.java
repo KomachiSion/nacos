@@ -58,34 +58,121 @@ public class AuthConstants {
     
     public static final String NACOS_USER_KEY = "nacosuser";
     
+    /**
+     * Legacy token secret key.
+     *
+     * @deprecated Use {@code nacos.plugin.auth.nacos.token.secret.key} instead. Planned for
+     *     removal in Nacos 4.0.0.
+     */
+    @Deprecated
     public static final String TOKEN_SECRET_KEY = "nacos.core.auth.plugin.nacos.token.secret.key";
     
     public static final String DEFAULT_TOKEN_SECRET_KEY = "";
     
+    /**
+     * Legacy token expiration key.
+     *
+     * @deprecated Use {@code nacos.plugin.auth.nacos.token.expire.seconds} instead. Planned for
+     *     removal in Nacos 4.0.0.
+     */
+    @Deprecated
     public static final String TOKEN_EXPIRE_SECONDS =
         "nacos.core.auth.plugin.nacos.token.expire.seconds";
     
     public static final Long DEFAULT_TOKEN_EXPIRE_SECONDS = 18_000L;
     
+    /**
+     * Legacy token cache key.
+     *
+     * @deprecated Use {@code nacos.plugin.auth.nacos.token.cache.enable} instead. Planned for
+     *     removal in Nacos 4.0.0.
+     */
+    @Deprecated
+    public static final String TOKEN_CACHE_ENABLE =
+        "nacos.core.auth.plugin.nacos.token.cache.enable";
+    
+    /**
+     * Legacy authorization cache key.
+     *
+     * @deprecated Use {@code nacos.plugin.auth.nacos.caching.enabled} instead. Planned for
+     *     removal in Nacos 4.0.0.
+     */
+    @Deprecated
+    public static final String NACOS_CORE_AUTH_CACHING_ENABLED =
+        "nacos.core.auth.caching.enabled";
+    
+    /**
+     * Legacy LDAP URL key.
+     *
+     * @deprecated Use {@code nacos.plugin.auth.ldap.url} instead. Planned for removal in Nacos
+     *     4.0.0.
+     */
+    @Deprecated
     public static final String NACOS_CORE_AUTH_LDAP_URL = "nacos.core.auth.ldap.url";
     
+    /**
+     * Legacy LDAP base DN key.
+     *
+     * @deprecated Use {@code nacos.plugin.auth.ldap.base-dn} instead. Planned for removal in
+     *     Nacos 4.0.0.
+     */
+    @Deprecated
     public static final String NACOS_CORE_AUTH_LDAP_BASEDC = "nacos.core.auth.ldap.basedc";
     
+    /**
+     * Legacy LDAP timeout key.
+     *
+     * @deprecated Use {@code nacos.plugin.auth.ldap.timeout} instead. Planned for removal in
+     *     Nacos 4.0.0.
+     */
+    @Deprecated
     public static final String NACOS_CORE_AUTH_LDAP_TIMEOUT = "nacos.core.auth.ldap.timeout";
     
+    /**
+     * Legacy LDAP bind user DN key.
+     *
+     * @deprecated Use {@code nacos.plugin.auth.ldap.user-dn} instead. Planned for removal in
+     *     Nacos 4.0.0.
+     */
+    @Deprecated
     public static final String NACOS_CORE_AUTH_LDAP_USERDN = "nacos.core.auth.ldap.userDn";
     
+    /**
+     * Legacy LDAP bind password key.
+     *
+     * @deprecated Use {@code nacos.plugin.auth.ldap.password} instead. Planned for removal in
+     *     Nacos 4.0.0.
+     */
+    @Deprecated
     public static final String NACOS_CORE_AUTH_LDAP_PASSWORD = "nacos.core.auth.ldap.password";
     
+    /**
+     * Legacy LDAP filter prefix key.
+     *
+     * @deprecated Use {@code nacos.plugin.auth.ldap.filter-prefix} instead. Planned for removal
+     *     in Nacos 4.0.0.
+     */
+    @Deprecated
     public static final String NACOS_CORE_AUTH_LDAP_FILTER_PREFIX =
         "nacos.core.auth.ldap.filter.prefix";
     
+    /**
+     * Legacy LDAP case sensitivity key.
+     *
+     * @deprecated Use {@code nacos.plugin.auth.ldap.case-sensitive} instead. Planned for removal
+     *     in Nacos 4.0.0.
+     */
+    @Deprecated
     public static final String NACOS_CORE_AUTH_CASE_SENSITIVE =
         "nacos.core.auth.ldap.case.sensitive";
     
     /**
-     * LDAP Ignore partial result exception.
+     * Legacy LDAP partial result handling key.
+     *
+     * @deprecated Use {@code nacos.plugin.auth.ldap.ignore-partial-result-exception} instead.
+     *     Planned for removal in Nacos 4.0.0.
      */
+    @Deprecated
     public static final String NACOS_CORE_AUTH_IGNORE_PARTIAL_RESULT_EXCEPTION =
         "nacos.core.auth.ldap.ignore.partial.result.exception";
     
@@ -108,6 +195,15 @@ public class AuthConstants {
     
     public static final String PERMISSION_PATH = "/v3/auth/permission";
     
+    public static final String VISIBILITY_PATH = "/v3/auth/visibility";
+    
+    public static final String VISIBILITY_RESOURCE = "auth/visibility";
+    
+    /**
+     * Prefix for system-reserved per-user roles used by explicit visibility grants.
+     */
+    public static final String VISIBILITY_GRANT_ROLE_PREFIX = "__nacos_vis__.";
+    
     /**
      * System-reserved anonymous user name. Used for unauthenticated access to PUBLIC AI resources.
      */
@@ -126,8 +222,12 @@ public class AuthConstants {
     public static final String TAG_ALLOW_ANONYMOUS = Constants.Tag.ALLOW_ANONYMOUS;
     
     /**
-     * Configuration key controlling whether anonymous access to AI resources is enabled.
+     * Legacy configuration key controlling whether anonymous AI access is enabled.
+     *
+     * @deprecated Use {@code nacos.plugin.auth.nacos.anonymous.ai.enabled} instead. Planned for
+     *     removal in Nacos 4.0.0.
      */
+    @Deprecated
     public static final String NACOS_CORE_AUTH_NACOS_ANONYMOUS_AI_ENABLED =
         "nacos.core.auth.nacos.anonymous.ai.enabled";
 }

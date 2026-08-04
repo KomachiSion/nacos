@@ -26,7 +26,6 @@ import com.alibaba.nacos.api.model.v2.Result;
 import com.alibaba.nacos.api.remote.RemoteConstants;
 import com.alibaba.nacos.auth.annotation.Secured;
 import com.alibaba.nacos.console.proxy.core.ClusterProxy;
-import com.alibaba.nacos.core.utils.Commons;
 import com.alibaba.nacos.plugin.auth.constant.ActionTypes;
 import com.alibaba.nacos.plugin.auth.constant.SignType;
 import io.swagger.v3.oas.annotations.Operation;
@@ -79,8 +78,8 @@ public class ConsoleClusterController {
      */
     @Since("3.0.0")
     @GetMapping(value = "/nodes")
-    @Secured(resource = Commons.NACOS_CORE_CONTEXT
-        + "/cluster", action = ActionTypes.READ, signType = SignType.CONSOLE,
+    @Secured(resource = "/v3/console/core/cluster/nodes", action = ActionTypes.READ,
+        signType = SignType.CONSOLE,
         apiType = ApiType.CONSOLE_API)
     @Operation(summary = "nacos.console.core.cluster.api.nodes.summary",
         description = "nacos.console.core.cluster.api.nodes.description",

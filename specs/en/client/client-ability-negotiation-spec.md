@@ -43,7 +43,7 @@ The current Java SDK declares support for:
 | `SDK_CLIENT_FUZZY_WATCH` | Client can use fuzzy watch for Config or Naming. |
 | `SDK_CLIENT_DISTRIBUTED_LOCK` | Client can use the distributed lock feature. |
 | `SDK_MCP_REGISTRY` | Client can use MCP registry runtime features. |
-| `SDK_AGENT_REGISTRY` | Client can use Agent and AgentCard runtime features. |
+| `SDK_AGENT_REGISTRY` | Client can use the legacy A2A Agent and AgentCard runtime features. |
 
 The current server declares support for:
 
@@ -53,11 +53,28 @@ The current server declares support for:
 | `SERVER_FUZZY_WATCH` | Config or Naming fuzzy watch is supported. |
 | `SERVER_DISTRIBUTED_LOCK` | Distributed Lock is supported. |
 | `SERVER_MCP_REGISTRY` | MCP registry operations are supported. |
-| `SERVER_AGENT_REGISTRY` | Agent and AgentCard registry operations are supported. |
+| `SERVER_AGENT_REGISTRY` | Legacy A2A Agent and AgentCard registry operations are supported. |
 | `SERVER_AGENT_CARD_V1` | A2A AgentCard 1.0 protocol fields are supported. |
 
 Adding a new ability requires both a named key and a domain rule that explains
 what behavior is gated by the ability.
+
+### 2.1 Agent/RAD Abilities
+
+The [Agent API Spec](../ai/agent-api-spec.md) approves the following server
+abilities for the Nacos 3.3 line. They enter the server ability table after
+their handlers and Java SDK form a complete implementation.
+
+| Mode | Constant | Wire key | Meaning |
+|---|---|---|---|
+| `SERVER` | `SERVER_AGENT_DISCOVERY_V1` | `agentDiscoveryV1` | Server accepts RAD Search and Discover payloads. |
+| `SERVER` | `SERVER_AGENT_ENDPOINT_V1` | `agentEndpointV1` | Server accepts RAD runtime Endpoint publication payloads. |
+
+The first `subscribeAgent` polls Discover locally and defines no SDK-client
+ability. A future server Watch/Push design must separately review its client
+ability, payload, and acknowledgement contract. Legacy `SERVER_AGENT_REGISTRY`,
+`SERVER_AGENT_CARD_V1`, and `SDK_AGENT_REGISTRY` continue to gate only the old
+A2A contract. They are not a fallback for any RAD operation.
 
 ## 3. gRPC Negotiation Flow
 
@@ -109,14 +126,23 @@ features:
 - Distributed Lock must require `SERVER_DISTRIBUTED_LOCK` because the feature is
   experimental and not universally available.
 - AI MCP registry operations must require `SERVER_MCP_REGISTRY`.
-- AI Agent and AgentCard operations must require `SERVER_AGENT_REGISTRY`.
+- Legacy A2A Agent and AgentCard operations must require
+  `SERVER_AGENT_REGISTRY`.
 - A2A AgentCard 1.0 fields should require `SERVER_AGENT_CARD_V1` or use an
   explicitly documented compatibility conversion.
+- RAD Search and Discover requests must require `SERVER_AGENT_DISCOVERY_V1`;
+  local polling subscriptions reuse the same Discover check.
+- RAD runtime Endpoint registration and deregistration must require
+  `SERVER_AGENT_ENDPOINT_V1`.
 
 Feature code should not cache a positive ability result beyond the current
 connection. It should query the runtime connection ability when the operation is
 about to execute or when a cached value is known to belong to the current
 connection.
+
+After reconnect, the client must negotiate abilities again before restoring
+Endpoint publications. A local polling subscription stores no
+connection-scoped Watch state; its next Discover uses the new connection.
 
 ## 6. Compatibility Rules
 

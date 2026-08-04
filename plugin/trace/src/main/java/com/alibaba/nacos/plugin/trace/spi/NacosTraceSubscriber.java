@@ -16,6 +16,7 @@
 
 package com.alibaba.nacos.plugin.trace.spi;
 
+import com.alibaba.nacos.api.plugin.PluginConfigSpec;
 import com.alibaba.nacos.common.trace.event.TraceEvent;
 
 import java.util.List;
@@ -26,10 +27,11 @@ import java.util.concurrent.Executor;
  *
  * @author xiweng.yy
  */
-public interface NacosTraceSubscriber {
+public interface NacosTraceSubscriber extends PluginConfigSpec {
     
     /**
-     * Get the plugin name, if the same name has loaded by nacos, the older one will be replaced by new one.
+     * Get the plugin name. If another subscriber with the same name has already been loaded, Nacos
+     * keeps the first subscriber and ignores the later duplicate with a warning.
      *
      * @return plugin name
      */

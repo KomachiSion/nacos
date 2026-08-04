@@ -97,18 +97,17 @@ class ExternalDataSourceServiceImplTest {
         try {
             MockEnvironment environment = new MockEnvironment();
             EnvUtil.setEnvironment(environment);
-            environment.setProperty("db.num", "2");
-            environment.setProperty("db.user", "user");
-            environment.setProperty("db.password", "password");
-            environment.setProperty("db.url.0", "1.1.1.1");
-            environment.setProperty("db.url.1", "2.2.2.2");
-            environment.setProperty("db.pool.config.driverClassName",
+            environment.setProperty("nacos.plugin.datasource.db.num", "2");
+            environment.setProperty("nacos.plugin.datasource.db.user", "user");
+            environment.setProperty("nacos.plugin.datasource.db.password", "password");
+            environment.setProperty("nacos.plugin.datasource.db.url.0", "1.1.1.1");
+            environment.setProperty("nacos.plugin.datasource.db.url.1", "2.2.2.2");
+            environment.setProperty("nacos.plugin.datasource.db.pool.config.driver-class-name",
                 "com.alibaba.nacos.persistence.datasource.mock.MockDriver");
             DatasourceConfiguration.setUseExternalDb(true);
             ExternalDataSourceServiceImpl service1 = new ExternalDataSourceServiceImpl();
             assertDoesNotThrow(service1::init);
-            assertEquals("", service1.getDataSourceType());
-            assertEquals("1.1.1.1", service1.getCurrentDbUrl());
+            assertEquals("mysql", service1.getDataSourceType());
             assertNotNull(service1.getJdbcTemplate());
             assertNotNull(service1.getTransactionTemplate());
         } finally {
@@ -125,6 +124,23 @@ class ExternalDataSourceServiceImplTest {
             DatasourceConfiguration.setUseExternalDb(true);
             ExternalDataSourceServiceImpl service1 = new ExternalDataSourceServiceImpl();
             assertThrows(RuntimeException.class, service1::init);
+        } finally {
+            DatasourceConfiguration.setUseExternalDb(false);
+            EnvUtil.setEnvironment(null);
+        }
+    }
+    
+    @Test
+    void testInitUsesCanonicalQueryTimeout() {
+        try {
+            MockEnvironment environment = new MockEnvironment();
+            environment.setProperty("nacos.plugin.datasource.db.query-timeout", "12");
+            EnvUtil.setEnvironment(environment);
+            DatasourceConfiguration.setUseExternalDb(false);
+            ExternalDataSourceServiceImpl service1 = new ExternalDataSourceServiceImpl();
+            service1.init();
+            assertEquals(12, ReflectionTestUtils.getField(service1, "queryTimeout"));
+            assertEquals(12, service1.getJdbcTemplate().getQueryTimeout());
         } finally {
             DatasourceConfiguration.setUseExternalDb(false);
             EnvUtil.setEnvironment(null);
@@ -200,53 +216,6 @@ class ExternalDataSourceServiceImplTest {
             .thenThrow(
                 new CannotGetJdbcConnectionException("test"));
         assertFalse(service.checkMasterWritable());
-    }
-    
-    @Test
-    void testGetCurrentDbUrl() {
-        HikariDataSource bds = new HikariDataSource();
-        bds.setJdbcUrl("test.jdbc.url");
-        when(jt.getDataSource()).thenReturn(bds);
-        assertEquals("test.jdbc.url", service.getCurrentDbUrl());
-    }
-    
-    @Test
-    void testGetCurrentDbUrlWithoutDatasource() {
-        assertEquals("", service.getCurrentDbUrl());
-    }
-    
-    @Test
-    void testGetHealth() {
-        List<Boolean> isHealthList = new ArrayList<>();
-        ReflectionTestUtils.setField(service, "isHealthList", isHealthList);
-        assertEquals("UP", service.getHealth());
-    }
-    
-    @Test
-    void testGetHealthWithMasterDown() {
-        HikariDataSource dataSource = mock(HikariDataSource.class);
-        when(dataSource.getJdbcUrl()).thenReturn("1.1.1.1");
-        ReflectionTestUtils.setField(service, "dataSourceList",
-            Collections.singletonList(dataSource));
-        List<Boolean> isHealthList = new ArrayList<>();
-        isHealthList.add(Boolean.FALSE);
-        ReflectionTestUtils.setField(service, "isHealthList", isHealthList);
-        assertEquals("DOWN:1.1.1.1", service.getHealth());
-    }
-    
-    @Test
-    void testGetHealthWithSlaveDown() {
-        HikariDataSource dataSource = mock(HikariDataSource.class);
-        when(dataSource.getJdbcUrl()).thenReturn("2.2.2.2");
-        List<HikariDataSource> dataSourceList = new ArrayList<>();
-        dataSourceList.add(null);
-        dataSourceList.add(dataSource);
-        ReflectionTestUtils.setField(service, "dataSourceList", dataSourceList);
-        List<Boolean> isHealthList = new ArrayList<>();
-        isHealthList.add(Boolean.TRUE);
-        isHealthList.add(Boolean.FALSE);
-        ReflectionTestUtils.setField(service, "isHealthList", isHealthList);
-        assertEquals("WARN:2.2.2.2", service.getHealth());
     }
     
     @Test

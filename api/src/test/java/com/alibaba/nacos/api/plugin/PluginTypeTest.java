@@ -20,7 +20,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class PluginTypeTest {
@@ -30,6 +30,8 @@ class PluginTypeTest {
     void testAuthEnumValues() {
         assertEquals("auth", PluginType.AUTH.getType());
         assertEquals("Authentication plugin", PluginType.AUTH.getDescription());
+        assertEquals(PluginExecutionMode.EXCLUSIVE, PluginType.AUTH.getExecutionMode());
+        assertTrue(PluginType.AUTH.isCritical());
     }
     
     @Test
@@ -37,6 +39,9 @@ class PluginTypeTest {
     void testDatasourceDialectEnumValues() {
         assertEquals("datasource-dialect", PluginType.DATASOURCE_DIALECT.getType());
         assertEquals("Datasource dialect plugin", PluginType.DATASOURCE_DIALECT.getDescription());
+        assertEquals(PluginExecutionMode.EXCLUSIVE,
+            PluginType.DATASOURCE_DIALECT.getExecutionMode());
+        assertTrue(PluginType.DATASOURCE_DIALECT.isCritical());
     }
     
     @Test
@@ -44,6 +49,8 @@ class PluginTypeTest {
     void testConfigChangeEnumValues() {
         assertEquals("config-change", PluginType.CONFIG_CHANGE.getType());
         assertEquals("Config change plugin", PluginType.CONFIG_CHANGE.getDescription());
+        assertEquals(PluginExecutionMode.CHAIN, PluginType.CONFIG_CHANGE.getExecutionMode());
+        assertFalse(PluginType.CONFIG_CHANGE.isCritical());
     }
     
     @Test
@@ -51,6 +58,7 @@ class PluginTypeTest {
     void testEncryptionEnumValues() {
         assertEquals("encryption", PluginType.ENCRYPTION.getType());
         assertEquals("Encryption plugin", PluginType.ENCRYPTION.getDescription());
+        assertEquals(PluginExecutionMode.ROUTED, PluginType.ENCRYPTION.getExecutionMode());
     }
     
     @Test
@@ -58,6 +66,7 @@ class PluginTypeTest {
     void testTraceEnumValues() {
         assertEquals("trace", PluginType.TRACE.getType());
         assertEquals("Trace plugin", PluginType.TRACE.getDescription());
+        assertEquals(PluginExecutionMode.BROADCAST, PluginType.TRACE.getExecutionMode());
     }
     
     @Test
@@ -65,6 +74,9 @@ class PluginTypeTest {
     void testEnvironmentEnumValues() {
         assertEquals("environment", PluginType.ENVIRONMENT.getType());
         assertEquals("Environment plugin", PluginType.ENVIRONMENT.getDescription());
+        assertEquals(PluginExecutionMode.CHAIN, PluginType.ENVIRONMENT.getExecutionMode());
+        assertEquals(PluginInitializationPhase.PRE_CONTEXT,
+            PluginType.ENVIRONMENT.getInitializationPhase());
     }
     
     @Test
@@ -72,6 +84,7 @@ class PluginTypeTest {
     void testControlEnumValues() {
         assertEquals("control", PluginType.CONTROL.getType());
         assertEquals("Control plugin", PluginType.CONTROL.getDescription());
+        assertEquals(PluginExecutionMode.EXCLUSIVE, PluginType.CONTROL.getExecutionMode());
     }
     
     @Test
@@ -79,6 +92,7 @@ class PluginTypeTest {
     void testVisibilityEnumValues() {
         assertEquals("visibility", PluginType.VISIBILITY.getType());
         assertEquals("Visibility plugin", PluginType.VISIBILITY.getDescription());
+        assertEquals(PluginExecutionMode.ROUTED, PluginType.VISIBILITY.getExecutionMode());
     }
     
     @Test
@@ -86,6 +100,7 @@ class PluginTypeTest {
     void testAiPipelineEnumValues() {
         assertEquals("ai-pipeline", PluginType.AI_PIPELINE.getType());
         assertEquals("AI publish pipeline plugin", PluginType.AI_PIPELINE.getDescription());
+        assertEquals(PluginExecutionMode.CHAIN, PluginType.AI_PIPELINE.getExecutionMode());
     }
     
     @Test
@@ -93,6 +108,17 @@ class PluginTypeTest {
     void testAiStorageEnumValues() {
         assertEquals("ai-storage", PluginType.AI_STORAGE.getType());
         assertEquals("AI resource storage plugin", PluginType.AI_STORAGE.getDescription());
+        assertEquals(PluginExecutionMode.ROUTED, PluginType.AI_STORAGE.getExecutionMode());
+        assertTrue(PluginType.AI_STORAGE.isCritical());
+    }
+    
+    @Test
+    @DisplayName("test AI_VECTOR enum values")
+    void testAiVectorEnumValues() {
+        assertEquals("ai-vector", PluginType.AI_VECTOR.getType());
+        assertEquals("AI ARD vector index plugin", PluginType.AI_VECTOR.getDescription());
+        assertEquals(PluginExecutionMode.ROUTED, PluginType.AI_VECTOR.getExecutionMode());
+        assertFalse(PluginType.AI_VECTOR.isCritical());
     }
     
     @Test
@@ -100,33 +126,15 @@ class PluginTypeTest {
     void testAiResourceImportEnumValues() {
         assertEquals("ai-resource-import", PluginType.AI_RESOURCE_IMPORT.getType());
         assertEquals("AI resource import plugin", PluginType.AI_RESOURCE_IMPORT.getDescription());
-    }
-    
-    @Test
-    @DisplayName("test fromType with valid type")
-    void testFromTypeWithValidType() {
-        assertEquals(PluginType.AUTH, PluginType.fromType("auth"));
-        assertEquals(PluginType.ENCRYPTION, PluginType.fromType("encryption"));
-        assertEquals(PluginType.AI_PIPELINE, PluginType.fromType("ai-pipeline"));
-        assertEquals(PluginType.AI_STORAGE, PluginType.fromType("ai-storage"));
-        assertEquals(PluginType.AI_RESOURCE_IMPORT, PluginType.fromType("ai-resource-import"));
-    }
-    
-    @Test
-    @DisplayName("test fromType with invalid type throws exception")
-    void testFromTypeWithInvalidTypeThrowsException() {
-        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () -> {
-            PluginType.fromType("invalid-type");
-        });
-        assertTrue(exception.getMessage().contains("Unknown plugin type"));
-        assertTrue(exception.getMessage().contains("invalid-type"));
+        assertEquals(PluginExecutionMode.ROUTED,
+            PluginType.AI_RESOURCE_IMPORT.getExecutionMode());
     }
     
     @Test
     @DisplayName("test all enum values count")
     void testAllEnumValuesCount() {
         PluginType[] values = PluginType.values();
-        assertEquals(11, values.length);
+        assertEquals(12, values.length);
     }
     
     @Test
@@ -135,6 +143,39 @@ class PluginTypeTest {
         assertEquals(PluginType.AUTH, PluginType.valueOf("AUTH"));
         assertEquals(PluginType.ENCRYPTION, PluginType.valueOf("ENCRYPTION"));
         assertEquals(PluginType.AI_PIPELINE, PluginType.valueOf("AI_PIPELINE"));
+        assertEquals(PluginType.AI_VECTOR, PluginType.valueOf("AI_VECTOR"));
         assertEquals(PluginType.AI_RESOURCE_IMPORT, PluginType.valueOf("AI_RESOURCE_IMPORT"));
+    }
+    
+    @Test
+    @DisplayName("test exclusive type capability")
+    void testExclusiveTypeCapability() {
+        assertTrue(PluginType.AUTH.isExclusive());
+        assertTrue(PluginType.DATASOURCE_DIALECT.isExclusive());
+        assertTrue(PluginType.CONTROL.isExclusive());
+        assertFalse(PluginType.TRACE.isExclusive());
+    }
+    
+    @Test
+    void testExecutionModeValues() {
+        assertEquals(4, PluginExecutionMode.values().length);
+        assertEquals(PluginExecutionMode.EXCLUSIVE,
+            PluginExecutionMode.valueOf("EXCLUSIVE"));
+        assertEquals(PluginExecutionMode.CHAIN, PluginExecutionMode.valueOf("CHAIN"));
+        assertEquals(PluginExecutionMode.ROUTED, PluginExecutionMode.valueOf("ROUTED"));
+        assertEquals(PluginExecutionMode.BROADCAST, PluginExecutionMode.valueOf("BROADCAST"));
+    }
+    
+    @Test
+    void testInitializationPhaseValues() {
+        assertEquals(2, PluginInitializationPhase.values().length);
+        assertEquals(PluginInitializationPhase.PRE_CONTEXT,
+            PluginInitializationPhase.valueOf("PRE_CONTEXT"));
+        for (PluginType type : PluginType.values()) {
+            if (PluginType.ENVIRONMENT != type) {
+                assertEquals(PluginInitializationPhase.STANDARD,
+                    type.getInitializationPhase());
+            }
+        }
     }
 }

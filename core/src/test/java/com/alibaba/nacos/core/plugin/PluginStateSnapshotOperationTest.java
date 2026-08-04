@@ -22,7 +22,6 @@ import com.alibaba.nacos.consistency.snapshot.LocalFileMeta;
 import com.alibaba.nacos.consistency.snapshot.Reader;
 import com.alibaba.nacos.consistency.snapshot.Writer;
 import com.alibaba.nacos.core.plugin.model.PluginStateSnapshot;
-import com.alibaba.nacos.core.plugin.storage.PluginStatePersistenceService;
 import com.alibaba.nacos.sys.utils.DiskUtils;
 import com.alipay.sofa.jraft.util.CRC64;
 import org.junit.jupiter.api.AfterEach;
@@ -47,11 +46,9 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyMap;
-import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -62,9 +59,6 @@ import static org.mockito.Mockito.when;
  */
 @ExtendWith(MockitoExtension.class)
 class PluginStateSnapshotOperationTest {
-    
-    @Mock
-    private PluginStatePersistenceService persistence;
     
     @Mock
     private PluginManager pluginManager;
@@ -84,8 +78,8 @@ class PluginStateSnapshotOperationTest {
     
     @BeforeEach
     void setUp() {
-        snapshotOperation = new PluginStateSnapshotOperation(
-            persistence, pluginManager, new ReentrantReadWriteLock());
+        snapshotOperation =
+            new PluginStateSnapshotOperation(pluginManager, new ReentrantReadWriteLock());
         serializer = SerializeFactory.getDefault();
     }
     
@@ -106,8 +100,8 @@ class PluginStateSnapshotOperationTest {
         otelConfig.put("endpoint", "http://localhost:8080");
         configs.put("trace:otel", otelConfig);
         
-        when(persistence.loadAllStates()).thenReturn(states);
-        when(persistence.loadAllConfigs()).thenReturn(configs);
+        when(pluginManager.getPersistedPluginStates()).thenReturn(states);
+        when(pluginManager.getRuntimePersistedConfigs()).thenReturn(configs);
         when(writer.getPath()).thenReturn(tempDir.toString());
         when(writer.addFile(eq("plugin_state.zip"), any(LocalFileMeta.class))).thenReturn(true);
         
@@ -126,8 +120,8 @@ class PluginStateSnapshotOperationTest {
     
     @Test
     void onSnapshotSaveEmptyDataTest() throws Exception {
-        when(persistence.loadAllStates()).thenReturn(new HashMap<>());
-        when(persistence.loadAllConfigs()).thenReturn(new HashMap<>());
+        when(pluginManager.getPersistedPluginStates()).thenReturn(new HashMap<>());
+        when(pluginManager.getRuntimePersistedConfigs()).thenReturn(new HashMap<>());
         when(writer.getPath()).thenReturn(tempDir.toString());
         when(writer.addFile(eq("plugin_state.zip"), any(LocalFileMeta.class))).thenReturn(true);
         
@@ -142,8 +136,8 @@ class PluginStateSnapshotOperationTest {
     
     @Test
     void onSnapshotSaveFailureTest() throws Exception {
-        when(persistence.loadAllStates()).thenReturn(new HashMap<>());
-        when(persistence.loadAllConfigs()).thenReturn(new HashMap<>());
+        when(pluginManager.getPersistedPluginStates()).thenReturn(new HashMap<>());
+        when(pluginManager.getRuntimePersistedConfigs()).thenReturn(new HashMap<>());
         when(writer.getPath()).thenReturn(tempDir.toString());
         when(writer.addFile(eq("plugin_state.zip"), any(LocalFileMeta.class))).thenReturn(false);
         
@@ -154,6 +148,22 @@ class PluginStateSnapshotOperationTest {
         });
         
         assertFalse(callbackSuccess.get());
+    }
+    
+    @Test
+    void onSnapshotSaveExceptionTest() {
+        IllegalStateException failure = new IllegalStateException("load failed");
+        when(pluginManager.getPersistedPluginStates()).thenThrow(failure);
+        AtomicBoolean callbackSuccess = new AtomicBoolean(true);
+        AtomicReference<Throwable> callbackError = new AtomicReference<>();
+        
+        snapshotOperation.onSnapshotSave(writer, (success, error) -> {
+            callbackSuccess.set(success);
+            callbackError.set(error);
+        });
+        
+        assertFalse(callbackSuccess.get());
+        assertTrue(callbackError.get() == failure);
     }
     
     @Test
@@ -186,18 +196,14 @@ class PluginStateSnapshotOperationTest {
         fileMeta.append("checksum", Long.toHexString(checksum.getValue()));
         when(reader.getFileMeta("plugin_state.zip")).thenReturn(fileMeta);
         
-        doNothing().when(persistence).saveState(anyString(), any(Boolean.class));
-        doNothing().when(persistence).saveConfig(anyString(), anyMap());
-        doNothing().when(pluginManager).applyStateChange(anyString(), any(Boolean.class));
-        doNothing().when(pluginManager).applyConfigChange(anyString(), anyMap());
+        doNothing().when(pluginManager).restorePluginStates(anyMap());
+        doNothing().when(pluginManager).restorePluginConfigs(anyMap());
         
         boolean result = snapshotOperation.onSnapshotLoad(reader);
         
         assertTrue(result);
-        verify(persistence, times(2)).saveState(anyString(), any(Boolean.class));
-        verify(persistence, times(1)).saveConfig(anyString(), anyMap());
-        verify(pluginManager, times(2)).applyStateChange(anyString(), any(Boolean.class));
-        verify(pluginManager, times(1)).applyConfigChange(anyString(), anyMap());
+        verify(pluginManager).restorePluginStates(states);
+        verify(pluginManager).restorePluginConfigs(configs);
     }
     
     @Test
@@ -224,10 +230,28 @@ class PluginStateSnapshotOperationTest {
         boolean result = snapshotOperation.onSnapshotLoad(reader);
         
         assertTrue(result);
-        verify(persistence, never()).saveState(anyString(), any(Boolean.class));
-        verify(persistence, never()).saveConfig(anyString(), anyMap());
-        verify(pluginManager, never()).applyStateChange(anyString(), any(Boolean.class));
-        verify(pluginManager, never()).applyConfigChange(anyString(), anyMap());
+        verify(pluginManager, never()).restorePluginStates(anyMap());
+        verify(pluginManager, never()).restorePluginConfigs(anyMap());
+    }
+    
+    @Test
+    void onSnapshotLoadWithoutChecksumTest() throws Exception {
+        PluginStateSnapshot snapshot = new PluginStateSnapshot();
+        snapshot.setStates(new HashMap<>());
+        snapshot.setConfigs(new HashMap<>());
+        byte[] data = serializer.serialize(snapshot);
+        String snapshotFile = tempDir.resolve("plugin_state.zip").toString();
+        Checksum checksum = new CRC64();
+        try (ByteArrayInputStream inputStream = new ByteArrayInputStream(data)) {
+            DiskUtils.compressIntoZipFile("plugin", inputStream, snapshotFile, checksum);
+        }
+        when(reader.getPath()).thenReturn(tempDir.toString());
+        when(reader.getFileMeta("plugin_state.zip")).thenReturn(new LocalFileMeta());
+        
+        boolean result = snapshotOperation.onSnapshotLoad(reader);
+        
+        assertTrue(result);
+        verify(pluginManager).restorePluginStates(anyMap());
     }
     
     @Test
@@ -254,8 +278,7 @@ class PluginStateSnapshotOperationTest {
         boolean result = snapshotOperation.onSnapshotLoad(reader);
         
         assertFalse(result);
-        verify(persistence, never()).saveState(anyString(), any(Boolean.class));
-        verify(pluginManager, never()).applyStateChange(anyString(), any(Boolean.class));
+        verify(pluginManager, never()).restorePluginStates(anyMap());
     }
     
     @Test

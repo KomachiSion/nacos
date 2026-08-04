@@ -18,19 +18,31 @@ package com.alibaba.nacos.core.listener;
 
 import com.alibaba.nacos.core.listener.startup.NacosStartUp;
 import com.alibaba.nacos.core.listener.startup.NacosStartUpManager;
+import com.alibaba.nacos.core.plugin.PluginCriticalBootstrapValidator;
+import com.alibaba.nacos.core.plugin.PreContextPluginInitializer;
+import com.alibaba.nacos.core.plugin.StandardPluginInitializer;
+import com.alibaba.nacos.sys.env.DeploymentType;
+import com.alibaba.nacos.sys.env.EnvUtil;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.MockedStatic;
+import org.mockito.MockedConstruction;
+import org.mockito.InOrder;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.core.env.ConfigurableEnvironment;
 import org.springframework.mock.env.MockEnvironment;
 
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
+import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.mockConstruction;
 
 /**
  * {@link StartingApplicationListener} unit test.
@@ -84,11 +96,64 @@ class StartingApplicationListenerTest {
         StartingApplicationListener listener = new StartingApplicationListener();
         NacosStartUp mockStartUp = mock(NacosStartUp.class);
         ConfigurableApplicationContext context = mock(ConfigurableApplicationContext.class);
+        when(mockStartUp.startUpPhase()).thenReturn(NacosStartUp.CORE_START_UP_PHASE);
         try (
-            MockedStatic<NacosStartUpManager> managerMock = mockStatic(NacosStartUpManager.class)) {
+            MockedStatic<NacosStartUpManager> managerMock = mockStatic(NacosStartUpManager.class);
+            MockedStatic<EnvUtil> envUtilMock = mockStatic(EnvUtil.class);
+            MockedStatic<PluginCriticalBootstrapValidator> validatorMock =
+                mockStatic(PluginCriticalBootstrapValidator.class);
+            MockedConstruction<PreContextPluginInitializer> initializerMock =
+                mockConstruction(PreContextPluginInitializer.class)) {
             managerMock.when(NacosStartUpManager::getCurrentStartUp).thenReturn(mockStartUp);
+            envUtilMock.when(EnvUtil::getDeploymentType).thenReturn(DeploymentType.MERGED);
+            listener.contextLoaded(context);
+            verify(initializerMock.constructed().get(0)).initialize();
+            verify(mockStartUp).customEnvironment();
+            validatorMock.verify(PluginCriticalBootstrapValidator::validate);
+        }
+    }
+    
+    @Test
+    void contextLoadedSkipsValidationOutsideNacosDeployment() {
+        StartingApplicationListener listener = new StartingApplicationListener();
+        NacosStartUp mockStartUp = mock(NacosStartUp.class);
+        ConfigurableApplicationContext context = mock(ConfigurableApplicationContext.class);
+        when(mockStartUp.startUpPhase()).thenReturn(NacosStartUp.CORE_START_UP_PHASE);
+        try (
+            MockedStatic<NacosStartUpManager> managerMock = mockStatic(NacosStartUpManager.class);
+            MockedStatic<EnvUtil> envUtilMock = mockStatic(EnvUtil.class);
+            MockedStatic<PluginCriticalBootstrapValidator> validatorMock =
+                mockStatic(PluginCriticalBootstrapValidator.class);
+            MockedConstruction<PreContextPluginInitializer> initializerMock =
+                mockConstruction(PreContextPluginInitializer.class)) {
+            managerMock.when(NacosStartUpManager::getCurrentStartUp).thenReturn(mockStartUp);
+            envUtilMock.when(EnvUtil::getDeploymentType).thenReturn(null);
             listener.contextLoaded(context);
             verify(mockStartUp).customEnvironment();
+            validatorMock.verifyNoInteractions();
+            assertTrue(initializerMock.constructed().isEmpty());
+        }
+    }
+    
+    @Test
+    void contextLoadedSkipsValidationOutsideCorePhase() {
+        StartingApplicationListener listener = new StartingApplicationListener();
+        NacosStartUp mockStartUp = mock(NacosStartUp.class);
+        ConfigurableApplicationContext context = mock(ConfigurableApplicationContext.class);
+        when(mockStartUp.startUpPhase()).thenReturn(NacosStartUp.WEB_START_UP_PHASE);
+        try (
+            MockedStatic<NacosStartUpManager> managerMock = mockStatic(NacosStartUpManager.class);
+            MockedStatic<EnvUtil> envUtilMock = mockStatic(EnvUtil.class);
+            MockedStatic<PluginCriticalBootstrapValidator> validatorMock =
+                mockStatic(PluginCriticalBootstrapValidator.class);
+            MockedConstruction<PreContextPluginInitializer> initializerMock =
+                mockConstruction(PreContextPluginInitializer.class)) {
+            managerMock.when(NacosStartUpManager::getCurrentStartUp).thenReturn(mockStartUp);
+            envUtilMock.when(EnvUtil::getDeploymentType).thenReturn(DeploymentType.MERGED);
+            listener.contextLoaded(context);
+            verify(mockStartUp).customEnvironment();
+            validatorMock.verifyNoInteractions();
+            assertTrue(initializerMock.constructed().isEmpty());
         }
     }
     
@@ -96,11 +161,41 @@ class StartingApplicationListenerTest {
     void startedDelegatesToCurrentStartUp() {
         StartingApplicationListener listener = new StartingApplicationListener();
         NacosStartUp mockStartUp = mock(NacosStartUp.class);
+        StandardPluginInitializer initializer = mock(StandardPluginInitializer.class);
+        @SuppressWarnings("unchecked")
+        ObjectProvider<StandardPluginInitializer> initializerProvider =
+            mock(ObjectProvider.class);
         ConfigurableApplicationContext context = mock(ConfigurableApplicationContext.class);
+        when(context.getBeanProvider(StandardPluginInitializer.class))
+            .thenReturn(initializerProvider);
+        when(initializerProvider.getIfAvailable()).thenReturn(initializer);
         try (
             MockedStatic<NacosStartUpManager> managerMock = mockStatic(NacosStartUpManager.class)) {
             managerMock.when(NacosStartUpManager::getCurrentStartUp).thenReturn(mockStartUp);
             listener.started(context);
+            InOrder inOrder = inOrder(initializer, mockStartUp);
+            inOrder.verify(initializer).initialize();
+            inOrder.verify(mockStartUp).started();
+            verify(mockStartUp).logStarted(any());
+        }
+    }
+    
+    @Test
+    void startedSupportsContextWithoutPluginManager() {
+        StartingApplicationListener listener = new StartingApplicationListener();
+        NacosStartUp mockStartUp = mock(NacosStartUp.class);
+        @SuppressWarnings("unchecked")
+        ObjectProvider<StandardPluginInitializer> initializerProvider =
+            mock(ObjectProvider.class);
+        ConfigurableApplicationContext context = mock(ConfigurableApplicationContext.class);
+        when(context.getBeanProvider(StandardPluginInitializer.class))
+            .thenReturn(initializerProvider);
+        try (
+            MockedStatic<NacosStartUpManager> managerMock = mockStatic(NacosStartUpManager.class)) {
+            managerMock.when(NacosStartUpManager::getCurrentStartUp).thenReturn(mockStartUp);
+            
+            listener.started(context);
+            
             verify(mockStartUp).started();
             verify(mockStartUp).logStarted(any());
         }

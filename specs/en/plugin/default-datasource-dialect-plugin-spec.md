@@ -46,12 +46,17 @@ Each database package must register both
 
 Each built-in database family is expected to provide mapper implementations for:
 
-- config tables: `config_info`, `config_info_beta`, `config_info_tag`,
-  `config_info_gray`, `config_tags_relation`, `his_config_info`;
+- current config tables: `config_info`, `config_info_gray`,
+  `config_tags_relation`, `his_config_info`;
 - capacity and namespace tables: `tenant_info`, `tenant_capacity`,
   `group_capacity`;
-- config migration queries;
 - AI registry tables: AI resource metadata and AI resource versions.
+
+Starting with the Nacos 3.3 line, built-in database families are not required to
+provide runtime Config migration mappers for default-namespace storage
+duplicates or legacy beta/tag gray tables. Deployments that still carry
+pre-3.0 `config_info_beta` or `config_info_tag` data must migrate those rows
+before upgrading to a 3.3 server that relies on the current mapper set.
 
 If a future Nacos version adds a persistent table, the built-in database
 families must add the corresponding mapper before that table becomes a
@@ -59,8 +64,9 @@ documented server feature.
 
 ## Selection
 
-Nacos selects the database type from `spring.sql.init.platform`, with legacy
-compatibility for `spring.datasource.platform`.
+Nacos selects the database type at startup from
+`nacos.plugin.datasource-dialect.type`. `spring.sql.init.platform` remains a
+legacy alias, while `spring.datasource.platform` is no longer supported.
 
 When the selected type is `mysql`, MySQL mappers and MySQL-compatible default
 dialect behavior are used. When the selected type is `derby`, Derby remains the
@@ -77,5 +83,11 @@ Built-in implementations must:
   [resource model](../design/resource-model-spec.md);
 - add migration notes when a database family requires schema changes.
 
-Built-in database dialect plugins are critical while the server is using them.
-They cannot be disabled through plugin state without breaking persistence.
+The datasource-dialect type is critical while loaded. The selected built-in
+dialect cannot be disabled through runtime plugin state, but another bundled
+dialect is not individually critical merely because it is present.
+
+Built-in dialect implementations do not own datasource connection or pool configuration. They
+inherit `PluginConfigSpec` through `DatabaseDialect` but declare no definitions, so they are exposed
+as `configurable=false`; datasource module configuration is defined by the parent dialect plugin
+spec.

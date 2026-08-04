@@ -43,19 +43,21 @@ Nacos 服务端发行包一起发布的数据库方言和表级 mapper，是
 
 每个内置数据库族都应提供以下 mapper 实现：
 
-- 配置表：`config_info`、`config_info_beta`、`config_info_tag`、
-  `config_info_gray`、`config_tags_relation`、`his_config_info`；
+- 当前配置表：`config_info`、`config_info_gray`、`config_tags_relation`、`his_config_info`；
 - 容量和命名空间表：`tenant_info`、`tenant_capacity`、`group_capacity`；
-- 配置迁移查询；
 - AI Registry 表：AI 资源元数据和 AI 资源版本。
+
+从 Nacos 3.3 版本线开始，内置数据库族不再要求提供默认 namespace 存储重复记录或 legacy
+beta/tag 灰度表的运行时 Config 迁移 mapper。仍保留 pre-3.0 `config_info_beta` 或
+`config_info_tag` 数据的部署，必须在升级到依赖当前 mapper 集合的 3.3 服务端前完成迁移。
 
 如果未来 Nacos 版本新增持久化表，在该表成为文档化服务端能力之前，内置数据库族必须补充
 对应 mapper。
 
 ## 选择
 
-Nacos 从 `spring.sql.init.platform` 选择数据库类型，并兼容旧配置
-`spring.datasource.platform`。
+Nacos 从 `nacos.plugin.datasource-dialect.type` 选择启动数据库类型。
+`spring.sql.init.platform` 继续作为历史 alias，不再支持 `spring.datasource.platform`。
 
 当选择类型为 `mysql` 时，使用 MySQL mapper 和 MySQL 兼容的默认 dialect 行为。当选择类型
 为 `derby` 时，Derby 仍是 standalone 开发和本地测试的嵌入式默认数据库。
@@ -70,4 +72,9 @@ Nacos 从 `spring.sql.init.platform` 选择数据库类型，并兼容旧配置
 - 保持 AI 资源 mapper 行为与[资源模型](../design/resource-model-spec.md)对齐；
 - 当某个数据库族需要 schema 变化时补充迁移说明。
 
-服务端正在使用的内置数据库方言插件属于关键插件，不能通过插件状态禁用，否则会破坏持久化。
+`datasource-dialect` 类型加载后属于 critical。当前选中的内置方言不能通过运行时插件状态
+禁用，但其他已加载内置方言不会仅因存在就分别成为 critical。
+
+内置方言实现不持有数据源连接或连接池配置。它们通过 `DatabaseDialect` 继承
+`PluginConfigSpec`，但不声明 definitions，因此以 `configurable=false` 暴露。Datasource
+模块配置由上层数据源方言插件规范定义。
