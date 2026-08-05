@@ -1,5 +1,26 @@
 # V3 Swagger API Changelog
 
+## 2026-08-05
+
+### Client API Document Generation Fix
+
+- Fixed the `client-api` OpenAPI endpoint returning HTTP 500 when the example i18n operation customizer encountered a bodyless `304 Not Modified` response.
+- Added null-safe handling for missing responses, response content, media types, and schemas while preserving example localization.
+- Added regression coverage for bodyless responses and the generic-schema-to-example-i18n customizer chain.
+
+## 2026-08-04
+
+### Full Coverage Rescan and Corrections
+
+- Rescanned 51 in-scope v3 HTTP controllers and 339 operations across core, config, naming, AI, and console; excluded `ai-registry-adaptor` and, by task scope, the default auth and visibility plugin APIs.
+- Added complete Swagger annotations to Agent Admin, Agent Client, and Console Agent APIs, plus Admin/Console Skill upload precheck endpoints.
+- Expanded Agent Client descriptions for `X-Nacos-Client-Id` generation, stability, identity/namespace binding, ownership, query-only renewal, and client-level heartbeat scheduling with server-returned intervals.
+- Corrected request parameters, required flags, primitive and array schemas, JSON/multipart bodies, binary download responses, response examples, and i18n references across Config, Naming, Core, AI, and Console APIs.
+- Added the Prompt client `304 Not Modified` response and corrected ignored or undocumented AI governance parameters.
+- Fixed unresolved `Result`/`ResultAgentSpec` references in generated Swagger documents by supporting `ResponseEntity<Result<T>>` in the generic schema customizer, and declared AgentSpec, Prompt, and Skill `304 Not Modified` responses as bodyless.
+- Normalized six Admin/Console AgentSpec/Skill `@Since` values to `3.2.0` using the earliest matching local 3.x tags; retained `3.3.0` for new Agent and Skill precheck APIs because the current pom is `3.3.0-SNAPSHOT` and no 3.3.x tag exists yet.
+- Verified that every in-scope operation has `@Operation`, `@ApiResponse`, and `@Since`, and that every in-scope controller has `@Tag`.
+
 ## 2026-05-28
 
 ### Existing Annotation Checks

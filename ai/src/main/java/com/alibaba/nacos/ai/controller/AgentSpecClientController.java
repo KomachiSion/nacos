@@ -131,7 +131,8 @@ public class AgentSpecClientController {
         @ApiResponse(responseCode = "304", description = "Not Modified",
             headers = {@Header(name = "ETag", schema = @Schema(type = "string")),
                 @Header(name = "X-Nacos-AgentSpec-Md5",
-                    schema = @Schema(type = "string"))})})
+                    schema = @Schema(type = "string"))},
+            content = @Content)})
     @Parameters(value = {@Parameter(name = "namespaceId", example = "public"),
         @Parameter(name = "name", required = true, example = "my-agentspec"),
         @Parameter(name = "version", example = "1.0.0"),

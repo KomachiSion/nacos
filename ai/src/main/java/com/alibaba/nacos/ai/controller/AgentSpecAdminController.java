@@ -216,7 +216,7 @@ public class AgentSpecAdminController {
      * @return result of the list operation
      * @throws NacosException if the agentspec list fails
      */
-    @Since("3.2.1")
+    @Since("3.2.0")
     @GetMapping("/list")
     @Secured(action = ActionTypes.READ, signType = SignType.AI, apiType = ApiType.ADMIN_API,
         tags = {ALLOW_ANONYMOUS})
@@ -236,7 +236,11 @@ public class AgentSpecAdminController {
         @Parameter(name = "agentSpecName", example = "my-agentspec"),
         @Parameter(name = "search", example = "blur",
             description = "Search mode: accurate or blur"),
+        @Parameter(name = "orderBy", example = "download_count"),
+        @Parameter(name = "owner", example = "nacos"),
+        @Parameter(name = "scope", example = "PUBLIC"),
         @Parameter(name = "agentSpecListForm", hidden = true),
+        @Parameter(name = "filterableForm", hidden = true),
         @Parameter(name = "pageForm", hidden = true)})
     public Result<Page<AgentSpecSummary>> listAgentSpecs(AgentSpecListForm agentSpecListForm,
         AiResourceFilterableForm filterableForm, PageForm pageForm)
@@ -308,6 +312,7 @@ public class AgentSpecAdminController {
     @Parameters(value = {@Parameter(name = "namespaceId", example = "public"),
         @Parameter(name = "agentSpecName", required = true, example = "my-agentspec"),
         @Parameter(name = "basedOnVersion", example = "1.0.0"),
+        @Parameter(name = "targetVersion", example = "1.1.0"),
         @Parameter(name = "form", hidden = true)})
     public Result<String> createDraft(AgentSpecDraftCreateForm form) throws NacosException {
         form.validate();
@@ -332,7 +337,6 @@ public class AgentSpecAdminController {
             schema = @Schema(implementation = Result.class,
                 example = "nacos.admin.ai.agentspec.api.draft.update.example")))
     @Parameters(value = {@Parameter(name = "namespaceId", example = "public"),
-        @Parameter(name = "agentSpecName", example = "my-agentspec"),
         @Parameter(name = "agentSpecCard", required = true,
             description = "AgentSpec card JSON string containing complete AgentSpec information"),
         @Parameter(name = "form", hidden = true)})
@@ -406,8 +410,6 @@ public class AgentSpecAdminController {
     @Parameters(value = {@Parameter(name = "namespaceId", example = "public"),
         @Parameter(name = "agentSpecName", required = true, example = "my-agentspec"),
         @Parameter(name = "version", required = true, example = "1.0.0"),
-        @Parameter(name = "updateLatestLabel", schema = @Schema(type = "boolean"),
-            example = "true"),
         @Parameter(name = "form", hidden = true)})
     public Result<String> publish(AgentSpecPublishForm form) throws NacosException {
         form.validate();
@@ -436,8 +438,6 @@ public class AgentSpecAdminController {
     @Parameters(value = {@Parameter(name = "namespaceId", example = "public"),
         @Parameter(name = "agentSpecName", required = true, example = "my-agentspec"),
         @Parameter(name = "version", required = true, example = "1.0.0"),
-        @Parameter(name = "updateLatestLabel", schema = @Schema(type = "boolean"),
-            example = "true"),
         @Parameter(name = "form", hidden = true)})
     public Result<String> forcePublish(AgentSpecPublishForm form) throws NacosException {
         form.validate();

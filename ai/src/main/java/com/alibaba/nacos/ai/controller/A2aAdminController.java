@@ -234,7 +234,8 @@ public class A2aAdminController {
         @Parameter(name = "pageSize", required = true, schema = @Schema(type = "integer"),
             example = "100"),
         @Parameter(name = "namespaceId", example = "public"), @Parameter(name = "agentName"),
-        @Parameter(name = "search", example = "blur", description = "blur or accurate"),
+        @Parameter(name = "search", required = true, example = "blur",
+            description = "blur or accurate"),
         @Parameter(name = "agentListForm", hidden = true),
         @Parameter(name = "pageForm", hidden = true)})
     public Result<Page<AgentCardVersionInfo>> listAgents(AgentListForm agentListForm,

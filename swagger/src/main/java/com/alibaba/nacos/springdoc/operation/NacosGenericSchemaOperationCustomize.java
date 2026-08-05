@@ -30,6 +30,7 @@ import io.swagger.v3.oas.models.media.Schema;
 import io.swagger.v3.oas.models.responses.ApiResponse;
 import io.swagger.v3.oas.models.responses.ApiResponses;
 import org.springdoc.core.customizers.GlobalOperationCustomizer;
+import org.springframework.http.HttpEntity;
 import org.springframework.web.method.HandlerMethod;
 
 import java.lang.reflect.ParameterizedType;
@@ -54,12 +55,12 @@ public class NacosGenericSchemaOperationCustomize implements GlobalOperationCust
     
     @Override
     public Operation customize(Operation operation, HandlerMethod method) {
-        if (!method.getMethod().getReturnType().equals(Result.class)) {
+        ParameterizedType resultType = getResultType(method.getMethod().getGenericReturnType());
+        if (null == resultType) {
             return operation;
         }
         Map<String, Schema> fieldsSchema = getResultFieldsSchema(Result.class);
-        Type actualTypeArgument =
-            getGenericType((ParameterizedType) method.getMethod().getGenericReturnType(), 0);
+        Type actualTypeArgument = getGenericType(resultType, 0);
         Schema newSchema = null;
         if (actualTypeArgument instanceof Class<?>) {
             newSchema = buildDirectGenericSchema((Class<?>) actualTypeArgument, fieldsSchema);
@@ -69,10 +70,19 @@ public class NacosGenericSchemaOperationCustomize implements GlobalOperationCust
             return operation;
         }
         ApiResponses responses = operation.getResponses();
-        // // replace ref '#/components/schemas/ResultXxx' to '#/components/schemas/Result<Xxx>'
+        if (null == responses) {
+            return operation;
+        }
+        // replace ref '#/components/schemas/ResultXxx' to '#/components/schemas/Result<Xxx>'
         for (ApiResponse apiResponse : responses.values()) {
+            if (null == apiResponse || null == apiResponse.getContent()) {
+                continue;
+            }
             for (io.swagger.v3.oas.models.media.MediaType mediaType : apiResponse.getContent()
                 .values()) {
+                if (null == mediaType || null == mediaType.getSchema()) {
+                    continue;
+                }
                 Schema originApiResponseSchema = mediaType.getSchema();
                 if (originApiResponseSchema.get$ref() != null && originApiResponseSchema.get$ref()
                     .startsWith("#/components/schemas/Result")) {
@@ -82,6 +92,21 @@ public class NacosGenericSchemaOperationCustomize implements GlobalOperationCust
         }
         schemaCache.put(newSchema.getName(), newSchema);
         return operation;
+    }
+    
+    private ParameterizedType getResultType(Type returnType) {
+        if (!(returnType instanceof ParameterizedType)) {
+            return null;
+        }
+        ParameterizedType parameterizedType = (ParameterizedType) returnType;
+        Type rawType = parameterizedType.getRawType();
+        if (Result.class.equals(rawType)) {
+            return parameterizedType;
+        }
+        if (rawType instanceof Class && HttpEntity.class.isAssignableFrom((Class<?>) rawType)) {
+            return getResultType(getGenericType(parameterizedType, 0));
+        }
+        return null;
     }
     
     private Map<String, Schema> getResultFieldsSchema(Class<?> clazz) {

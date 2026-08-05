@@ -1,68 +1,61 @@
 # Nacos v3 HTTP API Swagger 注解覆盖扫描
 
-扫描时间：按当前代码库状态。  
-用途：找出**完全未加 Swagger** 的 v3 Controller，以及**已有 @Tag 但可能部分接口缺 @Operation** 的类，便于先小范围试用 skill 再优化。
+扫描日期：2026-08-04
 
----
+运行时复核：2026-08-05
 
-## 一、完全无 Swagger 注解的 v3 Controller（建议优先试用 skill）
+扫描基线：当前工作树
 
-以下类**没有 @Tag**，整类均未按现有规范添加 Swagger 注解，适合作为「先补全一个类」的试跑范围。
+目标：校验 v3 HTTP API 的 Swagger/OpenAPI 注解覆盖、参数语义、响应示例、i18n 引用和 `@Since` 元数据。
 
-| 模块 | 类路径 | 约 API 数 | 说明 |
-|------|--------|-----------|------|
-| **plugin-auth** | `plugin-default-impl/.../controller/v3/UserControllerV3` | 7 | 用户创建/登录/admin/删除/更新/list/search |
-| **plugin-auth** | `plugin-default-impl/.../controller/v3/RoleControllerV3` | 4 | 角色 CRUD、list、search |
-| **plugin-auth** | `plugin-default-impl/.../controller/v3/PermissionControllerV3` | 4 | 权限 CRUD、list、get |
+## 扫描范围
 
-**已从本表移出（已补全 Swagger）**  
-- **console/ai**：ConsoleSkillController、ConsolePromptController、ConsoleCopilotController、ConsoleCopilotConfigController（见第二节；ConsoleCopilotConfigController 另有特殊说明见第五节）。  
-- **ai (admin)**：PromptAdminController、PromptClientController。
+| 模块 | Controller | HTTP 映射 |
+|---|---:|---:|
+| core | 6 | 25 |
+| config | 7 | 29 |
+| naming | 7 | 32 |
+| ai | 12 | 108 |
+| console | 19 | 145 |
+| **合计** | **51** | **339** |
 
-**i18n 归属**  
-- **console** 下所有：`console/src/main/resources/i18n/console_messages*.properties`  
-- **core / config / ai / plugin**：`server/src/main/resources/i18n/server_messages*.properties`  
+以下内容按任务约定排除：
 
-**建议试跑顺序（小范围）**  
-1. **plugin-auth**：如 `RoleControllerV3`（4 个 API），参考 server_messages 中已有 auth 相关 key。
+- `ai-registry-adaptor`
+- 默认鉴权插件的 User、Role、Permission API
+- 默认 Visibility 插件 API
 
----
+## 扫描结果
 
-## 二、已有 @Tag、且各接口均有 @Operation 的 v3 Controller（仅作对照）
+当前纳入范围的 51 个 Controller 均有 `@Tag`，339 个 HTTP 映射均有：
 
-以下类已有完整 Swagger（类有 @Tag，接口有 @Operation），**无需补全**（带特殊说明的见第五节），可作为同模块参考：
+- `@Operation`
+- 至少一个 `@ApiResponse`
+- `@Since`
+- 与实际请求形态对应的参数或 RequestBody 描述
 
-- **console**：ConsoleNamespaceController、ConsoleServiceController、ConsoleInstanceController、ConsoleClusterController、ConsoleHistoryController、ConsoleConfigController、ConsoleMcpController、ConsoleA2aController、ConsoleServerStateController、ConsoleHealthController、ConsolePluginController、**ConsoleSkillController**、**ConsolePromptController**、**ConsoleCopilotController**、**ConsoleCopilotConfigController**（后者见第五节特殊说明）  
-- **core**：ServerLoaderControllerV3、ServerStateController、NamespaceControllerV3、NacosClusterControllerV3、CoreOpsControllerV3、**PluginControllerV3**（见第五节特殊说明）  
-- **config**：ConfigControllerV3、MetricsControllerV3、ListenerControllerV3、HistoryControllerV3、ConfigOpsControllerV3、ConfigOpenApiController、CapacityControllerV3  
-- **naming**：ServiceControllerV3、OperatorControllerV3、InstanceOpenApiController、InstanceControllerV3、HealthControllerV3、ClusterControllerV3、ClientControllerV3  
-- **ai (admin)**：McpAdminController、A2aAdminController、SkillAdminController、**PromptAdminController**、**PromptClientController**  
+Swagger i18n 引用已在对应的 server/console 三份资源中补齐；中英文 key 集一致，资源内无重复 key。默认资源中的新增响应示例均为合法 JSON。
 
-若后续在某个类上发现**新增了接口但未加 @Operation**，可把该类归入「部分缺失」再按 skill 补全。
+## 本轮主要修正
 
----
+- 为 Agent Admin、Agent Client、Console Agent 共 40 个接口补齐整套 Swagger 注解。
+- 细化 Agent Client 的 `X-Nacos-Client-Id` 配置、身份绑定和归属语义，并明确按 Client ID 而非 Endpoint 维度调度心跳及动态采用服务端返回间隔。
+- 为 Admin/Console Skill 上传预检 2 个 multipart 接口补齐注解、二进制文件 schema、响应示例和 i18n。
+- 修正 Config 发布、灰度发布、删除、批量删除、查询、导出、克隆和 Derby 导入的参数、binary schema 与 RequestBody 描述。
+- 修正 Naming Service、Instance、Cluster 的实际参数、必填状态和响应示例类型。
+- 修正 Skill、AgentSpec、MCP、Prompt、A2A、Console Plugin/Cluster 等接口中缺失或无效的参数，以及 Prompt 的 304 响应。
+- 修复 `ResponseEntity<Result<T>>` 未被泛型 Schema 定制器识别而产生的 `Result`/`ResultAgentSpec` 悬空引用，并将 AgentSpec、Prompt、Skill 的 304 响应显式声明为无响应体。
+- 修复 Example i18n 定制器遍历无响应体 304 时的空指针，避免 `/v3/api-docs/client-api` 返回 HTTP 500。
+- 修正 Core ServerState、Namespace、Config History、Naming 等响应示例，使其与 `Result<T>` 和实际返回类型一致。
+- 依据最早可用 3.x git tag，将 Admin/Console 的 AgentSpec list、Skill list、Skill upload 共 6 处 `@Since` 归一为 `3.2.0`。
 
-## 三、未纳入本次 v3 范围的 Controller
+当前代码版本为 `3.3.0-SNAPSHOT`。本地尚无 3.3.x tag，因此新增 Agent API 和 Skill 上传预检保留代码已有的 `@Since("3.3.0")`，待正式 3.3.x tag 发布后可再次追溯确认。
 
-- **OidcLoginController**：路径为 `/v1/auth/oidc`，非 v3，未纳入。  
-- **PrometheusController / McpRegistryController**：未按 v3 路径扫描，若实际暴露 v3 API 可后续单独纳入。  
-- **UserController**（非 v3 包）：兼容注解里提到 v3 auth login，但类不在 `controller/v3` 下，未计入上表；若需统一 v3 文档可单独处理。
+## 验证方式
 
----
-
-## 四、小结与建议
-
-- **缺 Swagger 的 v3 Controller**：共 **3 个类**（均为 plugin-auth：UserControllerV3、RoleControllerV3、PermissionControllerV3），约 **15 个 API**。  
-- **已完成并归入第二节**：ConsolePluginController、PluginControllerV3、SkillAdminController；以及本次补全的 **ConsoleSkillController**、**ConsolePromptController**、**ConsoleCopilotController**、**ConsoleCopilotConfigController**、**PromptAdminController**、**PromptClientController**。其中 PluginControllerV3、ConsoleCopilotConfigController 见第五节特殊说明，待接口改为 form 后可再完善 Swagger。  
-- **建议**：对剩余 **plugin-auth** 中的 1 个类（如 `RoleControllerV3`）用当前 skill 做一次完整补全（含 i18n），看效果后再扩大范围。
-
----
-
-## 五、特殊说明（待改 API 形态后再完善 Swagger）
-
-以下 Controller 已加 Swagger，但部分接口为 **RequestBody（JSON）**，无特殊业务理由，**建议改为 form 表单 API**，与 v3 常规风格一致；改完后再视情况调整/补全 Swagger。
-
-| Controller | 说明 |
-|------------|------|
-| **PluginControllerV3** | 部分接口为 RequestBody 的 JSON API，应改为 form 表单 API，待修改完成后继续完善 Swagger。 |
-| **ConsoleCopilotConfigController** | 同上：POST 配置当前为 `@RequestBody CopilotProperties`，应改为 form 表单 API，待修改完成后继续完善 Swagger。 |
+- Controller 映射、`@Operation`、`@ApiResponse`、`@Since` 和 `@Tag` 静态计数及逐文件缺失扫描。
+- Java 注解引用与 server/console i18n key 的交叉校验。
+- i18n 重复 key 与新增 JSON example 校验。
+- Swagger 定制器共 10 个单元测试，覆盖直接/包装 Result、非 Result、空 content、example i18n 空值防护、定制器组合链路及最终 `$ref` 可解析性。
+- AgentSpec、Prompt、Skill Client Controller 目标单元测试共 12 个。
+- 受影响 Maven 模块的 Spotless 和编译检查。

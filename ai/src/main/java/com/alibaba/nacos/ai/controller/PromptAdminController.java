@@ -388,8 +388,6 @@ public class PromptAdminController {
     @Parameters(value = {@Parameter(name = "namespaceId", example = "public"),
         @Parameter(name = "promptKey", required = true, example = "my-prompt"),
         @Parameter(name = "version", required = true, example = "1.0.0"),
-        @Parameter(name = "updateLatestLabel", schema = @Schema(type = "boolean"),
-            example = "true"),
         @Parameter(name = "form", hidden = true)})
     public Result<String> publish(PromptVersionPublishForm form) throws NacosException {
         form.validate();
@@ -416,8 +414,6 @@ public class PromptAdminController {
     @Parameters(value = {@Parameter(name = "namespaceId", example = "public"),
         @Parameter(name = "promptKey", required = true, example = "my-prompt"),
         @Parameter(name = "version", required = true, example = "1.0.0"),
-        @Parameter(name = "updateLatestLabel", schema = @Schema(type = "boolean"),
-            example = "true"),
         @Parameter(name = "form", hidden = true)})
     public Result<String> forcePublish(PromptVersionPublishForm form) throws NacosException {
         form.validate();
@@ -670,7 +666,6 @@ public class PromptAdminController {
     @Parameters(value = {@Parameter(name = "namespaceId", example = "public"),
         @Parameter(name = "promptKey", required = true, example = "my-prompt"),
         @Parameter(name = "version", example = "1.0.0"), @Parameter(name = "label"),
-        @Parameter(name = "md5"),
         @Parameter(name = "form", hidden = true)})
     public Result<PromptVersionInfo> queryPromptDetail(PromptQueryForm form) throws NacosException {
         form.validate();

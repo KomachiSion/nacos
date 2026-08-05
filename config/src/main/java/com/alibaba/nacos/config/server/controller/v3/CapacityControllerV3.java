@@ -137,7 +137,7 @@ public class CapacityControllerV3 {
             schema = @Schema(implementation = Result.class,
                 example = "nacos.admin.config.capacity.api.update.example")))
     @Parameters(value = {@Parameter(name = "namespaceId", example = "public"),
-        @Parameter(name = "groupName", required = true),
+        @Parameter(name = "groupName"),
         @Parameter(name = "quota", schema = @Schema(type = "integer"), example = "100"),
         @Parameter(name = "maxSize", schema = @Schema(type = "integer"), example = "102400"),
         @Parameter(name = "maxAggrCount", schema = @Schema(type = "integer"), example = "10"),

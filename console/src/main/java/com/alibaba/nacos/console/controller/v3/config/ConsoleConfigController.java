@@ -156,9 +156,15 @@ public class ConsoleConfigController {
         @Parameter(name = "dataId", required = true, example = "test"),
         @Parameter(name = "content", required = true, example = "testContent"),
         @Parameter(name = "desc", example = "testDesc"),
+        @Parameter(name = "use"),
+        @Parameter(name = "effect"),
+        @Parameter(name = "schema"),
         @Parameter(name = "type", example = "text"),
         @Parameter(name = "configTags", example = "customTag"),
         @Parameter(name = "appName", example = "testApp"),
+        @Parameter(name = "tag", example = "gray-tag"),
+        @Parameter(name = "srcUser", example = "nacos"),
+        @Parameter(name = "encryptedDataKey", example = "encrypted-key"),
         @Parameter(name = "configForm", hidden = true)})
     public Result<Boolean> publishConfig(HttpServletRequest request, ConfigFormV3 configForm)
         throws NacosException {
@@ -210,6 +216,7 @@ public class ConsoleConfigController {
     @Parameters(value = {@Parameter(name = "namespaceId", example = "public"),
         @Parameter(name = "groupName", required = true, example = "DEFAULT_GROUP"),
         @Parameter(name = "dataId", required = true, example = "test"),
+        @Parameter(name = "tag", example = "gray-tag"),
         @Parameter(name = "configForm", hidden = true)})
     public Result<Boolean> deleteConfig(HttpServletRequest request, ConfigFormV3 configForm)
         throws NacosException {
@@ -247,7 +254,8 @@ public class ConsoleConfigController {
             schema = @Schema(implementation = Result.class,
                 example = "nacos.console.config.config.api.batchDelete.example")))
     @Parameters(value = {@Parameter(name = "ids", required = true,
-        array = @ArraySchema(schema = @Schema(type = "integer")), example = "[1,2,3]")})
+        array = @ArraySchema(schema = @Schema(type = "integer")), example = "[1,2,3]"),
+        @Parameter(name = "namespaceId", example = "public")})
     public Result<Boolean> batchDeleteConfigs(HttpServletRequest request,
         @RequestParam(value = "ids") List<Long> ids,
         @RequestParam(value = "namespaceId", required = false) String namespaceId)
@@ -512,7 +520,7 @@ public class ConsoleConfigController {
         description = "nacos.console.config.config.api.import.body.description",
         content = @Content(mediaType = MediaType.MULTIPART_FORM_DATA_VALUE, schemaProperties = {
             @SchemaProperty(name = "file", schema = @Schema(type = "string", format = "binary")),
-            @SchemaProperty(name = "src_user",
+            @SchemaProperty(name = "srcUser",
                 schema = @Schema(type = "string", example = "nacos")),
             @SchemaProperty(name = "namespaceId",
                 schema = @Schema(type = "string", example = "public")),
@@ -565,6 +573,7 @@ public class ConsoleConfigController {
             array = @ArraySchema(
                 schema = @Schema(implementation = SameNamespaceCloneConfigBean.class))))
     @Parameters(value = {@Parameter(name = "srcUser", example = "nacos"),
+        @Parameter(name = "namespaceId", example = "public"),
         @Parameter(name = "targetNamespaceId", required = true, example = "public"),
         @Parameter(name = "policy", schema = @Schema(implementation = SameConfigPolicy.class))})
     public Result<Map<String, Object>> cloneConfig(HttpServletRequest request,

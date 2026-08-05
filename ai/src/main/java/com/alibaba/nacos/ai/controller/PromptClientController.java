@@ -41,6 +41,7 @@ import io.swagger.v3.oas.annotations.extensions.ExtensionProperty;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletResponse;
@@ -79,10 +80,14 @@ public class PromptClientController {
     @Operation(summary = "nacos.admin.ai.prompt.client.api.query.summary",
         description = "nacos.admin.ai.prompt.client.api.query.description",
         security = @SecurityRequirement(name = "nacos"))
-    @ApiResponse(responseCode = "200",
-        content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
-            schema = @Schema(implementation = Result.class,
-                example = "nacos.admin.ai.prompt.client.api.query.example")))
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200",
+            content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+                schema = @Schema(implementation = Result.class,
+                    example = "nacos.admin.ai.prompt.client.api.query.example"))),
+        @ApiResponse(responseCode = "304",
+            description = "nacos.admin.ai.prompt.client.api.query.not.modified.description",
+            content = @Content)})
     @Parameters(value = {@Parameter(name = "namespaceId", example = "public"),
         @Parameter(name = "promptKey", required = true, example = "my-prompt"),
         @Parameter(name = "version", example = "1.0.0"), @Parameter(name = "label"),

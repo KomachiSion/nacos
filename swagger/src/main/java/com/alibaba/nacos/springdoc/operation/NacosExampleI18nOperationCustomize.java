@@ -41,9 +41,17 @@ public class NacosExampleI18nOperationCustomize implements GlobalOperationCustom
     
     @Override
     public Operation customize(Operation operation, HandlerMethod handlerMethod) {
+        if (null == operation.getResponses()) {
+            return operation;
+        }
         operation.getResponses().forEach((status, apiResponse) -> {
-            apiResponse.getContent();
+            if (null == apiResponse || null == apiResponse.getContent()) {
+                return;
+            }
             apiResponse.getContent().forEach((key, value) -> {
+                if (null == value) {
+                    return;
+                }
                 Schema<?> schema = value.getSchema();
                 if (null == schema) {
                     return;
@@ -54,7 +62,7 @@ public class NacosExampleI18nOperationCustomize implements GlobalOperationCustom
                 }
                 String i18nExample = propertyResolverUtils.resolve((String) example,
                     LocaleThreadLocalHolder.getLocale());
-                if (key.equals(MediaType.APPLICATION_JSON_VALUE)) {
+                if (MediaType.APPLICATION_JSON_VALUE.equals(key)) {
                     try {
                         schema.setExample(JacksonUtils.toObj(i18nExample));
                     } catch (NacosDeserializationException e) {

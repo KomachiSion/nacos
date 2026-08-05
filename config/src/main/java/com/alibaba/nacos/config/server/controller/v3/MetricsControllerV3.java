@@ -119,8 +119,8 @@ public class MetricsControllerV3 {
             schema = @Schema(implementation = Result.class,
                 example = "nacos.admin.config.metrics.api.cluster.example")))
     @Parameters(value = {@Parameter(name = "ip", required = true, example = "127.0.0.1"),
-        @Parameter(name = "dataId", example = "test"),
-        @Parameter(name = "groupName", example = "DEFAULT_GROUP"),
+        @Parameter(name = "dataId", required = true, example = "test"),
+        @Parameter(name = "groupName", required = true, example = "DEFAULT_GROUP"),
         @Parameter(name = "namespaceId", example = "public")})
     public Result<Map<String, Object>> metric(@RequestParam("ip") String ip,
         @RequestParam(value = "dataId", required = false) String dataId,
@@ -245,8 +245,8 @@ public class MetricsControllerV3 {
             schema = @Schema(implementation = Result.class,
                 example = "nacos.admin.config.metrics.api.ip.example")))
     @Parameters(value = {@Parameter(name = "ip", required = true, example = "127.0.0.1"),
-        @Parameter(name = "dataId", example = "test"),
-        @Parameter(name = "groupName", example = "DEFAULT_GROUP"),
+        @Parameter(name = "dataId", required = true, example = "test"),
+        @Parameter(name = "groupName", required = true, example = "DEFAULT_GROUP"),
         @Parameter(name = "namespaceId", example = "public")})
     public Result<Map<String, Object>> getClientMetrics(@RequestParam("ip") String ip,
         @RequestParam(value = "dataId", required = false) String dataId,

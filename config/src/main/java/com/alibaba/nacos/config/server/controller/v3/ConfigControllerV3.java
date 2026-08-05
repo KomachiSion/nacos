@@ -230,6 +230,9 @@ public class ConfigControllerV3 {
         @Parameter(name = "dataId", required = true, example = "test"),
         @Parameter(name = "content", required = true, example = "testContent"),
         @Parameter(name = "desc", example = "testDesc"),
+        @Parameter(name = "use"),
+        @Parameter(name = "effect"),
+        @Parameter(name = "schema"),
         @Parameter(name = "type", example = "text"),
         @Parameter(name = "configTags", example = "customTag"),
         @Parameter(name = "appName", example = "testApp"),
@@ -340,6 +343,7 @@ public class ConfigControllerV3 {
     @Parameters(value = {@Parameter(name = "namespaceId", example = "public"),
         @Parameter(name = "groupName", required = true, example = "DEFAULT_GROUP"),
         @Parameter(name = "dataId", required = true, example = "test"),
+        @Parameter(name = "tag", example = "testTag"),
         @Parameter(name = "configForm", hidden = true)})
     public Result<Boolean> deleteConfig(HttpServletRequest request, ConfigFormV3 configForm)
         throws NacosException {
@@ -372,7 +376,8 @@ public class ConfigControllerV3 {
             schema = @Schema(implementation = Result.class,
                 example = "nacos.admin.config.config.api.delete.batch.example")))
     @Parameters(value = {@Parameter(name = "ids", required = true,
-        array = @ArraySchema(schema = @Schema(type = "integer")), example = "[1,2,3]")})
+        array = @ArraySchema(schema = @Schema(type = "integer")), example = "[1,2,3]"),
+        @Parameter(name = "namespaceId", example = "public")})
     public Result<Boolean> deleteConfigs(HttpServletRequest request,
         @RequestParam(value = "ids") List<Long> ids,
         @RequestParam(value = "namespaceId", required = false) String namespaceId) {
@@ -460,8 +465,8 @@ public class ConfigControllerV3 {
         @Parameter(name = "pageSize", required = true, schema = @Schema(type = "integer"),
             example = "100"),
         @Parameter(name = "namespaceId", example = "public"),
-        @Parameter(name = "groupName", required = true),
-        @Parameter(name = "dataId", required = true), @Parameter(name = "type", example = "text"),
+        @Parameter(name = "groupName"),
+        @Parameter(name = "dataId"), @Parameter(name = "type", example = "text"),
         @Parameter(name = "configTags", example = "customTag"),
         @Parameter(name = "appName", example = "testApp"),
         @Parameter(name = "search", example = "blur", description = "blur or accurate"),
@@ -611,6 +616,12 @@ public class ConfigControllerV3 {
         @Parameter(name = "grayMatchRuleExp", required = true, example = "region=hz&&env=prod"),
         @Parameter(name = "grayVersion", required = true, example = "1.1.0"),
         @Parameter(name = "grayPriority", schema = @Schema(type = "integer"), example = "1"),
+        @Parameter(name = "appName", example = "testApp"),
+        @Parameter(name = "configTags", example = "customTag"),
+        @Parameter(name = "desc", example = "testDesc"),
+        @Parameter(name = "use"),
+        @Parameter(name = "effect"),
+        @Parameter(name = "schema"),
         @Parameter(name = "type", example = "text"),
         @Parameter(name = "srcUser", example = "nacos"),
         @Parameter(name = "encryptedDataKey"),
@@ -936,7 +947,8 @@ public class ConfigControllerV3 {
         description = "nacos.admin.config.config.api.export.description",
         security = @SecurityRequirement(name = "nacos"))
     @ApiResponse(responseCode = "200",
-        content = @Content(mediaType = MediaType.APPLICATION_OCTET_STREAM_VALUE))
+        content = @Content(mediaType = MediaType.APPLICATION_OCTET_STREAM_VALUE,
+            schema = @Schema(type = "string", format = "binary")))
     @Parameters(value = {@Parameter(name = "namespaceId"), @Parameter(name = "groupName"),
         @Parameter(name = "dataId"),
         @Parameter(name = "appName", example = "testApp"),
@@ -1000,10 +1012,12 @@ public class ConfigControllerV3 {
             schema = @Schema(implementation = Result.class,
                 example = "nacos.admin.config.config.api.clone.example")))
     @io.swagger.v3.oas.annotations.parameters.RequestBody(
+        description = "nacos.admin.config.config.api.clone.body.description",
         content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
             array = @ArraySchema(schema = @Schema(implementation = ConfigCloneInfo.class))))
     @Parameters(value = {@Parameter(name = "src_user", example = "nacos"),
         @Parameter(name = "namespaceId", required = true, example = "public"),
+        @Parameter(name = "sourceNamespaceId", example = "public"),
         @Parameter(name = "policy", schema = @Schema(implementation = SameConfigPolicy.class))})
     public Result<Map<String, Object>> cloneConfig(HttpServletRequest request,
         @RequestParam(value = "src_user", required = false) String srcUser,

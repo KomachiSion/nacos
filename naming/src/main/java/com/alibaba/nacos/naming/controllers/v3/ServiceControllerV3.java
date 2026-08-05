@@ -285,7 +285,6 @@ public class ServiceControllerV3 {
         @Parameter(name = "groupName", example = "DEFAULT_GROUP"),
         @Parameter(name = "serviceName", required = true, example = "test"),
         @Parameter(name = "protectThreshold", schema = @Schema(type = "number"), example = "0.5"),
-        @Parameter(name = "ephemeral", schema = @Schema(type = "boolean"), example = "false"),
         @Parameter(name = "selector",
             schema = @Schema(type = "string",
                 description = "JSON object string parsed as selector"),

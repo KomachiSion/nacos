@@ -235,6 +235,7 @@ public class ConfigOpsControllerV3 {
             schema = @Schema(implementation = Result.class,
                 example = "nacos.admin.config.ops.api.derby.import.example")))
     @io.swagger.v3.oas.annotations.parameters.RequestBody(
+        description = "nacos.admin.config.ops.api.derby.import.body.description",
         content = @Content(mediaType = MediaType.MULTIPART_FORM_DATA_VALUE,
             schemaProperties = {@SchemaProperty(name = "file", schema = @Schema(type = "string",
                 format = "binary", requiredMode = Schema.RequiredMode.REQUIRED))}))

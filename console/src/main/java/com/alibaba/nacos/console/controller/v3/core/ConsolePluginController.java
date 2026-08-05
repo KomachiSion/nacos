@@ -182,8 +182,9 @@ public class ConsolePluginController {
                 example = "nacos.console.core.plugin.api.config.example")))
     @Parameters(value = {@Parameter(name = "pluginType", required = true, example = "auth"),
         @Parameter(name = "pluginName", required = true, example = "nacos-default-auth-plugin"),
-        @Parameter(name = "config", schema = @Schema(type = "string",
+        @Parameter(name = "config", required = true, schema = @Schema(type = "string",
             description = "JSON object string parsed as plugin configuration"), example = "\"{}\""),
+        @Parameter(name = "localOnly", schema = @Schema(type = "boolean"), example = "false"),
         @Parameter(name = "form", hidden = true)})
     public Result<String> updatePluginConfig(PluginConfigForm form) throws NacosException {
         if (StringUtils.isBlank(form.getPluginType())

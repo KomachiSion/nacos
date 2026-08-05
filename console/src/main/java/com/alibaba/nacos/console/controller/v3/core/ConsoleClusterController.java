@@ -29,6 +29,7 @@ import com.alibaba.nacos.console.proxy.core.ClusterProxy;
 import com.alibaba.nacos.plugin.auth.constant.ActionTypes;
 import com.alibaba.nacos.plugin.auth.constant.SignType;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.extensions.Extension;
 import io.swagger.v3.oas.annotations.extensions.ExtensionProperty;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -89,7 +90,9 @@ public class ConsoleClusterController {
             schema = @Schema(implementation = Result.class,
                 example = "nacos.console.core.cluster.api.nodes.example")))
     public Result<Collection<NacosMember>> getNodeList(
-        @RequestParam(value = "keyword", required = false) String ipKeyWord) throws NacosException {
+        @Parameter(name = "keyword", example = "127.0.0.1") @RequestParam(value = "keyword",
+            required = false) String ipKeyWord)
+        throws NacosException {
         Collection<NacosMember> result = clusterProxy.getNodeList(ipKeyWord);
         return Result.success(result);
     }

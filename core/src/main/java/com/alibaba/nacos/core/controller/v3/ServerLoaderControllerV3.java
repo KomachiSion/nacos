@@ -143,7 +143,7 @@ public class ServerLoaderControllerV3 {
             schema = @Schema(implementation = Result.class,
                 example = "nacos.admin.core.loader.api.reload.smart.example")))
     @Parameters(value = {
-        @Parameter(name = "loaderFactor", schema = @Schema(type = "number"), example = "0.1f")})
+        @Parameter(name = "loaderFactor", schema = @Schema(type = "number"), example = "0.1")})
     public Result<String> smartReload(HttpServletRequest request,
         @RequestParam(value = "loaderFactor", defaultValue = "0.1f") String loaderFactorStr) {
         LOGGER.info("Smart reload request receive,requestIp={}", WebUtils.getRemoteIp(request));

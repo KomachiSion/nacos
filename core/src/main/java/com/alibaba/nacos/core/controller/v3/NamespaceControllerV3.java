@@ -153,7 +153,7 @@ public class NamespaceControllerV3 {
         content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
             schema = @Schema(implementation = Result.class,
                 example = "nacos.admin.core.namespace.api.create.example")))
-    @Parameters(value = {@Parameter(name = "namespaceId"),
+    @Parameters(value = {@Parameter(name = "namespaceId", required = true),
         @Parameter(name = "namespaceName", required = true, example = "test"),
         @Parameter(name = "namespaceDesc", example = "test"),
         @Parameter(name = "namespaceForm", hidden = true)})

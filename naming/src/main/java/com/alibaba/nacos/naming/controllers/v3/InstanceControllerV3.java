@@ -181,6 +181,7 @@ public class InstanceControllerV3 {
         @Parameter(name = "ip", required = true, example = "127.0.0.1"),
         @Parameter(name = "port", required = true, schema = @Schema(type = "integer"),
             example = "8080"),
+        @Parameter(name = "ephemeral", schema = @Schema(type = "boolean"), example = "true"),
         @Parameter(name = "instanceForm", hidden = true)})
     public Result<String> deregister(InstanceForm instanceForm) throws NacosException {
         // check param
@@ -389,8 +390,6 @@ public class InstanceControllerV3 {
         @Parameter(name = "port", required = true, schema = @Schema(type = "integer"),
             example = "8080"),
         @Parameter(name = "weight", schema = @Schema(type = "number"), example = "1.0"),
-        @Parameter(name = "healthy", schema = @Schema(type = "boolean"), example = "true"),
-        @Parameter(name = "ephemeral", schema = @Schema(type = "boolean"), example = "true"),
         @Parameter(name = "enabled", schema = @Schema(type = "boolean"), example = "true"),
         @Parameter(name = "metadata",
             schema = @Schema(type = "string",
