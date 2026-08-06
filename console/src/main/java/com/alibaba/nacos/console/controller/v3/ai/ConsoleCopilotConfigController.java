@@ -142,15 +142,15 @@ public class ConsoleCopilotConfigController {
     @Secured(resource = CONSOLE_RESOURCE_NAME_PREFIX + "copilot/config",
         action = ActionTypes.WRITE, signType = SignType.AI, apiType = ApiType.CONSOLE_API)
     @Operation(summary = "nacos.console.ai.copilot.config.api.save.summary",
-            description = "nacos.console.ai.copilot.config.api.save.description",
-            security = @SecurityRequirement(name = "nacos"))
+        description = "nacos.console.ai.copilot.config.api.save.description",
+        security = @SecurityRequirement(name = "nacos"))
     @ApiResponse(responseCode = "200",
-            content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
-                    schema = @Schema(implementation = Result.class,
-                            example = "nacos.console.ai.copilot.config.api.save.example")))
+        content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+            schema = @Schema(implementation = Result.class,
+                example = "nacos.console.ai.copilot.config.api.save.example")))
     @RequestBody(description = "nacos.console.ai.copilot.config.api.save.body.description",
-            content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
-                    schema = @Schema(implementation = CopilotProperties.class)))
+        content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+            schema = @Schema(implementation = CopilotProperties.class)))
     public Result<Boolean> saveConfig(HttpServletRequest request,
         @RequestBody CopilotProperties config)
         throws NacosException {
