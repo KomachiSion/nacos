@@ -16,23 +16,29 @@
 
 package com.alibaba.nacos.ai.param;
 
-import com.alibaba.nacos.api.ai.model.rad.AgentDiscoveryRequest;
-import com.alibaba.nacos.api.ai.model.rad.AgentEndpointRegistrationBatch;
-import com.alibaba.nacos.api.ai.model.rad.AgentReference;
-import com.alibaba.nacos.api.ai.model.rad.AgentSearchRequest;
-import com.alibaba.nacos.api.ai.model.agent.AgentPublishRequest;
+import com.alibaba.nacos.api.ai.model.agent.AgentDiscoveryRequest;
+import com.alibaba.nacos.api.ai.model.agent.AgentEndpointRegistrationBatch;
+import com.alibaba.nacos.api.ai.model.agent.AgentReference;
+import com.alibaba.nacos.api.ai.model.agent.AgentSearchRequest;
+import com.alibaba.nacos.api.ai.model.agent.AgentWatchBatchItem;
+import com.alibaba.nacos.api.ai.model.agent.client.AgentPublishRequest;
 import com.alibaba.nacos.api.ai.remote.request.AgentDiscoveryRpcRequest;
 import com.alibaba.nacos.api.ai.remote.request.AgentEndpointDeregisterRpcRequest;
 import com.alibaba.nacos.api.ai.remote.request.AgentEndpointRegisterRpcRequest;
 import com.alibaba.nacos.api.ai.remote.request.AgentSearchRpcRequest;
 import com.alibaba.nacos.api.ai.remote.request.AgentPublishRpcRequest;
+import com.alibaba.nacos.api.ai.remote.request.AgentSubscribeRpcRequest;
+import com.alibaba.nacos.api.ai.remote.request.AgentUnsubscribeRpcRequest;
 import com.alibaba.nacos.api.naming.remote.request.NotifySubscriberRequest;
 import com.alibaba.nacos.api.remote.request.Request;
 import com.alibaba.nacos.common.paramcheck.ParamInfo;
+import com.alibaba.nacos.api.ai.utils.AgentDiscoveryCanonicalizer;
+import com.alibaba.nacos.api.utils.json.JsonUtils;
 import jakarta.servlet.http.HttpServletRequest;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
+import java.util.Collections;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
@@ -55,12 +61,46 @@ class AgentClientParamExtractorTest {
     }
     
     @Test
+    void testHttpWatchExtractorUsesNestedNamespaceOnly() throws Exception {
+        AgentReference reference = new AgentReference();
+        reference.setAgentName("watch-agent");
+        AgentDiscoveryRequest discovery = new AgentDiscoveryRequest();
+        discovery.setNamespaceId(null);
+        discovery.setReference(reference);
+        AgentWatchBatchItem item = new AgentWatchBatchItem();
+        item.setClientWatchId("watch-1");
+        item.setDiscoveryRequest(discovery);
+        item.setMaterializedFingerprint(AgentDiscoveryCanonicalizer.ALGORITHM_ID + ":"
+            + "a".repeat(64));
+        HttpServletRequest request = mock(HttpServletRequest.class);
+        when(request.getRequestURI()).thenReturn("/nacos/v3/client/ai/agents/watch");
+        when(request.getParameter("watches"))
+            .thenReturn(JsonUtils.toJson(Collections.singletonList(item)));
+        
+        ParamInfo actual = new AgentClientHttpParamExtractor().extractParam(request).get(0);
+        assertEquals("public", actual.getNamespaceId());
+        assertNull(actual.getAgentName());
+    }
+    
+    @Test
+    void testHttpWatchExtractorDefersMalformedPayloadValidation() throws Exception {
+        HttpServletRequest request = mock(HttpServletRequest.class);
+        when(request.getRequestURI()).thenReturn("/nacos/v3/client/ai/agents/watch");
+        when(request.getParameter("watches")).thenReturn("[]");
+        
+        ParamInfo actual = new AgentClientHttpParamExtractor().extractParam(request).get(0);
+        
+        assertNull(actual.getNamespaceId());
+        assertNull(actual.getAgentName());
+    }
+    
+    @Test
     void testRpcSearchExtraction() throws Exception {
         AgentSearchRpcRequest request = new AgentSearchRpcRequest();
         assertEmpty(extract(request));
         
         AgentSearchRequest search = new AgentSearchRequest();
-        search.setNamespaceId("search-ns");
+        request.setNamespaceId("search-ns");
         request.setSearchRequest(search);
         ParamInfo actual = extract(request);
         assertEquals("search-ns", actual.getNamespaceId());
@@ -91,7 +131,7 @@ class AgentClientParamExtractorTest {
         assertEmpty(extract(request));
         
         AgentEndpointRegistrationBatch batch = new AgentEndpointRegistrationBatch();
-        batch.setNamespaceId("register-ns");
+        request.setNamespaceId("register-ns");
         batch.setAgentName("demo");
         request.setRegistrationBatch(batch);
         ParamInfo actual = extract(request);
@@ -125,6 +165,24 @@ class AgentClientParamExtractorTest {
         assertEquals("demo", actual.getAgentName());
         
         assertEmpty(extract(new NotifySubscriberRequest()));
+    }
+    
+    @Test
+    void testRpcWatchExtraction() throws Exception {
+        AgentSubscribeRpcRequest subscribe = new AgentSubscribeRpcRequest();
+        assertEmpty(extract(subscribe));
+        
+        AgentReference reference = new AgentReference();
+        reference.setAgentName("watch-agent");
+        AgentDiscoveryRequest discovery = new AgentDiscoveryRequest();
+        discovery.setNamespaceId("watch-ns");
+        discovery.setReference(reference);
+        subscribe.setDiscoveryRequest(discovery);
+        ParamInfo actual = extract(subscribe);
+        assertEquals("watch-ns", actual.getNamespaceId());
+        assertEquals("watch-agent", actual.getAgentName());
+        
+        assertEmpty(extract(new AgentUnsubscribeRpcRequest()));
     }
     
     private ParamInfo extract(Request request) throws Exception {

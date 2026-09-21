@@ -256,6 +256,25 @@ public enum ErrorCode {
     AGENT_VERSION_EXIST(50102, "Agent version already existed"),
     
     /**
+     * One Agent client owns the configured maximum number of Endpoint publications.
+     */
+    AGENT_ENDPOINT_PUBLICATION_OVER_LIMIT(50103,
+        "Agent Endpoint publication capacity reached"),
+    
+    /**
+     * One Agent client owns the configured maximum number of discovery subscriptions.
+     */
+    AGENT_DISCOVERY_SUBSCRIPTION_OVER_LIMIT(50104,
+        "Agent discovery subscription capacity reached"),
+    
+    /**
+     * Agent definition is temporarily protected by the historical A2A migration.
+     *
+     * <p>TODO(remove in 4.0): remove with the Nacos 3.0-3.2 A2A migration window.</p>
+     */
+    AGENT_MIGRATION_IN_PROGRESS(50105, "Agent migration is in progress"),
+    
+    /**
      * HTTP connection-based client does not exist or no longer owns a publication.
      */
     HTTP_CLIENT_NOT_FOUND(50404, "HTTP client not found"),

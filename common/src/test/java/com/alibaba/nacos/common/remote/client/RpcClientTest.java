@@ -52,6 +52,7 @@ import java.util.Map;
 import java.util.Queue;
 import java.util.Random;
 import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
@@ -64,6 +65,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.doThrow;
@@ -293,6 +295,14 @@ class RpcClientTest {
     }
     
     @Test
+    void testGetCurrentConnectionId() {
+        assertNull(rpcClient.getCurrentConnectionId());
+        when(connection.getConnectionId()).thenReturn("connection-a");
+        rpcClient.currentConnection = connection;
+        assertEquals("connection-a", rpcClient.getCurrentConnectionId());
+    }
+    
+    @Test
     void testLabels() {
         when(rpcClientConfig.labels())
             .thenReturn(Collections.singletonMap("labelKey1", "labelValue1"));
@@ -402,6 +412,39 @@ class RpcClientTest {
         Response response = rpcClient.request(new HealthCheckRequest());
         assertTrue(response instanceof HealthCheckResponse);
         assertTrue(lastActiveTimeStamp <= (long) lastActiveTimeStampField.get(rpcClient));
+    }
+    
+    @Test
+    void testNonReplayableRequestUsesOneAttemptAndDefaultTimeout() throws Exception {
+        rpcClient.currentConnection = connection;
+        rpcClient.rpcClientStatus.set(RpcClientStatus.RUNNING);
+        NacosException failure = new NacosException(500, "response lost");
+        when(connection.request(any(), anyLong())).thenThrow(failure);
+        org.junit.jupiter.api.Assertions.assertSame(failure, assertThrows(NacosException.class,
+            () -> rpcClient.requestOnce(new HealthCheckRequest(), -1L)));
+        verify(connection, times(1)).request(any(), eq(3000L));
+    }
+    
+    @Test
+    void testNonReplayableRequestReturnsSuccessfulResponse() throws Exception {
+        rpcClient.currentConnection = connection;
+        rpcClient.rpcClientStatus.set(RpcClientStatus.RUNNING);
+        HealthCheckResponse expected = new HealthCheckResponse();
+        when(connection.request(any(), anyLong())).thenReturn(expected);
+        org.junit.jupiter.api.Assertions.assertSame(expected,
+            rpcClient.requestOnce(new HealthCheckRequest(), 1234L));
+        verify(connection).request(any(), eq(1234L));
+    }
+    
+    @Test
+    void testOrdinaryRequestWithZeroTimeoutStillMakesAnAttempt() throws Exception {
+        rpcClient.currentConnection = connection;
+        rpcClient.rpcClientStatus.set(RpcClientStatus.RUNNING);
+        HealthCheckResponse expected = new HealthCheckResponse();
+        when(connection.request(any(), eq(0L))).thenReturn(expected);
+        org.junit.jupiter.api.Assertions.assertSame(expected,
+            rpcClient.request(new HealthCheckRequest(), 0L));
+        verify(connection).request(any(), eq(0L));
     }
     
     @Test
@@ -1202,5 +1245,189 @@ class RpcClientTest {
         AbilityStatus abilityStatus = rpcClient.getConnectionAbility(AbilityKey.SERVER_FUZZY_WATCH);
         assertNotNull(abilityStatus);
         assertEquals(AbilityStatus.SUPPORTED, abilityStatus);
+    }
+    
+    @Test
+    void initialReconnectCanBeSuspendedAndResumedOnlyWhileStarting()
+        throws IllegalAccessException {
+        rpcClient.rpcClientStatus.set(RpcClientStatus.STARTING);
+        assertTrue(rpcClient.isStarting());
+        assertTrue(rpcClient.suspendInitialReconnect());
+        assertTrue(rpcClient.isInitialReconnectSuspended());
+        
+        rpcClient.switchServerAsync();
+        assertEquals(0, ((Queue<?>) reconnectionSignalField.get(rpcClient)).size());
+        assertTrue(rpcClient.resumeInitialReconnect());
+        assertFalse(rpcClient.isInitialReconnectSuspended());
+        assertEquals(1, ((Queue<?>) reconnectionSignalField.get(rpcClient)).size());
+        assertFalse(rpcClient.resumeInitialReconnect());
+        
+        rpcClient.rpcClientStatus.set(RpcClientStatus.RUNNING);
+        assertFalse(rpcClient.suspendInitialReconnect());
+        rpcClient.rpcClientStatus.set(RpcClientStatus.STARTING);
+        rpcClient.currentConnection = connection;
+        assertFalse(rpcClient.suspendInitialReconnect());
+    }
+    
+    @Test
+    void initialReconnectSuspensionRollsBackWhenStartupStateChanges() {
+        doReturn(true, false).when(rpcClient).isStarting();
+        
+        assertFalse(rpcClient.suspendInitialReconnect());
+        assertFalse(rpcClient.isInitialReconnectSuspended());
+    }
+    
+    @Test
+    void initialReconnectSuspensionRollsBackWhenConnectionWinsTheRace() {
+        AtomicInteger checks = new AtomicInteger();
+        when(rpcClient.isStarting()).thenAnswer(invocation -> {
+            if (checks.incrementAndGet() == 2) {
+                rpcClient.currentConnection = connection;
+            }
+            return true;
+        });
+        
+        assertFalse(rpcClient.suspendInitialReconnect());
+        assertFalse(rpcClient.isInitialReconnectSuspended());
+    }
+    
+    @Test
+    void resumingAfterLifecycleLeavesStartingDoesNotScheduleReconnect()
+        throws IllegalAccessException {
+        rpcClient.rpcClientStatus.set(RpcClientStatus.STARTING);
+        assertTrue(rpcClient.suspendInitialReconnect());
+        rpcClient.rpcClientStatus.set(RpcClientStatus.SHUTDOWN);
+        assertFalse(rpcClient.resumeInitialReconnect());
+        assertEquals(0, ((Queue<?>) reconnectionSignalField.get(rpcClient)).size());
+    }
+    
+    @Test
+    void resumingDoesNotScheduleWhenShutdownWinsTheStartingCheck()
+        throws IllegalAccessException {
+        rpcClient.rpcClientStatus.set(RpcClientStatus.STARTING);
+        assertTrue(rpcClient.suspendInitialReconnect());
+        doReturn(true).when(rpcClient).isStarting();
+        doReturn(true).when(rpcClient).isShutdown();
+        
+        assertFalse(rpcClient.resumeInitialReconnect());
+        assertEquals(0, ((Queue<?>) reconnectionSignalField.get(rpcClient)).size());
+    }
+    
+    @Test
+    void suspendedInitialReconnectReturnsWithoutConnecting() throws Exception {
+        rpcClient.rpcClientStatus.set(RpcClientStatus.STARTING);
+        assertTrue(rpcClient.suspendInitialReconnect());
+        rpcClient.reconnect(null, false);
+        verify(rpcClient, never()).connectToServer(any());
+    }
+    
+    @Test
+    void reconnectLoopCanStopAtShutdownOrAConcurrentSuspension() throws Exception {
+        rpcClient.rpcClientStatus.set(RpcClientStatus.SHUTDOWN);
+        rpcClient.reconnect(null, false);
+        verify(rpcClient, never()).connectToServer(any());
+        
+        RpcClient suspendedDuringEntry = spy(new RpcClient(rpcClientConfig) {
+            
+            @Override
+            public ConnectionType getConnectionType() {
+                return ConnectionType.GRPC;
+            }
+            
+            @Override
+            public int rpcPortOffset() {
+                return 0;
+            }
+            
+            @Override
+            public Connection connectToServer(ServerInfo serverInfo) {
+                return null;
+            }
+        });
+        doReturn(false, true).when(suspendedDuringEntry).isInitialReconnectSuspended();
+        
+        suspendedDuringEntry.reconnect(null, false);
+        
+        verify(suspendedDuringEntry, never()).connectToServer(any());
+        suspendedDuringEntry.shutdown();
+    }
+    
+    @Test
+    void startingReconnectAcceptsAConnectionWhenSuspensionIsNotRequested() throws Exception {
+        when(serverListFactory.genNextServer()).thenReturn("127.0.0.1:8848");
+        RpcClient startingClient = buildTestStartClient(serverInfo -> connection);
+        startingClient.rpcClientStatus.set(RpcClientStatus.STARTING);
+        
+        startingClient.reconnect(null, false);
+        
+        assertTrue(startingClient.isRunning());
+        assertEquals(connection, startingClient.currentConnection);
+        startingClient.shutdown();
+    }
+    
+    @Test
+    void suspensionWinsRaceWithAnInFlightInitialConnection() throws Exception {
+        when(serverListFactory.genNextServer()).thenReturn("127.0.0.1:8848");
+        CountDownLatch connecting = new CountDownLatch(1);
+        CountDownLatch completeConnection = new CountDownLatch(1);
+        RpcClient racingClient = buildTestStartClient(serverInfo -> {
+            connecting.countDown();
+            try {
+                completeConnection.await(5, TimeUnit.SECONDS);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+            return connection;
+        });
+        racingClient.rpcClientStatus.set(RpcClientStatus.STARTING);
+        Thread reconnectThread = new Thread(() -> racingClient.reconnect(null, false));
+        reconnectThread.start();
+        assertTrue(connecting.await(5, TimeUnit.SECONDS));
+        assertTrue(racingClient.suspendInitialReconnect());
+        completeConnection.countDown();
+        reconnectThread.join(5000L);
+        
+        assertFalse(reconnectThread.isAlive());
+        assertFalse(racingClient.isRunning());
+        assertNull(racingClient.currentConnection);
+        verify(connection).close();
+        racingClient.shutdown();
+    }
+    
+    @Test
+    void initialConnectionFailureListenersAreIsolatedAndCounted() throws Exception {
+        AtomicInteger observed = new AtomicInteger();
+        rpcClient.registerInitialConnectionFailureListener(failureCount -> {
+            throw new IllegalStateException("listener failure");
+        });
+        rpcClient.registerInitialConnectionFailureListener(observed::set);
+        Method notifyFailure =
+            RpcClient.class.getDeclaredMethod("notifyInitialConnectionFailure");
+        notifyFailure.setAccessible(true);
+        
+        rpcClient.rpcClientStatus.set(RpcClientStatus.STARTING);
+        notifyFailure.invoke(rpcClient);
+        notifyFailure.invoke(rpcClient);
+        assertEquals(2, rpcClient.getInitialConnectionFailureCount());
+        assertEquals(2, observed.get());
+        
+        rpcClient.rpcClientStatus.set(RpcClientStatus.UNHEALTHY);
+        notifyFailure.invoke(rpcClient);
+        assertEquals(2, rpcClient.getInitialConnectionFailureCount());
+    }
+    
+    @Test
+    void initialFailureListenerCanSuspendActiveReconnect() throws Exception {
+        when(serverListFactory.genNextServer()).thenReturn("127.0.0.1:8848");
+        RpcClient startingClient = buildTestStartClient(serverInfo -> null);
+        startingClient.rpcClientStatus.set(RpcClientStatus.STARTING);
+        startingClient.registerInitialConnectionFailureListener(
+            failureCount -> startingClient.suspendInitialReconnect());
+        
+        startingClient.reconnect(null, false);
+        
+        assertEquals(1, startingClient.getInitialConnectionFailureCount());
+        assertTrue(startingClient.isInitialReconnectSuspended());
+        startingClient.shutdown();
     }
 }

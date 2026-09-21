@@ -18,7 +18,7 @@
 
 | 项目 | 值 |
 | --- | --- |
-| 状态 | 实验性目标兼容契约 |
+| 状态 | 实验性 Binding 与升级兼容契约 |
 | 生效条件 | `nacos.ai.a2a.compatibility.mode`，默认 `CANONICAL` |
 
 本文定义 A2A 作为 Nacos 标准 Agent 资源的一种协议 Binding，并规定历史 AgentCard API
@@ -29,19 +29,27 @@
 
 旧 A2A 接口通过 `nacos.ai.a2a.compatibility.mode` 选择一套完整的定义实现：
 
-| 模式 | 定义事实源 |
+| 模式 | 兼容实现 |
 | --- | --- |
-| `CANONICAL` | 标准 Agent metadata 与 Version 存储。当前版本不支持该功能的滚动升级，因此默认使用此模式。 |
-| `LEGACY` | 历史 AgentCard metadata 与精确 Version 内容对应的 Config group。 |
-| `AUTO` | 从 `LEGACY` 启动；全部已知集群成员都上报 3.3.0 或更高版本后，仅单向切换一次到 `CANONICAL`。成员版本缺失或非法时继续使用旧分支。 |
+| `CANONICAL` | 标准 Agent Metadata、Version 存储与 RAD Runtime Endpoint。它仍是默认静态模式，不扫描历史数据。 |
+| `LEGACY` | 历史 AgentCard Config group 与按精确 Version 划分的 Naming Endpoint。旧实现保持不变。 |
+| `AUTO` | 运行一次性历史升级状态机。`SYNCING` 和 `QUIESCING` 期间历史 Config 定义仍是权威；只有永久、零差异的 `CANONICAL` Marker 才切换完整定义 Facade。 |
 
 模式 token 大小写不敏感。一次请求必须完整路由到同一分支，不进行按操作混用、回退、
-双读或双写。`AUTO` 只预留保守的未来切流入口，不构成滚动升级保证；单向切换也不会迁移
-历史 Config 数据。在独立迁移契约落地前，选择 `LEGACY` 或后续从 `LEGACY` 切到
-`CANONICAL` 的可见性后果由运维方承担。
+定义合并读取或定义双写。`AUTO` 由
+[历史 A2A 升级迁移规范](a2a-upgrade-migration-spec.md)规定：后台对账历史定义，使用明确
+Member Ability 和短暂定义写屏障，绝不只按成员版本切流。迁移期间的 Runtime 双物化是连接态
+兼容投影，不是第二个定义权威。
 
-第 2～7 节对路由到 `CANONICAL` 的请求生效；路由到 `LEGACY` 的请求保留历史 Config
-定义行为。三种模式下，旧 Runtime Endpoint 操作都继续使用按 Version 划分的 Naming 布局。
+持久化的终态迁移 Marker 优先于本地模式配置。有能力节点一旦观察到终态，本进程永久把 A2A
+定义操作路由到 `CANONICAL`；Marker 被删除或配置变化时也不得恢复 Legacy-only 写入。非终态
+Marker 不覆盖显式选择的静态模式。
+
+第 2～7 节对路由到 `CANONICAL` 的请求生效；路由到 `LEGACY` 的请求完整保留历史 Config
+定义和按 Version 划分的 Naming Endpoint 行为。`AUTO` 同步期间，定义读写保持完整历史行为；
+终态 Marker 后，完整 Facade 使用与
+`CANONICAL` 相同的分支。唯一例外是 `QUIESCING`：定义 Mutation 以可重试
+`AGENT_MIGRATION_IN_PROGRESS` Detail Error 暂时拒绝，读取和 Runtime 操作继续。
 
 A2A 不是顶层 AI 资源类型。标准身份为：
 
@@ -62,11 +70,16 @@ A2A Binding 是一个 `AgentCallInterface`：
 | `protocolVersion` | 用于快速过滤的规范化 A2A 协议版本。 |
 | `descriptorMediaType` | AgentCard JSON 媒体类型。 |
 | `nativeDescriptor` | 完整规范化 AgentCard，不丢失已支持的上游字段。 |
-| `declaredEndpoints` | 从 root URL 和 supported/additional interfaces 派生。 |
+| `endpointSets[source=DECLARED].endpoints` | 从 root URL 和 supported/additional interfaces 派生。 |
 | `endpointSourceOrder` | 从兼容 registration type 派生。 |
 
 当前 descriptor 基线支持 A2A 1.0 字段和现有 0.x 兼容字段。Adapter 规范化时不得
 用拼装出的通用 Agent 对象替换保存的 native descriptor。
+
+common latest 精确 Version 中的 A2A CallInterface 只有通过该版本基线的完整 AgentCard 校验时，
+才声明 ARD 表示 `application/a2a-agent-card+json`。Artifact 直接返回保存的 native descriptor，
+不得把多协议 Nacos Agent 外层对象伪装成 AgentCard。旧 online Version 支持 A2A 只影响 RAD
+`protocolsAny=a2a`；如果 common latest 不含合法 AgentCard，则不产生当前 A2A ARD 表示。
 
 `registrationType=URL` 映射为 `[DECLARED,RUNTIME]`，
 `registrationType=SERVICE` 映射为 `[RUNTIME,DECLARED]`。Registration type 是旧投影
@@ -94,29 +107,44 @@ A2A Binding 是一个 `AgentCallInterface`：
 
 ## 4. 旧 Runtime Endpoint 写入
 
-首个兼容阶段中，旧单条和批量 Endpoint 操作继续使用现有的按 Version 划分 Naming layout：
+`CANONICAL` 分支把旧单条、批量和注销请求适配到标准 RAD Runtime Naming layout：
 
 ```text
-publisher + namespaceId + agentName + exactVersion + protocol=a2a
-
 group=agent-endpoints
-serviceName=<legacyEncodedAgentName>::<exactVersion>
+serviceName=rad-<encodedAgentId>-a2a
+runtimeVersion=<exactVersion>
+versionRange=[<exactVersion>]
 ```
 
-单条注册委托 Naming 现有的单实例操作，将该 publication 替换为一个 Endpoint；批量注册委托
-Naming Batch 注册，以提交的完整 Batch 覆盖旧 Batch。旧 deregister 删除该精确 Version
-Service 对应的完整 publication。
+旧 SDK 的 redo 和替换身份是 `(connection, namespaceId, agentName, exactVersion)`，而标准
+Runtime Service 对一个 Naming publisher 只保存一份完整批次。兼容层因此为每个旧精确 Version
+创建一个确定性的内部子 publisher，并把它绑定到原始 AI gRPC connection。单条注册把该子
+publication 替换为一个 Endpoint；批量注册以提交的完整 Batch 覆盖同一子 publication；旧
+deregister 注销该精确 Version 的完整子 publication。不同 Version 的子 publisher 写入同一个
+标准 Service，但不会互相覆盖。原始 connection 断开时，其全部子 publisher 一并释放，并继续
+复用 Naming 的 ClientData Distro、索引、事件和清理能力；兼容层不得读取旧 publication 后合并。
 
-兼容 Handler 不把这些写入重定向到新的无 Version RAD Runtime Service，不写入
-`runtimeVersion` 或 `versionRange` metadata，也不进入新的 RAD Runtime 写入路径。旧 A2A
-Client 无法提交该 Service 要求的完整跨 Version Publisher Batch；直接重定向会导致一个
-Version 注册覆盖另一个 Version。历史 Service 的迁移、双读或双写、切流、回滚和清理必须由
-独立的滚动升级契约定义。
+转换后的每个 Naming Instance 使用标准 singular `runtimeVersion`/`versionRange` metadata；旧
+`protocolVersion` 和 `tenant` 通过公开 Endpoint metadata 的 `__nacos.agent.endpoint.protocolVersion__` 与
+`__nacos.agent.endpoint.tenant__` 暴露，并参与 Runtime revision。直接复用历史 Nacos 保留键，不再转换键名；
+外部 Endpoint metadata 仅允许这两个兼容保留键，其他内部控制键仍禁止写入。旧 `AgentEndpoint` 的 URI、transport、健康和权重继续按标准 Runtime
+映射校验。
+
+`LEGACY` 分支保持原 Handler 和 `<legacyEncodedAgentName>::<exactVersion>` Naming Service
+实现不变。显式 `CANONICAL` 分支只写标准 Service。
+
+`AUTO` 在这两个不变物理实现之上增加临时迁移 Router。`SYNCING` 和 `QUIESCING` 使用历史
+Service 主写、标准 Service 必需镜像；终态切流后标准 RAD 为主，固化的迁移策略可以选择继续保留
+历史精确 Version Naming Shadow。一个逻辑 Publication 只校验和计数一次；两个物理 Child
+Publisher 都绑定原始 Connection 并幂等清理。Mirror 或 Shadow 失败不回滚成功主写，而是进入
+有界 Connection 内重试。精确顺序、切流门禁、Shadow 范围和回滚边界遵循
+[历史 A2A 升级迁移规范](a2a-upgrade-migration-spec.md)。
 
 Endpoint 可以先于 Agent 或 Version 定义发布，但不得隐式创建 Agent 定义。
 
 旧 Java SDK 为每个 `(agentName, exactVersion)` 独立保存 Endpoint redo，且保存调用时 Payload
-的防御性快照；不同 Version 的发布意图不得因重连缓存 key 冲突而丢失。
+的防御性快照；不同 Version 的发布意图不得因重连缓存 key 冲突而丢失。内部子 publisher 是
+服务端实现细节，不进入公开 Payload、Redo key、鉴权资源或管理查询。
 
 ## 5. 旧查询投影
 
@@ -131,7 +159,9 @@ Endpoint 可以先于 Agent 或 Version 定义发布，但不得隐式创建 Age
 | `SERVICE` 且存在匹配 Runtime Endpoint | 将确定性 Runtime Endpoint 集合投影到 AgentCard interfaces 和 root URL。 |
 | `SERVICE` 且无匹配 Runtime Endpoint | 回退到保存的声明 AgentCard。 |
 
-Runtime 投影排除 `enabled=false`，保留 `healthy=false`，因为旧 DTO 没有健康字段。投影先按
+`CANONICAL` 查询从 `rad-<encodedAgentId>-a2a` 读取并按目标精确 Version 的 binding 过滤；
+`LEGACY` 查询继续读取旧按 Version 划分的 Service。Runtime 投影排除 `enabled=false`，保留
+`healthy=false`，因为旧 DTO 没有健康字段。投影先按
 priority、再按 Endpoint 自然键稳定排序。source revision、health、priority、weight 和通用 metadata
 等 RAD 新字段不进入旧 DTO。
 
@@ -153,13 +183,111 @@ SDK shutdown 必须停止所有旧 AgentCard 轮询任务。
 | Admin `/v3/admin/ai/a2a` 和 `A2aMaintainerService` | 兼容到 4.0.x 窗口。 |
 | Console `/v3/console/ai/a2a` | 兼容到 3.4.x 窗口。 |
 
+旧控制台的 Agent 页面是仅支持 A2A 的兼容 UI，使用 `/v3/console/ai/a2a`。协议无关的
+Agent 生命周期、多协议编辑和通用 Agent 元数据管理属于新控制台及其标准 Agent API。
+没有 online A2A Binding 的通用 Agent 不要求出现在旧控制台列表中。
+
 兼容窗口内，旧路径、Payload type、DTO、能力位、鉴权身份和响应包装保持稳定。新 Agent/RAD API
 不得暴露 `registrationType`、`setAsLatest` 或 AgentCard 专属列表包装。
 
-历史数据迁移、混合版本双读双写、回滚和清理仍属于滚动升级设计，不由本 API 兼容规范定义。
-上述模式开关只选择实现，不提供这些能力。
+历史 3.0～3.2 数据对账、混合 Member 运行、安全切流、可选历史 Naming Shadow、回滚边界和
+延期清理由[历史 A2A 升级迁移规范](a2a-upgrade-migration-spec.md)定义。迁移专用实现代码及配置
+计划在 Nacos 4.0 删除；完成迁移后的标准 Agent/RAD 事实和仍处于兼容期的公开 A2A Facade
+不依赖这些临时代码。
 
 ## 7. 演进
 
 上游 AgentCard 字段或 A2A 协议版本变化由 A2A Adapter 和版本化 Agent CallInterface 处理，
-不得重新定义标准 Agent 身份或协议无关的 RAD 结果。
+不得重新定义标准 Agent 身份或协议无关的 RAD 结果。ARD 使用的 AgentCard media type 与固定
+上游 Schema 基线由 [AI Registry 适配器规范](ai-registry-adaptor-spec.md)共同版本化；变化时必须
+同步更新 adapter fixture、校验器、规范和一致性测试。
+
+### Java SDK 的 RAD Card 适配
+
+SDK 使用 RAD 时，旧查询缺失或空白 Version 显式选择 label=latest、protocols=[a2a]，
+不使用无选择器的跨版本 Runtime 池。Discover 保留按定义偏好排序的两类 EndpointSet，
+空集合也保留。该顺序决定返回的 registrationType，显式查询类型只选择本次投影。
+URL 返回完整归一化 native Card；SERVICE 投影 enabled Runtime Endpoint，保留 unhealthy，
+仅运行集合为空时回退保存的 Card。按 priority、自然键稳定排序，原 Card 的首选 transport
+存在时决定根接口；supportedInterfaces 和 additionalInterfaces 均包含全部运行地址。
+A2A descriptor 缺失、非法或身份不匹配时报 not found，不补查 Admin 或旧协议。
+
+RAD latest 查询的 latestVersion=true；精确版本查询返回 null，即使恰为 latest 也不额外查询。
+旧 wire 的 latest 标志行为保持。Client release 把完整 Card 转为一个 A2A CallInterface，
+setAsLatest 直接映射 autoSubmit，不预读、不重试、不强制发布；状态规则以 Client publish 为准。
+
+公开 `__nacos.agent.endpoint.protocolVersion__` 必须为非空、最多 64 字符的可打印 ASCII；`__nacos.agent.endpoint.tenant__` 为最多
+256 字符的字符串，允许空串。仅协议版本缺失时回退目标 CallInterface，tenant 不伪造。
+原生 RAD 调用方也可以提供这两个键。
+
+历史空协议版本按缺失处理；tenant 空串仍保留。
+
+历史 LEGACY wire 投影仍保留原有空串字段；上述缺失值归一化只用于 canonical RAD 转换。
+
+### Java SDK RAD Endpoint 意图适配
+
+本节仅适用于 SDK 的 A2A facade 选择 RAD 时；旧 wire 模式及旧 SDK 仍按前述精确版本隔离。
+单条和集合注册均替换目标精确版本的完整意图；空集合、混版本、null 成员和重复自然键在
+改变缓存或远端前拒绝，输入对象和集合防御性复制。同一 SDK 的
+`(namespaceId, agentName, a2a)` publication 中，相同自然键且其余内容相同的注册合并为
+一个 Endpoint、一条绑定。transport、主机或有效端口不同仍是独立地址；path、query、
+metadata 等冲突不能静默选择其中一个版本的值。transport 沿用 RAD 的区分大小写规则。
+
+runtimeVersion 按 RAD 精确版本 SemVer 比较取当前有效引用的最大值；闭区间 versionRange
+在地址仍有引用期间保留并扩展，包含中间版本。注销某版本或替换其地址列表只撤销引用，
+不收缩已有范围。最后引用移除时删除 Endpoint 并清理范围记录，之后重新注册从精确范围开始。
+旧注销即使仅传入一个地址，也移除目标精确版本的全部意图；其他版本保留，仅整份 publication
+为空时发送整份 Deregister。
+
+同实例同 publication 的原生 RAD 与适配 A2A Runtime 写入来源互斥；第二来源在远程调用前
+受控拒绝，定义发布和只读不受限。最终注销确认后释放来源；首次确定失败不占用，未知结果
+保留意图、来源和 transport owner。普通确定失败恢复之前的引用和范围；远端 publication
+容量驱逐保持已有的整体丢弃契约。原生局部注销仍按自然键，不套用整版本注销或范围保留。
+
+新写入和 gRPC 重连重放经过同一个 publication monitor，旧快照不能覆盖后续注册/注销。
+重放被拒绝或确认完成时只协调既有 redo 记录，不额外重放一次远程写；HTTP 继续使用共享 AI
+活性协调器。不增加物理子 Publisher 身份或第二套心跳/redo 框架。
+
+### Java SDK RAD Card Watch 适配
+
+RAD 模式的旧 Card 订阅复用原生发现的 Watch manager、transport、容量和回调队列。
+空版本显式选择 latest，精确版本仍使用 latestVersion=null 的降级投影。订阅返回当前 Card，
+并通过同一串行队列及用户 executor 投递旧接口要求的首次回调。每个 listener 按完整 Card
+结构比较，不依赖 JSON 字段顺序；只改变 RAD 字段而未改变 Card 时不重复通知。
+
+Agent 或有效 A2A descriptor 暂时不存在时不虚构 Card，保留既有待观察意图。不可用事件清空
+Card 比较状态，不发送旧快照；恢复后的 Card 即使与原值相同也可再次通知。旧 listener 没有
+不可用事件类型；原生鉴权/容量等终止错误仍结束观察，需要显式重新订阅。鉴权失败不触发
+轮询 fallback。绑定缺少 Watch 时复用 RAD Discover 轮询，RAD 模式不回到旧 A2A 轮询。
+
+同一 listener 重复订阅复用 bridge，取消时先移除本地意图再清理 wire；迟到回调不能复活订阅。
+关闭先移除适配器自己的 listener，由所属 service 关闭共享 manager。远程激活及用户回调均在
+适配器锁外执行；首次快照与后续刷新共享单调投递顺序，迟到入队的旧事件不能覆盖已投递的新状态。
+
+C09 只准备此组件，C10 一次接通全部旧 facade 方法。
+
+### Client 实例路由启用
+
+3.3 Java SDK 的所有继承 A2A 重载共享同一 Agent facade，首次可靠选择在 AiService
+生命周期内固定。初始首选 gRPC 协商可确定模式；HTTP-only 初始化不为 A2A 选路启动
+gRPC。未决调用可使用已认证的 HTTP 能力，HTTP 证据缺失时才需要旧 gRPC 协商。
+身份或连接错误不能选择旧模式；重连刷新 HTTP 证据，不改变已有 A2A 模式。
+原生 Agent 方法使用当前证据，不继承旧 A2A 的模式固定策略。
+
+HTTP 的正向 RAD 声明独立于 gRPC。HTTP 证据缺失时，成功的旧 gRPC 协商仅在唯一
+配置地址与当前协商主地址一致时用于拒绝原生操作；不将其缓存为 HTTP 能力 false，
+也不推导整个集群。不同地址或多地址配置保持未决。显式 gRPC 的原生操作分别报告
+连接不可用与 RAD 不支持。本地取消订阅不探测能力；完整 publication 清理沿用原 owner。
+
+旧查询、发布、Endpoint 与 Watch 一次共同启用；现有 Endpoint manager 管理两种
+API 来源，同一存活 publication 的混用在写前拒绝。Card 查询/事件共用转换，已选 RAD
+后迁移或业务错误不会静默转回旧 A2A。
+
+构造阶段仅正向 RAD 协商会固定模式。gRPC RAD 否定或缺失时，等首次 A2A 操作
+检查独立 HTTP 证据后再选旧模式；一旦选旧，后续重连不自动升级。尚未执行过 A2A
+操作的实例没有旧注册/订阅意图，不为其提前固定旧链路，也不为其他 AI 资源增加前置请求。
+
+实例尚未选路时，有效 gRPC 协商的正向 RAD 证据也会选择 RAD API，即使 HTTP 证据
+缺失或否定。该证据不代表 HTTP 支持或可达；经 RAD 适配的旧业务操作仍校验所配置
+transport。HTTP 明确不支持时返回 unsupported，不静默发送旧 gRPC。取消及完整
+清理仍保留本地状态和既有 owner 的路径。

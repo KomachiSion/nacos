@@ -157,9 +157,11 @@ Artifact 是导入边界对象，不是持久化资源模型。资源 Operator �
 Resource Operator 位于 AI Registry 领域内，不属于导入插件。它们通过资源类型当前的服务层校验并
 写入 artifact。
 
-对 MCP 而言，初始 Operator 可以调用当前 `McpServerOperationService` 和相关校验服务，即使 MCP
-当前仍由 Config 记录承载。未来 MCP 迁移到 `ai_resource` 后，只应修改 MCP Operator。导入插件和
-统一导入 API 应保持兼容。
+对 MCP 而言，Operator 调用当前 `McpOperationService` 完整兼容 application contract 和相关校验
+服务。生命周期 reconciliation 仍处于 `SYNCING` 时，该完整契约使用历史策略，并在写成功后立即
+reconcile；原子切换后则使用标准生命周期策略、MCP Version Storage 和按标准名称调度的异步 Search
+任务。切换前后 Import 插件和统一导入 API 保持不变，且不得再直接调用已经移除的 Config-backed
+`McpServerOperationService`。
 
 对 Skill 而言，Operator 应保持 Skill 包边界，并通过 Skill upload 或 draft 生命周期 API 写入。导入成功后，
 如果 artifact 包含 `sourceMetadata.artifactUrl`，Skill Operator 应将该 URL 记录为导入后资源的来源
@@ -357,15 +359,25 @@ validate 和 execute 端点应通过兼容 adapter 路由到统一导入管理�
 在构建 MCP Server schema 时，从用户自有 MCP runtime endpoint 拉取 tools 的辅助能力，不属于
 AI 资源市场或 registry 导入流程。
 
+该辅助接口会让 Console 进程向请求指定的 MCP runtime 发起服务端网络连接。公网目标默认允许；私网或
+本地目标默认拒绝，只有 `baseUrl` 解析得到的每一个此类地址都命中
+`nacos.console.ai.mcp.import.allowed-private-addresses` 时才允许访问。运维可以通过
+`nacos.console.ai.mcp.import.enabled=false` 关闭全部出站 tools 导入。请求 `baseUrl` 只能使用 HTTP
+或 HTTPS；`endpoint` 参数必须是相对 URI，不得替换 `baseUrl` 的 scheme 或 authority。请求不得跟随
+重定向。私网白名单中存在非法项时必须按拒绝处理，不得忽略非法项后继续访问。
+
 兼容端点已废弃，仅保留至 Nacos 3.3.x，并计划在 Nacos 3.4.0 移除。端点默认关闭。
-运维可以通过 `nacos.ai.resource.import.legacy-mcp-api-enabled=true` 临时重新开启，客户端应迁移到
+运维可以通过 `nacos.core.api.compatibility.enabled=true` 临时重新开启，客户端应迁移到
 `/v3/{admin|console}/ai/import/*`。
+
+旧的 `nacos.ai.resource.import.legacy-mcp-api-enabled` 参数不再识别。共享兼容开关还会重新开启其他
+显式接入门禁的废弃 v3 API，具体范围由[兼容与废弃策略规范](../design/compatibility-deprecation-spec.md)定义。
 
 对于旧的 `importType=url`，请求默认不得把用户传入 URL 作为网络目标。当 `data` 匹配已启用
 source 时，可以按 `sourceId` 解释；否则应失败并提示迁移到
 `nacos.plugin.ai-resource-import.{pluginName}.*` 受管插件配置并启用对应 `sourceId`。旧的直接
 URL 导入只能由运维同时开启
-`nacos.ai.resource.import.legacy-mcp-api-enabled=true` 和
+`nacos.core.api.compatibility.enabled=true` 和
 `nacos.ai.resource.import.allow-user-url=true` 后用于受控部署。
 
 旧的 `importType=json` 和 `importType=file` 可以映射为内置本地 importer，因为它们不需要服务端
@@ -410,6 +422,9 @@ importer 可以保持 `dependencies` 为空，导入管理器也不应要求请�
   `max-artifact-size` 限制；
 - 导入、查询或下载 Skill 包时不得执行包内脚本；
 - importer 插件不得在 API 响应、Trace 事件或日志中泄露 secret。
+
+Console MCP tools 导入辅助接口虽然不属于 importer plugin 操作，仍必须遵循旧 MCP 导入兼容章节中
+单独定义的公网目标与私网例外策略。
 
 需要从私网导入的部署必须通过运维配置显式开启。
 

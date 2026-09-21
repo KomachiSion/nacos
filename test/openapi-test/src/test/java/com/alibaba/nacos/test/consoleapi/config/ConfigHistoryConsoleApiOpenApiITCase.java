@@ -18,10 +18,12 @@ package com.alibaba.nacos.test.consoleapi.config;
 
 import com.alibaba.nacos.api.model.v2.ErrorCode;
 import com.alibaba.nacos.common.http.param.Query;
+import com.alibaba.nacos.common.utils.JacksonUtils;
 import com.fasterxml.jackson.databind.JsonNode;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -29,9 +31,11 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  *
  * <p>Scenario coverage:
  * <ul>
+ *     <li>Schema: current and historical details preserve version-specific text, absent values may be omitted or null,
+ *     explicit empty current schema is preserved, and history extInfo remains available.</li>
  *     <li>Expected capability: publish and republish create history rows, history list is newest first, detail returns
  *     selected historical content, previous returns current config's latest historical content, and namespace config
- *     listing exposes the current config identity.</li>
+ *     listing exposes the current config identity, with storage IDs represented as JSON strings.</li>
  *     <li>Boundary/validation: page size larger than the controller cap is accepted, {@code pageNo}/{@code pageSize},
  *     {@code dataId}, {@code groupName}, {@code nid}, and {@code namespaceId} are validated.</li>
  *     <li>Exception/error handling: missing, absent, and identity-mismatched history queries return controlled v3
@@ -41,6 +45,55 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * @author xiweng.yy
  */
 public class ConfigHistoryConsoleApiOpenApiITCase extends ConfigConsoleApiBaseITCase {
+
+    @Test
+    public void testSchemaInCurrentAndHistoricalDetails() throws Exception {
+        String dataId = randomDataId("schema-history");
+        String groupName = randomGroupName("schema-history");
+        String firstSchema = "{\"type\":\"object\"}";
+        String secondSchema = "{\"type\":\"string\"}";
+        addCleanup(() -> deleteConfigQuietly(dataId, groupName, ""));
+        postFormOk(CONSOLE_CONFIG_PATH, configQuery(dataId, groupName, "")
+                .addParam("content", "without-schema").addParam("type", DEFAULT_TYPE));
+        JsonNode withoutSchema = queryConfig(dataId, groupName, "").get("data");
+        assertFalse(withoutSchema.hasNonNull("schema"), withoutSchema.toString());
+
+        postFormOk(CONSOLE_CONFIG_PATH, configQuery(dataId, groupName, "")
+                .addParam("content", "first-content").addParam("type", DEFAULT_TYPE)
+                .addParam("schema", firstSchema));
+        postFormOk(CONSOLE_CONFIG_PATH, configQuery(dataId, groupName, "")
+                .addParam("content", "second-content").addParam("type", DEFAULT_TYPE)
+                .addParam("schema", secondSchema));
+        JsonNode current = queryConfig(dataId, groupName, "").get("data");
+        assertEquals(secondSchema, current.path("schema").asText(), current.toString());
+
+        JsonNode histories = getJsonOk(CONSOLE_HISTORY_LIST_PATH,
+                historyQuery(dataId, groupName, "", 1, 10)).get("data").get("pageItems");
+        JsonNode detail = getJsonOk(CONSOLE_HISTORY_PATH, configQuery(dataId, groupName, "")
+                .addParam("nid", histories.get(0).get("id").asText())).get("data");
+        assertEquals("first-content", detail.path("content").asText(), detail.toString());
+        assertEquals(firstSchema, detail.path("schema").asText(), detail.toString());
+        JsonNode extInfo = JacksonUtils.toObj(
+                detail.get("extInfo").asText());
+        assertEquals(firstSchema, extInfo.path("c_schema").asText(), detail.toString());
+
+        JsonNode previous = getJsonOk(CONSOLE_HISTORY_PATH + "/previous",
+                configQuery(dataId, groupName, "").addParam("id", current.get("id").asText()))
+                .get("data");
+        assertEquals(firstSchema, previous.path("schema").asText(), previous.toString());
+        JsonNode oldDetail = getJsonOk(CONSOLE_HISTORY_PATH,
+                configQuery(dataId, groupName, "")
+                        .addParam("nid", histories.get(1).get("id").asText())).get("data");
+        assertEquals("without-schema", oldDetail.path("content").asText(), oldDetail.toString());
+        assertFalse(oldDetail.hasNonNull("schema"), oldDetail.toString());
+
+        postFormOk(CONSOLE_CONFIG_PATH, configQuery(dataId, groupName, "")
+                .addParam("content", "empty-schema").addParam("type", DEFAULT_TYPE)
+                .addParam("schema", ""));
+        JsonNode emptySchema = queryConfig(dataId, groupName, "").get("data");
+        assertTrue(emptySchema.path("schema").isTextual(), emptySchema.toString());
+        assertEquals("", emptySchema.path("schema").asText(), emptySchema.toString());
+    }
 
     @Test
     public void testHistoryListDetailPreviousAndNamespaceConfigs() throws Exception {
@@ -54,6 +107,7 @@ public class ConfigHistoryConsoleApiOpenApiITCase extends ConfigConsoleApiBaseIT
 
         JsonNode currentConfig = queryConfig(dataId, groupName, "").get("data");
         assertConfigDetail(currentConfig, dataId, groupName, DEFAULT_NAMESPACE, secondContent, DEFAULT_TYPE);
+        assertTrue(currentConfig.get("id").isTextual(), currentConfig.toString());
 
         JsonNode historyPage = getJsonOk(CONSOLE_HISTORY_LIST_PATH,
                 historyQuery(dataId, groupName, "", 1, 1000)).get("data");
@@ -62,6 +116,8 @@ public class ConfigHistoryConsoleApiOpenApiITCase extends ConfigConsoleApiBaseIT
         assertEquals(2, historyPage.get("pageItems").size(), historyPage.toString());
         JsonNode newestHistory = historyPage.get("pageItems").get(0);
         JsonNode oldestHistory = historyPage.get("pageItems").get(1);
+        assertTrue(newestHistory.get("id").isTextual(), newestHistory.toString());
+        assertTrue(oldestHistory.get("id").isTextual(), oldestHistory.toString());
         assertEquals(dataId, newestHistory.get("dataId").asText(), newestHistory.toString());
         assertEquals(groupName, newestHistory.get("groupName").asText(), newestHistory.toString());
         assertTrue(newestHistory.get("opType").asText().trim().startsWith("U"), newestHistory.toString());
@@ -82,6 +138,7 @@ public class ConfigHistoryConsoleApiOpenApiITCase extends ConfigConsoleApiBaseIT
         JsonNode namespaceConfigs = getJsonOk(CONSOLE_HISTORY_CONFIGS_PATH,
                 Query.newInstance().addParam("namespaceId", DEFAULT_NAMESPACE)).get("data");
         JsonNode namespaceConfig = assertArrayContainsConfig(namespaceConfigs, dataId, groupName);
+        assertTrue(namespaceConfig.get("id").isTextual(), namespaceConfig.toString());
         assertEquals(DEFAULT_TYPE, namespaceConfig.get("type").asText(), namespaceConfig.toString());
 
         assertError(getRaw(CONSOLE_HISTORY_PATH, configQuery("wrong-" + dataId, groupName, "")

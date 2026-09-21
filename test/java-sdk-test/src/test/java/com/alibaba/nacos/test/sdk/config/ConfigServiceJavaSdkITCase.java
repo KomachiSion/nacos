@@ -19,6 +19,11 @@ package com.alibaba.nacos.test.sdk.config;
 import com.alibaba.nacos.api.config.ConfigQueryResult;
 import com.alibaba.nacos.api.config.ConfigService;
 import com.alibaba.nacos.api.config.ConfigType;
+import com.alibaba.nacos.api.config.GetConfigRequest;
+import com.alibaba.nacos.api.config.PublishConfigRequest;
+import com.alibaba.nacos.api.config.PublishConfigResult;
+import com.alibaba.nacos.api.config.RemoveConfigRequest;
+import com.alibaba.nacos.api.config.RemoveConfigResult;
 import com.alibaba.nacos.api.config.filter.AbstractConfigFilter;
 import com.alibaba.nacos.api.config.filter.IConfigFilterChain;
 import com.alibaba.nacos.api.config.filter.IConfigRequest;
@@ -30,7 +35,13 @@ import com.alibaba.nacos.api.common.Constants;
 import com.alibaba.nacos.api.exception.NacosException;
 import com.alibaba.nacos.test.sdk.JavaSdkBaseITCase;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.EnabledIfSystemProperty;
 
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.Collections;
 import java.util.Properties;
 import java.util.Set;
 import java.util.concurrent.CountDownLatch;
@@ -74,11 +85,21 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  *     <li>Filter/type behavior: valid non-text config types are preserved in query result
  *     metadata, and a public SDK config filter can transform publish request content and query
  *     response content.</li>
+ *     <li>Directed recovery: two original clients and an original listener survive a real
+ *     standalone process replacement, resynchronize server state, and continue querying and
+ *     publishing with authentication enabled.</li>
  * </ul>
  *
  * @author xiweng.yy
  */
 public class ConfigServiceJavaSdkITCase extends JavaSdkBaseITCase {
+
+    private static final String RECONNECT_ENABLED_PROPERTY = "nacos.config.reconnect.enabled";
+
+    private static final String RECONNECT_CONTROL_DIR_PROPERTY =
+            "nacos.config.reconnect.control.dir";
+
+    private static final long RECONNECT_TIMEOUT_MILLIS = 120000L;
 
     @Test
     public void testPublishQueryCasAndRemoveConfig() throws Exception {
@@ -198,6 +219,52 @@ public class ConfigServiceJavaSdkITCase extends JavaSdkBaseITCase {
 
         assertTrue(latch.await(10, TimeUnit.SECONDS), "standalone listener should receive update");
         assertEquals(content, received.get());
+    }
+
+    @Test
+    @EnabledIfSystemProperty(named = RECONNECT_ENABLED_PROPERTY, matches = "true")
+    public void shouldRestoreListenerAndOriginalClientsAfterRealServerRestart()
+            throws Exception {
+        Path controlDirectory = reconnectControlDirectory();
+        Path ready = resetMarker(controlDirectory, "client-ready");
+        Path serverStopped = resetMarker(controlDirectory, "server-stopped");
+        Path downObserved = resetMarker(controlDirectory, "client-observed-down");
+        Path serverRestarted = resetMarker(controlDirectory, "server-restarted");
+
+        ConfigService listenerService = createConfigService();
+        ConfigService publisherService = createConfigService();
+        String dataId = randomDataId("restart-listener");
+        String group = randomGroup("restart-listener");
+        String beforeRestart = "sdk.config.before.restart=true";
+        String afterRestart = "sdk.config.after.restart=true";
+        AtomicReference<String> received = new AtomicReference<>();
+        Listener listener = listenerForContent(afterRestart, new CountDownLatch(1), received);
+        addCleanup(() -> listenerService.removeListener(dataId, group, listener));
+        addCleanup(() -> publisherService.removeConfig(dataId, group));
+
+        assertTrue(publisherService.publishConfig(dataId, group, beforeRestart));
+        waitUntilConfigEquals(listenerService, dataId, group, beforeRestart);
+        assertEquals(beforeRestart, listenerService.getConfigAndSignListener(dataId, group,
+                DEFAULT_TIMEOUT_MS, listener));
+        writeMarker(ready, dataId);
+
+        waitForMarker(serverStopped, "external harness should stop the standalone server");
+        waitUntil("the original Config clients should observe the stopped server",
+                RECONNECT_TIMEOUT_MILLIS,
+                () -> "DOWN".equals(listenerService.getServerStatus())
+                        && "DOWN".equals(publisherService.getServerStatus()));
+        writeMarker(downObserved, dataId);
+        waitForMarker(serverRestarted, "external harness should restart the standalone server");
+
+        waitUntil("the original Config clients should reconnect after restart",
+                RECONNECT_TIMEOUT_MILLIS,
+                () -> "UP".equals(listenerService.getServerStatus())
+                        && "UP".equals(publisherService.getServerStatus()));
+        assertTrue(publisherService.publishConfig(dataId, group, afterRestart));
+        waitUntil("the listener registered before restart should receive the new value",
+                RECONNECT_TIMEOUT_MILLIS, () -> afterRestart.equals(received.get()));
+        assertEquals(afterRestart,
+                listenerService.getConfig(dataId, group, DEFAULT_TIMEOUT_MS));
     }
 
     @Test
@@ -391,6 +458,101 @@ public class ConfigServiceJavaSdkITCase extends JavaSdkBaseITCase {
                 "canceled fuzzy watcher should not receive later events");
     }
 
+    @Test
+    public void testRequestObjectQueryPublishAndRemove() throws Exception {
+        ConfigService configService = createConfigService();
+        String group = randomGroup("request-object");
+        String dataId = randomDataId("request-object");
+        addCleanup(() -> configService.removeConfig(dataId, group));
+
+        // Publish with request object
+        PublishConfigRequest publishRequest = PublishConfigRequest.builder()
+                .dataId(dataId)
+                .group(group)
+                .content("request.object.content")
+                .type(ConfigType.TEXT.getType())
+                .build();
+        PublishConfigResult publishResult = configService.publishConfig(publishRequest);
+        assertTrue(publishResult.isSuccess());
+        assertNotNull(publishResult.getMd5());
+
+        // Query with request object
+        waitUntilConfigEquals(configService, dataId, group, "request.object.content");
+        GetConfigRequest getRequest = GetConfigRequest.builder()
+                .dataId(dataId)
+                .group(group)
+                .timeoutMs(DEFAULT_TIMEOUT_MS)
+                .build();
+        ConfigQueryResult queryResult = configService.getConfig(getRequest);
+        assertEquals("request.object.content", queryResult.getContent());
+        assertNotNull(queryResult.getMd5());
+        assertEquals(ConfigType.TEXT.getType(), queryResult.getConfigType());
+
+        // Remove with request object
+        RemoveConfigRequest removeRequest = RemoveConfigRequest.builder()
+                .dataId(dataId)
+                .group(group)
+                .build();
+        RemoveConfigResult removeResult = configService.removeConfig(removeRequest);
+        assertTrue(removeResult.isSuccess());
+
+        waitUntil("config should be removed",
+                () -> null == configService.getConfig(dataId, group, DEFAULT_TIMEOUT_MS));
+    }
+
+    @Test
+    public void testRequestObjectPublishCasFailureReturnsDetails() throws Exception {
+        ConfigService configService = createConfigService();
+        String group = randomGroup("cas-failure");
+        String dataId = randomDataId("cas-failure");
+        addCleanup(() -> configService.removeConfig(dataId, group));
+
+        // Publish initial config
+        assertTrue(configService.publishConfig(dataId, group, "initial.content"));
+        waitUntilConfigEquals(configService, dataId, group, "initial.content");
+
+        // CAS publish with wrong md5 should fail with details
+        PublishConfigRequest casRequest = PublishConfigRequest.builder()
+                .dataId(dataId)
+                .group(group)
+                .content("updated.content")
+                .type(ConfigType.TEXT.getType())
+                .casMd5("wrong-md5-that-does-not-match")
+                .build();
+        PublishConfigResult casResult = configService.publishConfig(casRequest);
+        assertFalse(casResult.isSuccess());
+        assertTrue(casResult.getErrorCode() != 0 || casResult.getErrorMessage() != null);
+
+        // Content should remain unchanged
+        assertEquals("initial.content", configService.getConfig(dataId, group, DEFAULT_TIMEOUT_MS));
+    }
+
+    @Test
+    public void testRequestObjectQueryResultContainsMetadata() throws Exception {
+        ConfigService configService = createConfigService();
+        String group = randomGroup("query-metadata");
+        String dataId = randomDataId("query-metadata");
+        addCleanup(() -> configService.removeConfig(dataId, group));
+
+        // Publish with yaml type
+        assertTrue(configService.publishConfig(dataId, group, "key: value", ConfigType.YAML.getType()));
+        waitUntilConfigEquals(configService, dataId, group, "key: value");
+
+        // Query with request object and verify all metadata fields
+        GetConfigRequest request = GetConfigRequest.builder()
+                .dataId(dataId)
+                .group(group)
+                .timeoutMs(DEFAULT_TIMEOUT_MS)
+                .build();
+        ConfigQueryResult result = configService.getConfig(request);
+
+        assertEquals("key: value", result.getContent());
+        assertNotNull(result.getMd5(), "md5 should be present in query result");
+        assertEquals(ConfigType.YAML.getType(), result.getConfigType(),
+                "configType should be preserved from publish");
+        assertNotNull(result.getEncryptedDataKey(), "encryptedDataKey should be present (may be empty)");
+    }
+
     private Listener listenerForContent(String expectedContent, CountDownLatch latch,
             AtomicReference<String> received) {
         return new Listener() {
@@ -407,6 +569,31 @@ public class ConfigServiceJavaSdkITCase extends JavaSdkBaseITCase {
                 }
             }
         };
+    }
+
+    private Path reconnectControlDirectory() throws Exception {
+        String value = System.getProperty(RECONNECT_CONTROL_DIR_PROPERTY, "");
+        if (value.isBlank()) {
+            throw new IllegalStateException("Missing required restart IT property: "
+                    + RECONNECT_CONTROL_DIR_PROPERTY);
+        }
+        Path result = Paths.get(value);
+        Files.createDirectories(result);
+        return result;
+    }
+
+    private Path resetMarker(Path controlDirectory, String name) throws Exception {
+        Path result = controlDirectory.resolve(name);
+        Files.deleteIfExists(result);
+        return result;
+    }
+
+    private void waitForMarker(Path marker, String reason) throws Exception {
+        waitUntil(reason, RECONNECT_TIMEOUT_MILLIS, () -> Files.isRegularFile(marker));
+    }
+
+    private void writeMarker(Path marker, String value) throws Exception {
+        Files.write(marker, Collections.singletonList(value), StandardCharsets.UTF_8);
     }
 
     private void waitUntilConfigEquals(ConfigService configService, String dataId, String group,

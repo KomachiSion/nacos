@@ -16,26 +16,47 @@
 
 package com.alibaba.nacos.ai.controller;
 
+import com.alibaba.nacos.ai.service.agent.AgentClientMigrationGuard;
+import com.alibaba.nacos.api.exception.NacosException;
+import com.alibaba.nacos.api.exception.api.NacosApiException;
+import com.alibaba.nacos.api.model.v2.ErrorCode;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.verifyNoInteractions;
 import com.alibaba.nacos.ai.form.agent.client.AgentDiscoveryForm;
 import com.alibaba.nacos.ai.form.agent.client.AgentEndpointDeregistrationForm;
 import com.alibaba.nacos.ai.form.agent.client.AgentEndpointRegistrationForm;
 import com.alibaba.nacos.ai.form.agent.client.AgentPublishForm;
 import com.alibaba.nacos.ai.form.agent.client.AgentSearchForm;
+import com.alibaba.nacos.ai.form.agent.client.AgentWatchBatchForm;
 import com.alibaba.nacos.ai.service.agent.AgentDiscoveryApplicationService;
 import com.alibaba.nacos.ai.service.agent.AgentPublishApplicationService;
 import com.alibaba.nacos.ai.service.agent.runtime.AgentHttpClientLifecycleService;
-import com.alibaba.nacos.api.ai.model.agent.ClientLivenessInfo;
-import com.alibaba.nacos.api.ai.model.agent.AgentPublishRequest;
+import com.alibaba.nacos.ai.service.agent.watch.AgentHttpWatchService;
+import com.alibaba.nacos.api.ai.model.ClientLivenessInfo;
+import com.alibaba.nacos.api.ai.model.agent.client.AgentPublishRequest;
 import com.alibaba.nacos.api.ai.model.agent.AgentVersionDetail;
-import com.alibaba.nacos.api.ai.model.rad.AgentCatalogEntry;
-import com.alibaba.nacos.api.ai.model.rad.AgentDiscoveryRequest;
-import com.alibaba.nacos.api.ai.model.rad.AgentDiscoveryResult;
-import com.alibaba.nacos.api.ai.model.rad.AgentEndpointRegistrationBatch;
-import com.alibaba.nacos.api.ai.model.rad.AgentSearchRequest;
+import com.alibaba.nacos.api.ai.model.agent.AgentSummary;
+import com.alibaba.nacos.api.ai.model.agent.AgentDiscoveryRequest;
+import com.alibaba.nacos.api.ai.model.agent.AgentDiscoveryResult;
+import com.alibaba.nacos.api.ai.model.agent.AgentEndpointRegistrationBatch;
+import com.alibaba.nacos.api.ai.model.agent.AgentSearchRequest;
+import com.alibaba.nacos.api.ai.model.agent.AgentWatchBatchRequest;
+import com.alibaba.nacos.api.ai.model.agent.AgentWatchBatchResponse;
+import com.alibaba.nacos.api.common.ApiType;
 import com.alibaba.nacos.api.model.Page;
+import com.alibaba.nacos.api.model.v2.Result;
+import com.alibaba.nacos.auth.annotation.Secured;
+import com.alibaba.nacos.plugin.auth.constant.ActionTypes;
+import com.alibaba.nacos.plugin.auth.constant.SignType;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.context.request.async.DeferredResult;
 
+import java.lang.reflect.Method;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.mockito.Mockito.mock;
@@ -44,11 +65,15 @@ import static org.mockito.Mockito.when;
 
 class AgentClientControllerTest {
     
+    private final AgentClientMigrationGuard migrationGuard = mock(AgentClientMigrationGuard.class);
+    
     private AgentDiscoveryApplicationService discoveryService;
     
     private AgentHttpClientLifecycleService lifecycleService;
     
     private AgentPublishApplicationService publishService;
+    
+    private AgentHttpWatchService watchService;
     
     private AgentClientController controller;
     
@@ -57,8 +82,33 @@ class AgentClientControllerTest {
         discoveryService = mock(AgentDiscoveryApplicationService.class);
         lifecycleService = mock(AgentHttpClientLifecycleService.class);
         publishService = mock(AgentPublishApplicationService.class);
+        watchService = mock(AgentHttpWatchService.class);
         controller = new AgentClientController(discoveryService, lifecycleService,
-            publishService);
+            publishService, watchService, migrationGuard);
+    }
+    
+    @Test
+    void testMigrationRejectsBusinessBeforeSideEffectsAndAllowsCleanup() throws Exception {
+        NacosApiException migrating = new NacosApiException(NacosException.CONFLICT,
+            ErrorCode.AGENT_MIGRATION_IN_PROGRESS, "migration");
+        doThrow(migrating).when(migrationGuard).checkReady();
+        AgentDiscoveryForm discovery = mock(AgentDiscoveryForm.class);
+        when(discovery.toRequest()).thenReturn(new AgentDiscoveryRequest());
+        assertSame(migrating, assertThrows(NacosApiException.class,
+            () -> controller.discover(discovery, "client")));
+        assertSame(migrating, assertThrows(NacosApiException.class,
+            () -> controller.search(mock(AgentSearchForm.class), "client")));
+        assertSame(migrating, assertThrows(NacosApiException.class,
+            () -> controller.publish(mock(AgentPublishForm.class))));
+        assertSame(migrating, assertThrows(NacosApiException.class,
+            () -> controller.registerEndpoints(mock(AgentEndpointRegistrationForm.class),
+                "client", "AI")));
+        assertSame(migrating, assertThrows(NacosApiException.class,
+            () -> controller.watch(mock(AgentWatchBatchForm.class), "client", "AI")));
+        verifyNoInteractions(discoveryService, publishService, lifecycleService, watchService);
+        controller.deregisterEndpoints(mock(AgentEndpointDeregistrationForm.class), "client", "AI");
+        controller.heartbeat("client", "AI");
+        verify(lifecycleService).heartbeat("client", "AI");
     }
     
     @Test
@@ -76,10 +126,10 @@ class AgentClientControllerTest {
     void testSearch() throws Exception {
         AgentSearchForm form = mock(AgentSearchForm.class);
         AgentSearchRequest request = new AgentSearchRequest();
-        request.setNamespaceId("team");
-        Page<AgentCatalogEntry> page = new Page<AgentCatalogEntry>();
+        Page<AgentSummary> page = new Page<AgentSummary>();
+        when(form.getNamespaceId()).thenReturn("team");
         when(form.toRequest()).thenReturn(request);
-        when(discoveryService.search(request)).thenReturn(page);
+        when(discoveryService.search("team", request)).thenReturn(page);
         
         assertSame(page, controller.search(form, "client").getData());
         verify(lifecycleService).renewForQuery("client", "team");
@@ -103,8 +153,9 @@ class AgentClientControllerTest {
         AgentEndpointRegistrationForm form = mock(AgentEndpointRegistrationForm.class);
         AgentEndpointRegistrationBatch batch = new AgentEndpointRegistrationBatch();
         ClientLivenessInfo liveness = new ClientLivenessInfo();
+        when(form.getNamespaceId()).thenReturn("team");
         when(form.toRequest()).thenReturn(batch);
-        when(lifecycleService.register("client", "AI", batch)).thenReturn(liveness);
+        when(lifecycleService.register("client", "AI", "team", batch)).thenReturn(liveness);
         
         assertSame(liveness, controller.registerEndpoints(form, "client", "AI").getData());
     }
@@ -127,5 +178,30 @@ class AgentClientControllerTest {
         when(lifecycleService.heartbeat("client", "AI")).thenReturn(liveness);
         
         assertSame(liveness, controller.heartbeat("client", "AI").getData());
+    }
+    
+    @Test
+    void testWatch() throws Exception {
+        AgentWatchBatchForm form = mock(AgentWatchBatchForm.class);
+        AgentWatchBatchRequest request = new AgentWatchBatchRequest();
+        DeferredResult<Result<AgentWatchBatchResponse>> deferred = new DeferredResult<>();
+        when(form.toRequest()).thenReturn(request);
+        when(form.getWatchPayloadBytes()).thenReturn(17);
+        when(watchService.watch("client", "AI", request, 17)).thenReturn(deferred);
+        
+        assertSame(deferred, controller.watch(form, "client", "AI"));
+    }
+    
+    @Test
+    void testWatchSecurityMetadata() throws Exception {
+        Method method = AgentClientController.class.getMethod("watch", AgentWatchBatchForm.class,
+            String.class, String.class);
+        PostMapping mapping = method.getAnnotation(PostMapping.class);
+        Secured secured = method.getAnnotation(Secured.class);
+        assertEquals(ActionTypes.READ, secured.action());
+        assertEquals(SignType.AI, secured.signType());
+        assertEquals(ApiType.OPEN_API, secured.apiType());
+        org.junit.jupiter.api.Assertions.assertArrayEquals(new String[] {"/watch"},
+            mapping.value());
     }
 }

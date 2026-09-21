@@ -18,6 +18,12 @@ package com.alibaba.nacos.console.handler.impl.remote.ai;
 
 import com.alibaba.nacos.ai.constant.Constants;
 import com.alibaba.nacos.api.ai.model.mcp.McpEndpointSpec;
+import com.alibaba.nacos.api.ai.model.mcp.McpServerDraftRequest;
+import com.alibaba.nacos.api.ai.model.mcp.McpServerLabelsUpdateRequest;
+import com.alibaba.nacos.api.ai.model.mcp.McpServerVersionCommand;
+import com.alibaba.nacos.api.ai.model.mcp.McpServerVersionDetail;
+import com.alibaba.nacos.api.ai.model.mcp.McpServerVersionSummary;
+import com.alibaba.nacos.api.ai.model.mcp.McpResourceSpecification;
 import com.alibaba.nacos.api.ai.model.mcp.McpServerBasicInfo;
 import com.alibaba.nacos.api.ai.model.mcp.McpServerDetailInfo;
 import com.alibaba.nacos.api.ai.model.mcp.McpServerImportRequest;
@@ -33,6 +39,8 @@ import com.alibaba.nacos.console.handler.ai.McpHandler;
 import com.alibaba.nacos.console.handler.impl.remote.EnabledRemoteHandler;
 import com.alibaba.nacos.console.handler.impl.remote.NacosMaintainerClientHolder;
 import org.springframework.stereotype.Service;
+
+import java.util.Map;
 
 /**
  * Remote implementation of Mcp handler.
@@ -99,6 +107,113 @@ public class McpRemoteHandler implements McpHandler {
             version);
     }
     
+    @Override
+    public Page<McpServerVersionSummary> listMcpServerVersions(String namespaceId,
+        String mcpName, String status, int pageNo, int pageSize) throws NacosException {
+        return clientHolder.getAiMaintainerService().mcp().listMcpServerVersions(namespaceId,
+            mcpName, status, pageNo, pageSize);
+    }
+    
+    @Override
+    public McpServerVersionDetail getMcpServerVersion(String namespaceId, String mcpName,
+        String version) throws NacosException {
+        return clientHolder.getAiMaintainerService().mcp().getMcpServerVersion(namespaceId,
+            mcpName, version);
+    }
+    
+    @Override
+    public McpServerVersionDetail createMcpServerDraft(String namespaceId,
+        McpServerBasicInfo serverSpecification, McpToolSpecification toolSpecification,
+        McpResourceSpecification resourceSpecification,
+        McpEndpointSpec endpointSpecification) throws NacosException {
+        return clientHolder.getAiMaintainerService().mcp().createMcpServer(namespaceId,
+            draftRequest(serverSpecification, toolSpecification, resourceSpecification,
+                endpointSpecification));
+    }
+    
+    @Override
+    public McpServerVersionDetail updateMcpServerDraft(String namespaceId,
+        McpServerBasicInfo serverSpecification, McpToolSpecification toolSpecification,
+        McpResourceSpecification resourceSpecification,
+        McpEndpointSpec endpointSpecification) throws NacosException {
+        return clientHolder.getAiMaintainerService().mcp().updateMcpServer(namespaceId,
+            draftRequest(serverSpecification, toolSpecification, resourceSpecification,
+                endpointSpecification));
+    }
+    
+    @Override
+    public void deleteMcpServerDraft(String namespaceId, String mcpName, String version)
+        throws NacosException {
+        clientHolder.getAiMaintainerService().mcp().deleteMcpServerDraft(namespaceId,
+            versionCommand(mcpName, version));
+    }
+    
+    @Override
+    public McpServerVersionSummary submitMcpServerVersion(String namespaceId, String mcpName,
+        String version) throws NacosException {
+        return clientHolder.getAiMaintainerService().mcp().submitMcpServerVersion(namespaceId,
+            versionCommand(mcpName, version));
+    }
+    
+    @Override
+    public McpServerVersionSummary publishMcpServerVersion(String namespaceId, String mcpName,
+        String version) throws NacosException {
+        return clientHolder.getAiMaintainerService().mcp().publishMcpServerVersion(namespaceId,
+            versionCommand(mcpName, version));
+    }
+    
+    @Override
+    public McpServerVersionSummary forcePublishMcpServerVersion(String namespaceId,
+        String mcpName, String version) throws NacosException {
+        return clientHolder.getAiMaintainerService().mcp()
+            .forcePublishMcpServerVersion(namespaceId, versionCommand(mcpName, version));
+    }
+    
+    @Override
+    public McpServerVersionSummary redraftMcpServerVersion(String namespaceId, String mcpName,
+        String version) throws NacosException {
+        return clientHolder.getAiMaintainerService().mcp().redraftMcpServerVersion(namespaceId,
+            versionCommand(mcpName, version));
+    }
+    
+    @Override
+    public McpServerVersionSummary onlineMcpServerVersion(String namespaceId, String mcpName,
+        String version) throws NacosException {
+        return clientHolder.getAiMaintainerService().mcp().onlineMcpServerVersion(namespaceId,
+            versionCommand(mcpName, version));
+    }
+    
+    @Override
+    public McpServerVersionSummary offlineMcpServerVersion(String namespaceId, String mcpName,
+        String version) throws NacosException {
+        return clientHolder.getAiMaintainerService().mcp().offlineMcpServerVersion(namespaceId,
+            versionCommand(mcpName, version));
+    }
+    
+    @Override
+    public Map<String, String> updateMcpServerLabels(String namespaceId, String mcpName,
+        Map<String, String> labels) throws NacosException {
+        McpServerLabelsUpdateRequest request = new McpServerLabelsUpdateRequest();
+        request.setMcpName(mcpName);
+        request.setLabels(labels);
+        return clientHolder.getAiMaintainerService().mcp().updateMcpServerLabels(namespaceId,
+            request);
+    }
+    
+    @Override
+    public void updateMcpServerStatus(String namespaceId, String mcpName, boolean enabled)
+        throws NacosException {
+        clientHolder.getAiMaintainerService().mcp().updateMcpServerStatus(namespaceId, mcpName,
+            enabled);
+    }
+    
+    @Override
+    public void updateMcpServerScope(String namespaceId, String mcpName, String scope)
+        throws NacosException {
+        clientHolder.getAiMaintainerService().mcp().updateMcpServerScope(namespaceId, mcpName,
+            scope);
+    }
+    
     @Deprecated
     @Override
     public McpServerImportValidationResult validateImport(String namespaceId,
@@ -116,5 +231,23 @@ public class McpRemoteHandler implements McpHandler {
         throw new NacosApiException(NacosException.SERVER_NOT_IMPLEMENTED,
             ErrorCode.API_FUNCTION_DISABLED,
             "MCP import functionality is not supported in remote mode");
+    }
+    
+    private McpServerDraftRequest draftRequest(McpServerBasicInfo serverSpecification,
+        McpToolSpecification toolSpecification, McpResourceSpecification resourceSpecification,
+        McpEndpointSpec endpointSpecification) {
+        McpServerDraftRequest request = new McpServerDraftRequest();
+        request.setServerSpecification(serverSpecification);
+        request.setToolSpecification(toolSpecification);
+        request.setResourceSpecification(resourceSpecification);
+        request.setEndpointSpecification(endpointSpecification);
+        return request;
+    }
+    
+    private McpServerVersionCommand versionCommand(String mcpName, String version) {
+        McpServerVersionCommand command = new McpServerVersionCommand();
+        command.setMcpName(mcpName);
+        command.setVersion(version);
+        return command;
     }
 }

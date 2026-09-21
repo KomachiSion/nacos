@@ -18,14 +18,17 @@ package com.alibaba.nacos.ai.config;
 
 import com.alibaba.nacos.ai.constant.Constants;
 import com.alibaba.nacos.ai.service.search.AiResourceIndexContentLoaderImpl;
-import com.alibaba.nacos.ai.service.search.AiResourceIndexServiceImpl;
 import com.alibaba.nacos.ai.service.search.AiResourceIndexMaintenanceServiceImpl;
+import com.alibaba.nacos.ai.service.search.AiResourceIndexService;
+import com.alibaba.nacos.ai.service.search.AiResourceIndexServiceImpl;
+import com.alibaba.nacos.ai.service.search.AiResourceIndexTaskRepository;
 import com.alibaba.nacos.ai.service.search.HashingAiResourceEmbeddingService;
-import com.alibaba.nacos.ai.service.search.JdbcAiResourceSearchRepository;
 import com.alibaba.nacos.ai.service.search.JdbcAiResourceIndexTaskRepository;
+import com.alibaba.nacos.ai.service.search.JdbcAiResourceSearchRepository;
 import com.alibaba.nacos.ai.service.search.OpenAiCompatibleResourceIndexEnhancementService;
-import com.alibaba.nacos.ai.service.search.vector.AiResourceVectorIndexRouter;
 import com.alibaba.nacos.ai.service.search.AiResourceSearchService;
+import com.alibaba.nacos.ai.service.search.vector.AiResourceVectorIndexRouter;
+import com.alibaba.nacos.sys.env.EnvUtil;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.AnnotationConfigApplicationContext;
@@ -35,9 +38,9 @@ import java.util.Collections;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.Mockito.mock;
 
 /**
  * Tests for {@link ConditionalOnAiResourceSearchEnabled}.
@@ -54,30 +57,52 @@ class ConditionalOnAiResourceSearchEnabledTest {
         OpenAiCompatibleResourceIndexEnhancementService.class, AiResourceVectorIndexRouter.class};
     
     @Test
-    void shouldBeDisabledByDefault() {
+    void shouldBeEnabledByDefaultIndependentlyFromArd() {
         ConditionalOnProperty condition =
             ConditionalOnAiResourceSearchEnabled.class.getAnnotation(ConditionalOnProperty.class);
         
-        assertEquals(Constants.ARD_ENABLED_KEY, condition.value()[0]);
+        assertEquals(Constants.AI_RESOURCE_SEARCH_ENABLED_KEY, condition.value()[0]);
         assertEquals("true", condition.havingValue());
-        assertFalse(condition.matchIfMissing());
-        assertSearchComponentsDisabled(Collections.emptyMap());
+        assertTrue(condition.matchIfMissing());
+        try (AnnotationConfigApplicationContext context = newContext(
+            Collections.singletonMap(Constants.ARD_ENABLED_KEY, "false"))) {
+            context.register(HashingAiResourceEmbeddingService.class);
+            context.refresh();
+            
+            assertNotNull(context.getBean(HashingAiResourceEmbeddingService.class));
+        }
     }
     
     @Test
     void shouldBeDisabledWhenExplicitlyConfiguredFalse() {
         assertSearchComponentsDisabled(
-            Collections.singletonMap(Constants.ARD_ENABLED_KEY, "false"));
+            Collections.singletonMap(Constants.AI_RESOURCE_SEARCH_ENABLED_KEY, "false"));
     }
     
     @Test
     void shouldRegisterSearchComponentWhenExplicitlyEnabled() {
         try (AnnotationConfigApplicationContext context = newContext(
-            Collections.singletonMap(Constants.ARD_ENABLED_KEY, "true"))) {
+            Collections.singletonMap(Constants.AI_RESOURCE_SEARCH_ENABLED_KEY, "true"))) {
             context.register(HashingAiResourceEmbeddingService.class);
             context.refresh();
             
             assertNotNull(context.getBean(HashingAiResourceEmbeddingService.class));
+        }
+    }
+    
+    @Test
+    void shouldConstructTaskConsumerWhenExplicitlyEnabled() {
+        try (AnnotationConfigApplicationContext context = newContext(
+            Collections.singletonMap(Constants.AI_RESOURCE_SEARCH_ENABLED_KEY, "true"))) {
+            context.registerBean(AiResourceIndexTaskRepository.class,
+                () -> mock(AiResourceIndexTaskRepository.class));
+            context.registerBean(AiResourceIndexService.class,
+                () -> mock(AiResourceIndexService.class));
+            context.register(AiResourceIndexTaskConsumer.class);
+            EnvUtil.setEnvironment(context.getEnvironment());
+            context.refresh();
+            
+            assertNotNull(context.getBean(AiResourceIndexTaskConsumer.class));
         }
     }
     

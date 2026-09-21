@@ -51,6 +51,17 @@ public interface AiResourceSearchRepository {
         List<AiResourceSearchChunk> chunks);
     
     /**
+     * Replace AI-generated chunks and return the complete current chunk set.
+     */
+    List<AiResourceSearchChunk> replaceEnhancementChunks(AiResourceSearchDocument entry,
+        List<AiResourceSearchChunk> chunks);
+    
+    /**
+     * List all chunks for one persisted document.
+     */
+    List<AiResourceSearchChunk> listChunks(long documentId);
+    
+    /**
      * Update one persisted entry status.
      */
     void updateEntryStatus(long documentId, String status);
@@ -107,6 +118,21 @@ public interface AiResourceSearchRepository {
      */
     List<AiResourceSearchDocument> scanEnabledEntries(String namespaceId,
         List<String> resourceTypes, long afterId, int limit);
+    
+    /**
+     * Scan enabled entries by the stable resource key and immutable row id.
+     *
+     * @param namespaceId namespace id
+     * @param resourceTypes resource types
+     * @param afterResourceType exclusive anchor resource type, or {@code null} to start
+     * @param afterResourceName anchor resource name, or {@code null} to start
+     * @param afterId anchor document id
+     * @param limit maximum rows returned
+     * @return the next resource-key-ordered batch
+     */
+    List<AiResourceSearchDocument> scanEnabledEntriesByResourceKey(String namespaceId,
+        List<String> resourceTypes, String afterResourceType, String afterResourceName,
+        long afterId, int limit);
     
     /**
      * Scan entries of any status by generated id.

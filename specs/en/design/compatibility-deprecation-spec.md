@@ -132,6 +132,8 @@ The following items are current compatibility or deprecation examples:
 - legacy MCP Console import endpoints, which are disabled by default and
   scheduled for removal in Nacos 3.4.0 after migration to the unified AI
   resource import endpoints;
+- historical MCP `mcpId` inputs and outputs, which remain compatibility
+  aliases while canonical management uses the Namespace-scoped `mcpName`;
 - legacy A2A AgentCard Java, gRPC, Admin, Maintainer, and Console facades;
 - Naming API-defined service selector fields and request parameters;
 - Config aggregation fields and related database columns;
@@ -148,7 +150,65 @@ to `config_info_gray`, are treated as removed compatibility behavior. Operators
 that upgrade from versions before 3.0 must complete the affected data migration
 before upgrading when they used the default namespace or beta gray release.
 
-## 9. Legacy HTTP API Adapter
+### 8.1 Client API Authentication Default In Nacos 3.3
+
+Nacos 3.3 changes Client API authentication from disabled by default to enabled
+by default. This is a default-value change, not an API deprecation or removal.
+The compatibility rules are:
+
+| Deployment state | Effective Client auth behavior |
+| --- | --- |
+| `nacos.core.auth.enabled=false` is explicitly present | Remains disabled. |
+| `nacos.core.auth.enabled=true` is explicitly present | Remains enabled. |
+| The property is absent | Uses the Nacos 3.3 default and is enabled. |
+| A new distribution configuration template is used | Enabled by the template. |
+| An older manually maintained file containing `false` is reused | Remains disabled. |
+| A Docker or Kubernetes auth environment value is absent | Uses the image/template default and is enabled. |
+| A Docker or Kubernetes auth environment value is explicit | The explicit `true` or `false` wins. |
+
+Operators upgrading applications that do not yet carry credentials should keep
+the Client switch explicitly disabled, distribute credentials, verify client
+login, and then enable the runtime-refreshable switch on every server member.
+Mixed effective values within one cluster are not a supported final rollout
+state. Release notes and upgrade documentation must call out the new default,
+the credential prerequisites, and the explicit-disable migration path.
+
+The existing switch is the compatibility mechanism. This change does not add a
+second legacy-auth switch, does not force-rewrite an existing configuration
+file, and does not change the independent Admin or Console auth defaults.
+
+## 9. Deprecated V3 API Gate
+
+A small set of deprecated v3 APIs pending removal is disabled by default:
+
+| Deprecated API | Canonical replacement |
+| --- | --- |
+| `GET /v3/admin/ai/pipelines` | `GET /v3/admin/ai/pipelines/list` |
+| `GET /v3/admin/ai/pipelines/{pipelineId}` | `GET /v3/admin/ai/pipelines/detail?pipelineId={pipelineId}` |
+| `GET /v3/console/ai/pipelines` | `GET /v3/console/ai/pipelines/list` |
+| `GET /v3/console/ai/pipelines/{pipelineId}` | `GET /v3/console/ai/pipelines/detail?pipelineId={pipelineId}` |
+| `POST /v3/console/ai/mcp/import/validate` | `POST /v3/console/ai/import/validate` |
+| `POST /v3/console/ai/mcp/import/execute` | `POST /v3/console/ai/import/execute` |
+
+Disabled endpoints return HTTP `410 Gone` with the `API_DEPRECATED` result code
+and identify their canonical replacement. Operators may temporarily reopen all
+of these endpoints during migration with:
+
+```properties
+nacos.core.api.compatibility.enabled=true
+```
+
+The switch is intentionally shared and applies only to APIs that explicitly use
+the v3 compatibility gate. It does not replace the audience-specific switches
+owned by `nacos-api-legacy-adapter`. Authentication and authorization still
+apply to reopened endpoints.
+
+The former `nacos.ai.resource.import.legacy-mcp-api-enabled` property is no
+longer recognized. Legacy MCP direct URL import additionally requires
+`nacos.ai.resource.import.allow-user-url=true`; operators should prefer managed
+source configuration instead.
+
+## 10. Legacy HTTP API Adapter
 
 Starting with the Nacos 3.2.0 line, legacy v1 and v2 HTTP APIs are no longer
 part of the default Nacos server distribution. They are a separate compatibility
@@ -169,7 +229,7 @@ Rules:
 Domain specs should mention legacy v1/v2 behavior only as migration context or
 when a current compatibility path depends on it.
 
-## 10. Legacy A2A Agent Facades
+## 11. Legacy A2A Agent Facades
 
 The canonical Agent model uses `type=agent`, protocol-neutral versions, and RAD
 discovery. Historical A2A AgentCard surfaces are compatibility-only and are
@@ -186,10 +246,58 @@ Compatibility windows are intentionally different by audience:
 
 No new capability may be added only to these facades. New development targets
 the Agent Management and RAD contracts. Historical data and mixed-server
-rolling upgrade are a separate migration plan and do not extend the API window
-by themselves.
+rolling upgrade follow the
+[Historical A2A Upgrade Migration Spec](../ai/a2a-upgrade-migration-spec.md)
+and do not extend the API window by themselves. Its reconciliation state,
+control objects, migration source guards, transition Runtime dual
+materialization, optional historical Naming shadow, and migration-only
+configuration support Nacos 3.0-3.2 upgrades and are pending removal in Nacos
+4.0. Canonical Agent/RAD facts and any public A2A facade still inside its own
+compatibility window remain after that temporary implementation is removed.
 
-## 11. Related Specs
+## 12. Legacy MCP Identifiers
+
+Canonical MCP management identifies a Resource by
+`namespaceId + type=mcp + mcpName`. The UUID-shaped `mcpId` is deprecated as
+a public resource identifier but remains an internal physical-storage alias and
+a legacy wire field.
+
+Compatibility differs by field:
+
+| Surface | Status | Rule |
+| --- | --- | --- |
+| New Admin, Console, and Maintainer lifecycle APIs | Canonical | Accept `mcpName` and optional Version; do not add `mcpId`. |
+| Existing Admin, Console, and Maintainer ID-only inputs | Deprecated compatibility | Resolve exactly one `AiResource.ext.mcpId` in the requested Namespace, then authorize and operate by canonical name. |
+| Existing model, event, create/release response, and nested `McpServerBasicInfo.id` fields | Active compatibility | Preserve wire shape and value while physical Config coordinates and current consumers require them. |
+| Top-level `AbstractMcpRequest.mcpId` in MCP gRPC requests | Ignored and deprecated | Preserve its field number, do not implement ID lookup, and retain each handler's current name requirements. |
+
+Legacy ID lookup must not use eventually consistent Search, historical
+Manifest/Config identity lookup, or an MCP-specific in-memory index. No new
+table or column is introduced for this deprecated path. Removal requires a
+separate migration for Config coordinates, direct consumers, SDK models, and
+wire responses; no removal version is defined by the first lifecycle-hosting
+migration. Exact behavior belongs to the
+[MCP Server Spec](../ai/mcp-server-spec.md).
+
+### 12.1 Legacy MCP Maintainer Methods
+
+The legacy `McpMaintainerService` detail and direct-online create/update
+methods are deprecated since Nacos 3.3.0 and planned for removal in Nacos
+4.0.0. Their runtime behavior remains compatible during this window. Callers
+should migrate as follows:
+
+| Deprecated operation | Canonical replacement |
+| --- | --- |
+| Serving-projection detail | Select an exact Version with `listMcpServerVersions`, then use `getMcpServerVersion`. |
+| Local, remote, or generic direct-online create | Use `createMcpServer(McpServerDraftRequest)`, then `submitMcpServerVersion`; when review applies, explicitly use `publishMcpServerVersion` after approval. |
+| Direct-online update | Use `createMcpServer(McpServerDraftRequest)` for a new Version or `updateMcpServer(McpServerDraftRequest)` for an existing draft, then submit and, when required, publish it. |
+
+Legacy cross-resource list/search and published-Version or full-Resource
+delete methods are not deprecated by this decision because the typed lifecycle
+surface does not yet provide semantics-equivalent replacements. They require a
+separate API design and deprecation review before any removal version is set.
+
+## 13. Related Specs
 
 - [HTTP API Spec](../http-api/api-spec.md)
 - [V3 API Surface](../http-api/v3-api-surface.md)
@@ -201,3 +309,4 @@ by themselves.
 - [Plugin Specs](../plugin/README.md)
 - [Agent Management Spec](../ai/agent-management-spec.md)
 - [RAD Protocol Spec](../ai/rad-protocol-spec.md)
+- [MCP Server Spec](../ai/mcp-server-spec.md)

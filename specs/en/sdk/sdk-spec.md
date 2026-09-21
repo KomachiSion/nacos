@@ -102,7 +102,7 @@ The target Client SDK must:
 - expose Agent Search, Discover with and without a Filter, Watch and cancel,
   and runtime Endpoint Register and Deregister;
 - expose optional code-first Agent definition publication through
-  `AiService.publishAgent`, creating only a draft by default and optionally
+  `AiService.agent().publishAgent`, creating only a draft by default and optionally
   running the ordinary submit Pipeline through `autoSubmit`;
 - inject the bound namespace into a transport request without mutating a
   caller-owned object; and
@@ -119,7 +119,78 @@ The target Maintainer SDK is not namespace-bound. Every Agent management call
 must explicitly identify its namespace. It exposes the new Agent management
 facade while retaining the A2A management facade for its compatibility window.
 
-## 5. Security Rules
+## 5. MCP Lifecycle-Hosting Contract
+
+The existing Java Client MCP interfaces remain compatibility surfaces while
+MCP metadata and Versions move to the common AI Resource lifecycle. Public
+method signatures remain unchanged wherever the existing operation can be
+adapted internally:
+
+- release remains a direct-online compatibility write with the same return
+  value;
+- query retains its current serving projection and uses `latest` when Version
+  is omitted;
+- subscription continues polling the complete MCP query projection and does
+  not subscribe to the underlying Naming Service; and
+- endpoint deregistration, reconnect, and redo preserve client-owned Runtime
+  publication intent without creating or deleting an MCP definition.
+
+Lifecycle hosting does not change the current Runtime Service name, cluster,
+metadata, endpoint request, reconnect snapshot, or ability negotiation. It does
+not add Runtime Version ranges or multiple-transport fields. Such endpoint
+model changes require a later compatibility design.
+
+The Maintainer SDK retains its current MCP methods as compatibility facades and
+adds typed Version-management methods matching the Admin MCP Version, draft,
+submit, publish, force-publish, redraft, online, offline, and label operations. Legacy detail
+and direct-online create/update methods are deprecated since 3.3.0 and planned
+for removal in 4.0.0. Callers should use exact Version reads and the
+draft-submit-publish flow. Cross-resource list/search and published-Version or
+full-Resource delete remain available until semantics-equivalent typed methods
+are designed. Every new management call identifies its namespace and uses
+`mcpName + version` with the same lifecycle application service as Admin and
+Console APIs.
+
+Draft create/update methods reuse the established `createMcpServer` and
+`updateMcpServer` names through request-object overloads. Other method and model
+names describe Versions and user operations and do not expose the internal
+Lifecycle hosting mechanism.
+
+The typed request objects are `McpServerDraftRequest`,
+`McpServerVersionCommand`, and `McpServerLabelsUpdateRequest`. They do
+not add top-level namespace or `mcpId` selectors; explicit overloads accept
+namespace separately and convenience overloads use the default namespace.
+Historical identity fields inside the reused `McpServerBasicInfo` content are
+ignored for lifecycle target resolution. The implementation maps these models
+to the existing Admin form/query contract rather than adding JSON-body HTTP
+routes.
+
+Existing Maintainer overloads that accept only `mcpId` remain deprecated
+compatibility inputs. The server resolves the alias from MCP AI Resource rows
+and then applies the same name-based authorization and operation. The Java
+Client does not start populating the dormant top-level gRPC `mcpId`; current
+model, event, and release-response ID fields remain wire-compatible.
+
+The Java Client exposes MCP query, release, Runtime Endpoint publication, and
+polling subscription through `grpc`, `http`, and `auto` using the existing
+`nacosAiTransportMode` property. Existing overloads remain direct-online and
+are equivalent to `createDraft=false`. Two source- and binary-compatible
+default overloads add `createDraft`; `true` creates only a lifecycle draft.
+Third-party `AiService` implementations that have not implemented the new
+operation must reject `true` with `SERVER_NOT_IMPLEMENTED` rather than silently
+delegate to direct-online release.
+
+One `AiService` instance shares one stable HTTP client id and one heartbeat
+coordinator across Agent and MCP Runtime publications. Each domain retains its
+own complete desired payload, while `HTTP_CLIENT_NOT_FOUND` marks and replays
+all HTTP-owned Agent and MCP publication intent. MCP subscription remains local
+polling but executes each query through the selected transport router.
+
+MCP Client HTTP inputs use canonical `mcpName`; no new top-level `mcpId` input
+is added. Query and release return the existing `McpServerDetailInfo` and String
+ID shapes, and Endpoint liveness reuses `ClientLivenessInfo`.
+
+## 6. Security Rules
 
 SDK capability design must follow least privilege:
 
@@ -134,7 +205,7 @@ SDK capability design must follow least privilege:
 - SDK documentation should make data-leakage risks visible when an API can list
   or export a large amount of configuration, service, client, or metadata.
 
-## 6. Transport and API Alignment
+## 7. Transport and API Alignment
 
 The SDK contract is a semantic contract, not a transport contract:
 
@@ -151,7 +222,7 @@ The SDK contract is a semantic contract, not a transport contract:
   language-idiomatic exceptions or result types without hiding server-side
   semantics.
 
-## 7. Multi-language Alignment
+## 8. Multi-language Alignment
 
 Java is currently the baseline implementation for defining shared SDK
 semantics. Other language SDKs should align with the same capability families:

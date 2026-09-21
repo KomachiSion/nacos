@@ -70,6 +70,38 @@ class McpNoopHandlerTest {
     }
     
     @Test
+    void standardLifecycleMethodsThrowDisabled() {
+        assertThrows(NacosApiException.class,
+            () -> mcpNoopHandler.listMcpServerVersions("ns", "name", null, 1, 10));
+        assertThrows(NacosApiException.class,
+            () -> mcpNoopHandler.getMcpServerVersion("ns", "name", "1.0.0"));
+        assertThrows(NacosApiException.class,
+            () -> mcpNoopHandler.createMcpServerDraft("ns", null, null, null, null));
+        assertThrows(NacosApiException.class,
+            () -> mcpNoopHandler.updateMcpServerDraft("ns", null, null, null, null));
+        assertThrows(NacosApiException.class,
+            () -> mcpNoopHandler.deleteMcpServerDraft("ns", "name", "1.0.0"));
+        assertThrows(NacosApiException.class,
+            () -> mcpNoopHandler.submitMcpServerVersion("ns", "name", "1.0.0"));
+        assertThrows(NacosApiException.class,
+            () -> mcpNoopHandler.publishMcpServerVersion("ns", "name", "1.0.0"));
+        assertThrows(NacosApiException.class,
+            () -> mcpNoopHandler.forcePublishMcpServerVersion("ns", "name", "1.0.0"));
+        assertThrows(NacosApiException.class,
+            () -> mcpNoopHandler.redraftMcpServerVersion("ns", "name", "1.0.0"));
+        assertThrows(NacosApiException.class,
+            () -> mcpNoopHandler.onlineMcpServerVersion("ns", "name", "1.0.0"));
+        assertThrows(NacosApiException.class,
+            () -> mcpNoopHandler.offlineMcpServerVersion("ns", "name", "1.0.0"));
+        assertThrows(NacosApiException.class,
+            () -> mcpNoopHandler.updateMcpServerLabels("ns", "name", null));
+        assertThrows(NacosApiException.class,
+            () -> mcpNoopHandler.updateMcpServerStatus("ns", "name", false));
+        assertThrows(NacosApiException.class,
+            () -> mcpNoopHandler.updateMcpServerScope("ns", "name", "PRIVATE"));
+    }
+    
+    @Test
     void validateImport() {
         assertThrows(NacosApiException.class,
             () -> mcpNoopHandler.validateImport("ns", new McpServerImportRequest()));

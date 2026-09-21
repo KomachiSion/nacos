@@ -22,12 +22,12 @@ import com.alibaba.nacos.api.exception.api.NacosApiException;
 import com.alibaba.nacos.api.model.v2.ErrorCode;
 import com.alibaba.nacos.common.utils.StringUtils;
 import com.alibaba.nacos.core.context.RequestContextHolder;
+import com.alibaba.nacos.core.plugin.visibility.VisibilityPluginManager;
 import com.alibaba.nacos.plugin.auth.api.IdentityContext;
 import com.alibaba.nacos.plugin.auth.constant.Constants;
 import com.alibaba.nacos.plugin.visibility.constant.VisibilityConstants;
 import com.alibaba.nacos.plugin.visibility.model.VisibilityResource;
 import com.alibaba.nacos.plugin.visibility.spi.ValidationResult;
-import com.alibaba.nacos.plugin.visibility.spi.VisibilityPluginManager;
 import com.alibaba.nacos.plugin.visibility.spi.VisibilityService;
 import com.alibaba.nacos.sys.env.EnvUtil;
 
@@ -135,14 +135,29 @@ public class VisibilityHelper {
      * @return true when readable, false otherwise
      */
     public static boolean canReadResource(VisibilityResource resource) {
+        return canReadResource(resolveCurrentIdentity(), resolveCurrentApiType(), resource);
+    }
+    
+    /**
+     * Check read visibility for a stable previously authenticated owner context.
+     *
+     * <p>This overload does not replay authentication credentials. It is intended for asynchronous
+     * invalidation admission; the following business read must still pass normal request
+     * authorization.</p>
+     *
+     * @param identity stable identity id captured at request admission
+     * @param apiType admitted API type
+     * @param resource resource carrying current owner and scope
+     * @return true when readable, false otherwise
+     */
+    public static boolean canReadResource(String identity, String apiType,
+        VisibilityResource resource) {
         Optional<VisibilityService> visibilityService = findVisibilityService();
         if (visibilityService.isEmpty()) {
             return true;
         }
         ValidationResult result = visibilityService.get()
-            .validateVisibility(resolveCurrentIdentity(), VisibilityConstants.ACTION_READ,
-                resolveCurrentApiType(),
-                resource);
+            .validateVisibility(identity, VisibilityConstants.ACTION_READ, apiType, resource);
         return result.isAllowed();
     }
     

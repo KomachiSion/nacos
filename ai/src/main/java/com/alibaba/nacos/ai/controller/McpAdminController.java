@@ -21,11 +21,20 @@ import com.alibaba.nacos.ai.constant.Constants;
 import com.alibaba.nacos.ai.form.mcp.admin.McpDetailForm;
 import com.alibaba.nacos.ai.form.mcp.admin.McpForm;
 import com.alibaba.nacos.ai.form.mcp.admin.McpListForm;
+import com.alibaba.nacos.ai.form.mcp.admin.McpServerDraftForm;
+import com.alibaba.nacos.ai.form.mcp.admin.McpServerLabelsForm;
+import com.alibaba.nacos.ai.form.mcp.admin.McpServerScopeForm;
+import com.alibaba.nacos.ai.form.mcp.admin.McpServerStatusForm;
+import com.alibaba.nacos.ai.form.mcp.admin.McpServerVersionForm;
+import com.alibaba.nacos.ai.form.mcp.admin.McpServerVersionListForm;
 import com.alibaba.nacos.ai.form.mcp.admin.McpUpdateForm;
 import com.alibaba.nacos.ai.param.McpHttpParamExtractor;
-import com.alibaba.nacos.ai.service.McpServerOperationService;
+import com.alibaba.nacos.ai.service.mcp.McpCompatibilityOperationService;
+import com.alibaba.nacos.ai.service.mcp.McpOperationService;
 import com.alibaba.nacos.ai.utils.McpRequestUtil;
 import com.alibaba.nacos.api.ai.model.mcp.McpEndpointSpec;
+import com.alibaba.nacos.api.ai.model.mcp.McpServerVersionDetail;
+import com.alibaba.nacos.api.ai.model.mcp.McpServerVersionSummary;
 import com.alibaba.nacos.api.ai.model.mcp.McpResourceSpecification;
 import com.alibaba.nacos.api.ai.model.mcp.McpServerBasicInfo;
 import com.alibaba.nacos.api.ai.model.mcp.McpServerDetailInfo;
@@ -59,6 +68,8 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+
+import java.util.Map;
 
 /**
  * Nacos AI MCP controller.
@@ -96,10 +107,14 @@ public class McpAdminController {
             + "\\\"name\\\":\\\"test\\\",\\\"id\\\":\\\"d7a64724-a556-4fe4-82fa-e806d43e00dc\\\","
             + "\\\"versionDetail\\\":{\\\"version\\\":\\\"1.0.0\\\"}}\"";
     
-    private final McpServerOperationService mcpServerOperationService;
+    private final McpOperationService mcpServerOperationService;
     
-    public McpAdminController(McpServerOperationService mcpServerOperationService) {
+    private final McpCompatibilityOperationService lifecycleOperationService;
+    
+    public McpAdminController(McpOperationService mcpServerOperationService,
+        McpCompatibilityOperationService lifecycleOperationService) {
         this.mcpServerOperationService = mcpServerOperationService;
+        this.lifecycleOperationService = lifecycleOperationService;
     }
     
     /**
@@ -293,6 +308,201 @@ public class McpAdminController {
         mcpServerOperationService.deleteMcpServer(mcpForm.getNamespaceId(), mcpForm.getMcpName(),
             mcpForm.getMcpId(),
             mcpForm.getVersion());
+        return Result.success("ok");
+    }
+    
+    /**
+     * Page management metadata for the Versions of one MCP resource.
+     */
+    @Since("3.3.0")
+    @GetMapping("/versions")
+    @Secured(action = ActionTypes.READ, signType = SignType.AI, apiType = ApiType.ADMIN_API)
+    public Result<Page<McpServerVersionSummary>> listMcpServerVersions(
+        McpServerVersionListForm form, PageForm pageForm) throws NacosException {
+        form.validate();
+        pageForm.validate();
+        return Result.success(lifecycleOperationService.listMcpServerVersions(
+            form.getNamespaceId(), form.getMcpName(), form.getStatus(), pageForm.getPageNo(),
+            pageForm.getPageSize()));
+    }
+    
+    /**
+     * Read one exact MCP Version.
+     */
+    @Since("3.3.0")
+    @GetMapping("/version")
+    @Secured(action = ActionTypes.READ, signType = SignType.AI, apiType = ApiType.ADMIN_API)
+    public Result<McpServerVersionDetail> getMcpServerVersion(
+        McpServerVersionForm form) throws NacosException {
+        form.validate();
+        return Result.success(lifecycleOperationService.getMcpServerVersion(
+            form.getNamespaceId(), form.getMcpName(), form.getVersion()));
+    }
+    
+    /**
+     * Create one new MCP draft Version.
+     */
+    @Since("3.3.0")
+    @PostMapping("/draft")
+    @Secured(action = ActionTypes.WRITE, signType = SignType.AI, apiType = ApiType.ADMIN_API)
+    public Result<McpServerVersionDetail> createMcpServerDraft(
+        McpServerDraftForm form) throws NacosException {
+        form.validate();
+        McpServerBasicInfo server = McpRequestUtil.parseMcpServerBasicInfo(form);
+        return Result.success(lifecycleOperationService.createMcpServerDraft(
+            form.getNamespaceId(), server, McpRequestUtil.parseMcpTools(form),
+            McpRequestUtil.parseMcpResources(form),
+            McpRequestUtil.parseMcpEndpointSpec(server, form)));
+    }
+    
+    /**
+     * Replace one exact current MCP draft.
+     */
+    @Since("3.3.0")
+    @PutMapping("/draft")
+    @Secured(action = ActionTypes.WRITE, signType = SignType.AI, apiType = ApiType.ADMIN_API)
+    public Result<McpServerVersionDetail> updateMcpServerDraft(
+        McpServerDraftForm form) throws NacosException {
+        form.validate();
+        McpServerBasicInfo server = McpRequestUtil.parseMcpServerBasicInfo(form);
+        return Result.success(lifecycleOperationService.updateMcpServerDraft(
+            form.getNamespaceId(), server, McpRequestUtil.parseMcpTools(form),
+            McpRequestUtil.parseMcpResources(form),
+            McpRequestUtil.parseMcpEndpointSpec(server, form)));
+    }
+    
+    /**
+     * Delete one exact current MCP draft.
+     */
+    @Since("3.3.0")
+    @DeleteMapping("/draft")
+    @Secured(action = ActionTypes.WRITE, signType = SignType.AI, apiType = ApiType.ADMIN_API)
+    public Result<Void> deleteMcpServerDraft(McpServerVersionForm form)
+        throws NacosException {
+        form.validate();
+        lifecycleOperationService.deleteMcpServerDraft(form.getNamespaceId(), form.getMcpName(),
+            form.getVersion());
+        return Result.success();
+    }
+    
+    /**
+     * Submit one exact MCP working Version.
+     */
+    @Since("3.3.0")
+    @PostMapping("/submit")
+    @Secured(action = ActionTypes.WRITE, signType = SignType.AI, apiType = ApiType.ADMIN_API)
+    public Result<McpServerVersionSummary> submitMcpServerVersion(
+        McpServerVersionForm form) throws NacosException {
+        form.validate();
+        return Result.success(lifecycleOperationService.submitMcpServerVersion(
+            form.getNamespaceId(), form.getMcpName(), form.getVersion()));
+    }
+    
+    /**
+     * Publish one exact reviewed MCP Version.
+     */
+    @Since("3.3.0")
+    @PostMapping("/publish")
+    @Secured(action = ActionTypes.WRITE, signType = SignType.AI, apiType = ApiType.ADMIN_API)
+    public Result<McpServerVersionSummary> publishMcpServerVersion(
+        McpServerVersionForm form) throws NacosException {
+        form.validate();
+        return Result.success(lifecycleOperationService.publishMcpServerVersion(
+            form.getNamespaceId(), form.getMcpName(), form.getVersion()));
+    }
+    
+    /**
+     * Force-publish one exact MCP working Version.
+     */
+    @Since("3.3.0")
+    @PostMapping("/force-publish")
+    @Secured(resource = Constants.MCP_ADMIN_PATH + "/force-publish",
+        action = ActionTypes.WRITE, signType = SignType.AI, apiType = ApiType.ADMIN_API)
+    public Result<McpServerVersionSummary> forcePublishMcpServerVersion(
+        McpServerVersionForm form) throws NacosException {
+        form.validate();
+        return Result.success(lifecycleOperationService.forcePublishMcpServerVersion(
+            form.getNamespaceId(), form.getMcpName(), form.getVersion()));
+    }
+    
+    /**
+     * Return one exact reviewed MCP Version to draft.
+     */
+    @Since("3.3.0")
+    @PostMapping("/redraft")
+    @Secured(action = ActionTypes.WRITE, signType = SignType.AI, apiType = ApiType.ADMIN_API)
+    public Result<McpServerVersionSummary> redraftMcpServerVersion(
+        McpServerVersionForm form) throws NacosException {
+        form.validate();
+        return Result.success(lifecycleOperationService.redraftMcpServerVersion(
+            form.getNamespaceId(), form.getMcpName(), form.getVersion()));
+    }
+    
+    /**
+     * Bring one exact offline MCP Version online and make it latest.
+     */
+    @Since("3.3.0")
+    @PostMapping("/online")
+    @Secured(action = ActionTypes.WRITE, signType = SignType.AI, apiType = ApiType.ADMIN_API)
+    public Result<McpServerVersionSummary> onlineMcpServerVersion(
+        McpServerVersionForm form) throws NacosException {
+        form.validate();
+        return Result.success(lifecycleOperationService.onlineMcpServerVersion(
+            form.getNamespaceId(), form.getMcpName(), form.getVersion()));
+    }
+    
+    /**
+     * Take one exact online MCP Version offline.
+     */
+    @Since("3.3.0")
+    @PostMapping("/offline")
+    @Secured(action = ActionTypes.WRITE, signType = SignType.AI, apiType = ApiType.ADMIN_API)
+    public Result<McpServerVersionSummary> offlineMcpServerVersion(
+        McpServerVersionForm form) throws NacosException {
+        form.validate();
+        return Result.success(lifecycleOperationService.offlineMcpServerVersion(
+            form.getNamespaceId(), form.getMcpName(), form.getVersion()));
+    }
+    
+    /**
+     * Replace custom MCP labels while preserving the server-managed latest label.
+     */
+    @Since("3.3.0")
+    @PutMapping("/labels")
+    @Secured(action = ActionTypes.WRITE, signType = SignType.AI, apiType = ApiType.ADMIN_API)
+    public Result<Map<String, String>> updateMcpServerLabels(McpServerLabelsForm form)
+        throws NacosException {
+        form.validate();
+        Map<String, String> labels = McpRequestUtil.parseMcpServerLabels(form.getLabels());
+        return Result.success(lifecycleOperationService.updateMcpServerLabels(
+            form.getNamespaceId(), form.getMcpName(), labels));
+    }
+    
+    /**
+     * Enable or disable one MCP Server Resource without changing Version states.
+     */
+    @Since("3.3.0")
+    @PutMapping("/status")
+    @Secured(action = ActionTypes.WRITE, signType = SignType.AI, apiType = ApiType.ADMIN_API)
+    public Result<String> updateMcpServerStatus(McpServerStatusForm form)
+        throws NacosException {
+        form.validate();
+        lifecycleOperationService.updateMcpServerStatus(form.getNamespaceId(), form.getMcpName(),
+            form.getEnabled());
+        return Result.success("ok");
+    }
+    
+    /**
+     * Update one MCP Server Resource visibility scope.
+     */
+    @Since("3.3.0")
+    @PutMapping("/scope")
+    @Secured(action = ActionTypes.WRITE, signType = SignType.AI, apiType = ApiType.ADMIN_API)
+    public Result<String> updateMcpServerScope(McpServerScopeForm form)
+        throws NacosException {
+        form.validate();
+        lifecycleOperationService.updateMcpServerScope(form.getNamespaceId(), form.getMcpName(),
+            form.getScope());
         return Result.success("ok");
     }
 }

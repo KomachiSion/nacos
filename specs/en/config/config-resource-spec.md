@@ -42,6 +42,10 @@ the operation must remain scoped by the normalized request `namespaceId`;
 storage IDs must not become global resource tokens that bypass namespace
 identity.
 
+When a Config storage ID is exposed in a JSON response, it must be serialized as
+a decimal string rather than a JSON number. This preserves the exact value for
+clients whose numeric representation cannot safely retain 64-bit integers.
+
 Clone operations involve both source and target identities. When a clone request
 selects source configs by storage ID, those IDs must be resolved only inside the
 normalized source namespace. The target namespace controls only where cloned
@@ -104,6 +108,11 @@ The Config server validates `dataId`, `groupName`, `namespaceId`, tag, and
 selected metadata fields. Public Config names should contain only letters, digits, `_`,
 `-`, `.`, and `:` unless a future domain spec explicitly extends the character
 set.
+
+A dot may appear as part of a Config name, but no identity field may equal the
+directory control segment `.` or `..`. Local dump implementations must also
+resolve each identity field as one direct child of the selected dump hierarchy
+and reject any normalized path that does not preserve that hierarchy.
 
 Current field limits include:
 

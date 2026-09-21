@@ -29,6 +29,7 @@ import com.alibaba.nacos.api.model.Page;
 import com.alibaba.nacos.api.model.v2.Result;
 import com.alibaba.nacos.api.remote.RemoteConstants;
 import com.alibaba.nacos.auth.annotation.Secured;
+import com.alibaba.nacos.core.controller.compatibility.CompatibilityHelper;
 import com.alibaba.nacos.core.model.form.PageForm;
 import com.alibaba.nacos.plugin.auth.constant.ActionTypes;
 import com.alibaba.nacos.plugin.auth.constant.SignType;
@@ -142,6 +143,8 @@ public class PipelineAdminController {
     @Parameter(name = "pipelineId", required = true, example = "pipeline-id-example")
     public Result<PipelineExecution> getPipeline(@PathVariable String pipelineId)
         throws NacosException {
+        CompatibilityHelper.check(
+            "GET /v3/admin/ai/pipelines/detail?pipelineId={pipelineId}");
         return Result.success(pipelineQueryService.getPipeline(pipelineId));
     }
     
@@ -173,6 +176,7 @@ public class PipelineAdminController {
     public Result<Page<PipelineExecution>> listPipelinesLegacy(PipelineListForm form,
         PageForm pageForm)
         throws NacosException {
+        CompatibilityHelper.check("GET /v3/admin/ai/pipelines/list");
         form.validate();
         pageForm.validate();
         return Result.success(

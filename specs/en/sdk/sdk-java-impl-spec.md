@@ -177,52 +177,105 @@ SDK instead of `ConfigService`.
 The selector overload of `getServicesOfServer` is deprecated and remains only as
 a compatibility surface.
 
-### 5.3 AiService, AgentDiscoveryService, And A2aService
+### 5.3 AiService Resource Interfaces
 
-The Agent/RAD contract in this subsection is a target contract, not an
-inventory of currently implemented Java methods. It becomes active only after
-the new Agent/RAD abilities are implemented and negotiated. Until then, the
-existing `AiService` and `A2aService` methods remain the active compatibility
-surface.
-
-The target inheritance is:
+`AiService` exposes namespace-bound `mcp()`, `agent()`, `skill()`, `agentSpec()` and `prompt()`.
+Each accessor reuses a resource service sharing the facade's connections, caches, listeners and
+`shutdown()` lifecycle.
 
 ```text
-AiService extends AgentDiscoveryService, A2aService
+AiService extends McpService, A2aService, SkillService, AgentSpecService, PromptService
+AgentService extends A2aService, AgentDiscoveryService
 ```
 
-Adding this parent must not make an already compiled third-party `AiService`
-implementation fail linkage immediately. Newly inherited methods use
-compatibility default bridges that report unsupported behavior until an
-implementation overrides them; the official Nacos implementation overrides the
-complete target surface.
+Released flat methods remain deprecated delegates. Core methods call the corresponding accessor;
+convenience defaults still dispatch to this object's legacy core overrides. New accessors default to
+unsupported, so third-party old implementations can retain their old behavior. The official client
+implements all accessors. The MCP createDraft default still dispatches false to the old four-argument
+method and rejects unimplemented true requests; the official five-argument override is a pure bridge.
 
-`AiService` directly provides the namespace-bound
-`publishAgent(AgentPublishRequest)` method and returns `AgentVersionDetail`.
-This new method uses the same compatibility default bridge. It does not belong
-to `AgentDiscoveryService`, because definition publication is not discovery.
-The official implementation copies the request, injects the SDK namespace, and
-creates a draft or runs the ordinary submit Pipeline according to
-`autoSubmit`, without mutating the caller's object. Equivalent retries,
-conflicts, and state convergence follow the
-[Agent API Spec](../ai/agent-api-spec.md).
+Unreleased 3.3 Agent operations are available only through `agent()`. `AgentService.publishAgent`
+returns `AgentVersionDetail` with a compatibility default. The official implementation copies input,
+injects the SDK namespace and creates a draft or performs ordinary submit according to `autoSubmit`,
+without mutating caller state. See the [Agent API Spec](../ai/agent-api-spec.md).
+Legacy A2A keeps its existing gRPC path; interface extraction does not switch it to RAD.
+
+`AgentTransportMode` is a Java 8-compatible API-module enum exposing `GRPC`,
+`HTTP`, and `AUTO`; `getValue()` supplies the `nacosAiTransportMode` property
+value. The mode is frozen when `AiService` is created, and invalid values fail
+factory creation. The [Agent API Spec](../ai/agent-api-spec.md) defines the
+transport lifecycle, AUTO probe, and operation fallback rules.
+
+Resource overrides `nacosAiMcpTransportMode`, `nacosAiAgentTransportMode`,
+`nacosAiSkillTransportMode`, `nacosAiAgentSpecTransportMode`, and `nacosAiPromptTransportMode`
+inherit `nacosAiTransportMode` (default `grpc`). All explicit values, including ignored HTTP-only
+resource requests and a globally overridden default, are validated before lifecycle allocation.
+Modes are immutable per client. Skill/AgentSpec always use the existing HTTP proxy; Prompt direct
+reads and polling share one router (AUTO uses connection state, without a new capability bit).
+The Agent override governs native RAD only; legacy A2A always requires the shared gRPC client.
+
+MCP, Agent and Prompt retain independent AUTO use/success state. Any effective GRPC resource or
+legacy A2A demand pins reconnect. Initial reconnect may pause only after every used AUTO resource
+has succeeded over HTTP and the existing failure budget is reached. A previously unused resource
+resumes a full initial probe budget without changing other settled resources. Previously connected
+UNHEALTHY recovery is unchanged. Safe read fallback requires CLIENT_DISCONNECT, UN_REGISTER,
+or a generic transport exception wrapping gRPC UNAVAILABLE; a coincident disconnected state alone
+cannot override a business/auth/capacity/not-found error. Writes and publication owners do not replay
+across transports after an uncertain result.
+
+The existing disconnected ability-check runtime exception retains its public type/code/message and adds a CLIENT_DISCONNECT cause as read-routing evidence.
 
 `AgentDiscoveryService` provides these namespace-bound methods:
 
 | Capability | Methods | Contract |
 | --- | --- | --- |
-| Search | `searchAgents` | Accept `AgentSearchRequest` and return `Page<AgentCatalogEntry>`. |
+| Search | `searchAgents` | Accept `AgentSearchRequest` and return `Page<AgentSummary>`. |
 | Discover | `discoverAgent` overloads | Accept `AgentReference`, with an optional `AgentDiscoveryFilter`, and return one complete `AgentDiscoveryResult`. |
 | Watch | `subscribeAgent` overloads | Accept the same reference, optional Filter, and listener; return the current complete result and later deliver complete replacement results. |
 | Cancel Watch | `unsubscribeAgent` overloads | Remove the Watch identified by the same reference, Filter, and listener identity. |
 | Register Endpoint | `registerAgentEndpoints` | Register one `AgentEndpointRegistrationBatch` and retain it as redo intent. |
-| Deregister Endpoint | `deregisterAgentEndpoints` | Deregister one `AgentEndpointDeregistrationBatch` owned by this SDK publisher. |
+| Deregister Endpoint | `deregisterAgentEndpoints` | Deregister one `agentName, protocol, List<Endpoint>` owned by this SDK publisher. |
 
-These public methods do not accept `namespaceId`. The proxy copies the caller's
-request or Batch, injects the SDK namespace into the transport object, and does
-not mutate the caller's object. If a shared input model already carries a
-nonempty namespace different from the SDK namespace, the proxy rejects it
-locally. Target Watch, cache, and redo behavior follows the
+Watch does not add another public subscribe method. Existing source and binary
+compatibility are preserved. `NacosAgentDiscoveryEvent` adds an event type and
+unavailable error accessors while its existing result constructor continues to
+create a `SNAPSHOT`. The official implementation may create `UNAVAILABLE`
+events through a factory or additional constructor without changing listener
+method signatures.
+
+The implementation layers are:
+
+```text
+AgentDiscoveryService feature facade
+  -> Agent Watch manager (identity, capacity, cache, fingerprint, listener)
+    -> Wire Watch transport (gRPC, HTTP batch long poll, or polling fallback)
+      -> AgentClientProxy Discover for authoritative refresh
+```
+
+Transport code owns only Wire lifecycle and signals; it does not duplicate
+feature cache or listener state. Canonicalization and fingerprinting live in a
+Java 8-compatible shared Agent utility used by both client and server. Listener
+callbacks run outside connection/HTTP I/O, prefer the listener executor when
+supplied, isolate exceptions, and use a bounded shared executor otherwise.
+This Agent-only layering does not alter Prompt, Skill, MCP, AgentSpec, or legacy
+A2A transport ownership.
+
+The concrete Agent/RAD model and abstract-base organization follows the
+[Agent API Java model binding](../ai/agent-api-spec.md#java-model-binding).
+SDK signatures use concrete business models or parameters; namespace comes from the instance.
+
+Search and complete registration use root-package `AgentSearchRequest` and
+`AgentEndpointRegistrationBatch`, containing business fields without namespace accessors.
+Partial deregistration uses
+`deregisterAgentEndpoints(String agentName, String protocol, List<Endpoint> endpoints)`;
+there is no deregistration Java Request/Batch. The SDK defensively copies caller content
+and supplies its instance namespace through HTTP parameters or the RPC envelope to query
+and registration services. Publication keys and redo data retain namespace separately.
+Partial deregistration registers the complete nonempty remainder or deregisters the whole
+publication when empty, without mutating caller objects or collections. HTTP fields,
+authorization, replacement and error semantics remain unchanged. Search/Register RPC
+namespace is on the envelope rather than nested in the business request.
+No 3.3 BETA Java compatibility wrappers are retained; historical A2A contracts are unchanged.
 [Client Local Cache And Redo Spec](../client/client-local-cache-redo-spec.md)
 and the
 [Runtime Push And Reconnect Spec](../client/runtime-push-reconnect-spec.md).
@@ -247,7 +300,7 @@ type specs. The currently implemented compatibility methods include:
 | Capability | Methods | Contract |
 | --- | --- | --- |
 | MCP query | `getMcpServer` | Query MCP Server details by name and optional version. |
-| MCP release | `releaseMcpServer` | Create an MCP Server or release a new version. Existing same-version data remains idempotent. |
+| MCP release | `releaseMcpServer` | Create an MCP Server or release a new version. Existing overloads are direct-online and reject an existing exact Version; `createDraft=true` creates a lifecycle draft only. |
 | MCP endpoint | `registerMcpServerEndpoint`, `deregisterMcpServerEndpoint` | Register or remove endpoints owned by the current client. |
 | MCP subscription | `subscribeMcpServer`, `unsubscribeMcpServer` | Subscribe to MCP detail changes. |
 | A2A AgentCard query | `getAgentCard` | Query an AgentCard by name, optional version, and registration type. |
@@ -261,6 +314,21 @@ type specs. The currently implemented compatibility methods include:
 The Java implementation may mix gRPC, HTTP, and config assembly behind the
 interface. The public interface contract should stay independent from transport
 details.
+
+MCP and Agent protocol-neutral operations use the same `grpc`, `http`, or
+`auto` transport configuration. MCP reads may fall back from a selected gRPC
+transport only for connection-class failure. Persistent release never crosses
+transports after send. A Runtime Endpoint publication selects a sticky owner
+transport and keeps it for replacement, deregistration, heartbeat, and redo.
+The MCP polling cache depends on the transport-neutral query router rather than
+directly on the gRPC client.
+
+The HTTP implementation owns one stable client id per `NacosAiService` and one
+shared publication coordinator. Agent and MCP publication managers are
+participants with separate desired-state maps. The coordinator emits one
+heartbeat and, after `HTTP_CLIENT_NOT_FOUND`, marks every participant dirty
+before replaying them. This ordering prevents one domain from recreating the
+shared Client and hiding another domain's lost publication.
 
 ### 5.4 LockService
 
@@ -349,7 +417,7 @@ maintenance belong to the Maintainer SDK.
 
 `AiMaintainerService` exposes typed delegates:
 
-- `mcp()` for MCP Server list, search, detail, create, update, and delete;
+- `mcp()` for MCP Server compatibility operations and typed Version management;
 - `a2a()` for AgentCard register, query, update, delete, version, search, and
   list operations;
 - `prompt()` for Prompt management;
@@ -366,6 +434,27 @@ take it as a separate method argument. Agent definition creation uses
 `createDraft`: the first draft creates missing Agent metadata, while later
 drafts reuse that metadata. `a2a()` remains available for its compatibility
 window.
+
+The MCP management delegate is `mcp()`, which returns `McpMaintainerService`.
+Its historical methods remain binary-compatible. Detail and direct-online
+create/update methods are deprecated since 3.3.0 and planned for removal in
+4.0.0; their Javadoc points to exact Version reads and the typed
+draft-submit-publish flow. Historical cross-resource list/search and
+published-Version or full-Resource delete methods remain non-deprecated until
+semantics-equivalent typed replacements exist. Typed Version-management
+additions map one-to-one to the MCP Admin form/query routes: list/get Version,
+create/update/delete draft, submit, publish, force-publish, redraft, online,
+offline, and label replacement.
+Draft create/update additions reuse the established method names as
+`createMcpServer(McpServerDraftRequest)` and `updateMcpServer(McpServerDraftRequest)`
+overloads; other methods use user-facing Version and operation names rather
+than exposing the internal Lifecycle hosting mechanism.
+Explicit methods accept `namespaceId` separately; convenience overloads use
+the default namespace. `McpServerDraftRequest`,
+`McpServerVersionCommand`, and `McpServerLabelsUpdateRequest` add no
+top-level namespace or compatibility `mcpId` selector, and they do not expose
+JSON-library types. Historical identity fields inside the reused
+`McpServerBasicInfo` content do not participate in lifecycle target resolution.
 
 Runtime AI registration and subscription can remain in `AiService`; broad AI
 resource management belongs to `AiMaintainerService`.

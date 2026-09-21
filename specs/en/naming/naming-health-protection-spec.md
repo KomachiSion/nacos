@@ -85,6 +85,36 @@ checker types may be registered through the health checker registry.
 Active health checks should only change health state when the responsible
 server performs the check and the service health check switch allows it.
 
+Persistent instance recovery may schedule health-check tasks before local
+persistent-client and service-metadata CP snapshots have both completed
+successfully. Those tasks must be deferred until both snapshots are loaded.
+If no local snapshot exists, application startup completion may release the
+gate as a fail-open fallback. Once released, the gate must remain open for the
+process lifetime. Temporarily unavailable cluster metadata must not be
+interpreted as the default TCP checker or change instance health state.
+
+The instance address used by an active health check must be a plain host. The
+instance IP field must not carry user information, a port, a path, query
+parameters, or a fragment. A processor must validate the address at runtime
+before making a network request. If address parsing fails or extra URL
+components are present, the current check must be skipped without making a
+network request, changing instance health state, or blocking checks for other
+services. IPv6 syntax separators are not extra URL components.
+
+The built-in HTTP checker's `path` is a relative URI reference resolved against
+the instance host and effective check port. It may contain a path and query, but
+must not define a scheme, authority, user information, host, port, or fragment.
+Custom header names must use valid HTTP token characters, and emitted values
+must not contain control characters other than horizontal tab. Request-framing
+headers `Content-Length` and `Transfer-Encoding` are not valid health-check
+custom headers. Other valid headers, including `Host` and `Authorization`,
+remain supported and do not change the connection target.
+Cluster metadata update APIs must reject an invalid built-in HTTP checker before
+persisting it. The HTTP processor must apply the same validation at runtime so
+historical invalid metadata is skipped without starting a check or changing
+instance health state. Validation of fields owned by extension checkers remains
+the responsibility of the extension provider.
+
 ### 3.2 Manual Health Update
 
 Manual instance health update is allowed for instances of persistent services

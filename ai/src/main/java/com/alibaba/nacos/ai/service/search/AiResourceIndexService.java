@@ -16,8 +16,9 @@
 
 package com.alibaba.nacos.ai.service.search;
 
-import com.alibaba.nacos.api.ai.model.mcp.McpServerBasicInfo;
 import com.alibaba.nacos.api.exception.NacosException;
+
+import java.util.function.BooleanSupplier;
 
 /**
  * Builds and removes local AI resource indexes from Nacos resource lifecycle events.
@@ -37,11 +38,25 @@ public interface AiResourceIndexService {
         }
         
         @Override
-        public void rebuildLatestAiResource(String namespaceId, String resourceType, String name) {
+        public boolean rebuildLatestAiResource(String namespaceId, String resourceType,
+            String name) {
+            return false;
         }
         
         @Override
-        public void rebuildMcpServer(String namespaceId, McpServerBasicInfo mcpServer) {
+        public boolean isEnhancementRequested() {
+            return false;
+        }
+        
+        @Override
+        public String enhancementFingerprint() {
+            return "";
+        }
+        
+        @Override
+        public boolean enhanceLatestAiResource(String namespaceId, String resourceType,
+            String name) {
+            return false;
         }
         
         @Override
@@ -63,13 +78,40 @@ public interface AiResourceIndexService {
     /**
      * Rebuild the latest AI resource version index.
      */
-    void rebuildLatestAiResource(String namespaceId, String resourceType, String name)
+    boolean rebuildLatestAiResource(String namespaceId, String resourceType, String name)
         throws NacosException;
     
     /**
-     * Rebuild an MCP server version index.
+     * Whether durable LLM enhancement is requested by configuration.
      */
-    void rebuildMcpServer(String namespaceId, McpServerBasicInfo mcpServer) throws NacosException;
+    boolean isEnhancementRequested();
+    
+    /**
+     * Fingerprint of the effective enhancement configuration.
+     */
+    String enhancementFingerprint();
+    
+    /**
+     * Enhance the latest indexed AI resource and converge its vector index.
+     *
+     * @return whether a current index entry exists
+     */
+    boolean enhanceLatestAiResource(String namespaceId, String resourceType, String name)
+        throws Exception;
+    
+    /**
+     * Enhance the latest resource only while the caller still owns its durable task.
+     *
+     * @return exact enhancement fingerprint, or {@code null} if the resource or task is stale
+     */
+    default String enhanceLatestAiResource(String namespaceId, String resourceType, String name,
+        BooleanSupplier ownership) throws Exception {
+        if (!ownership.getAsBoolean()) {
+            return null;
+        }
+        return enhanceLatestAiResource(namespaceId, resourceType, name)
+            ? enhancementFingerprint() : null;
+    }
     
     /**
      * Remove all AI resource index rows for a resource.

@@ -34,6 +34,8 @@ public class ConfigQueryChainRequest {
     
     private String tag;
     
+    private String localMd5;
+    
     private Map<String, String> appLabels;
     
     public String getDataId() {
@@ -66,6 +68,14 @@ public class ConfigQueryChainRequest {
     
     public void setTag(String tag) {
         this.tag = tag;
+    }
+    
+    public String getLocalMd5() {
+        return localMd5;
+    }
+    
+    public void setLocalMd5(String localMd5) {
+        this.localMd5 = localMd5;
     }
     
     public Map<String, String> getAppLabels() {

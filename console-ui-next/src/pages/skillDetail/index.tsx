@@ -26,8 +26,6 @@ import {
   Plus,
   Sparkles,
   AlertTriangle,
-  AlertCircle,
-  Lock,
   Loader2,
   ShieldAlert,
   MessageSquare,
@@ -41,7 +39,6 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Switch } from '@/components/ui/switch';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import MDEditor from '@uiw/react-md-editor';
 import {
@@ -88,7 +85,14 @@ import { SkillOptimizeDialog } from '@/components/ai/skill/SkillOptimizeDialog';
 import { LabelBindDialog } from '@/components/ai/LabelBindDialog';
 import { BizTagEditDialog } from '@/components/ai/BizTagEditDialog';
 import { DetailTagChip } from '@/components/ai/DetailTagChip';
-import { canResubmitReview } from '@/components/ai/version-lifecycle';
+import { AiResourceStatusControls } from '@/components/ai/AiResourceStatusControls';
+import { AiVersionSelectOption } from '@/components/ai/AiVersionSelectOption';
+import { CreateDraftFromVersionButton } from '@/components/ai/CreateDraftFromVersionButton';
+import {
+  VersionLifecycleActionBar,
+  VersionLifecycleActionDivider,
+} from '@/components/ai/VersionLifecycleActionBar';
+import { canForcePublish, canResubmitReview } from '@/components/ai/version-lifecycle';
 import { CliCommandCard } from '@/components/ai/CliCommandCard';
 import { VisibilityAuthorizationDialog } from '@/components/ai/VisibilityAuthorizationDialog';
 import { sortVersionsDescending } from '../skillManagement/components/version-utils';
@@ -747,6 +751,11 @@ export default function SkillDetailPage() {
   // Pipeline info for current version
   const currentPipelineInfo = parsePipelineInfo(currentVersionSummary?.publishPipelineInfo);
   const showResubmitReview = canResubmitReview(currentVersionStatus, currentPipelineInfo);
+  const showForcePublish = canForcePublish(
+    currentVersionStatus,
+    currentPipelineInfo,
+    globalAdmin,
+  );
 
   // Parse resources from version document
   const resources = versionDoc?.resource ?? {};
@@ -782,41 +791,23 @@ export default function SkillDetailPage() {
                     <SelectValue placeholder={t('skill.selectVersion')} />
                   </SelectTrigger>
                   <SelectContent>
-                    {versionOptions.map((version) => {
-                      const vPipeline = parsePipelineInfo(version.publishPipelineInfo);
-                      const isVersionPendingPublish = (version.status === 'reviewed' && vPipeline?.status !== 'REJECTED') || (version.status === 'reviewing' && vPipeline?.status === 'APPROVED');
-                      const isVersionRejected = version.status === 'reviewed' && vPipeline?.status === 'REJECTED';
-                      return (
+                    {versionOptions.map((version) => (
                       <SelectItem key={version.version} value={version.version}>
-                        <span className="flex items-center gap-2">
-                          <span>{version.version}</span>
-                          {latestVersion === version.version && (
-                            <Badge className="bg-emerald-100 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300 text-[10px] px-1 py-0 border-0">
-                              {t('skill.latestVersion')}
-                            </Badge>
-                          )}
-                          {version.status === 'draft' && (
-                            <Badge className="bg-amber-100 text-amber-700 dark:bg-amber-950/50 dark:text-amber-300 text-[10px] px-1 py-0 border-0">
-                              {t('skill.versionStatus.draft')}
-                            </Badge>
-                          )}
-                          {isVersionRejected && (
-                            <Badge className="bg-red-100 text-red-700 dark:bg-red-950/50 dark:text-red-300 text-[10px] px-1 py-0 border-0">
-                              {t('skill.versionStatus.rejected')}
-                            </Badge>
-                          )}
-                          {!isVersionRejected && (version.status === 'reviewing' || version.status === 'reviewed') && (
-                            <Badge className={isVersionPendingPublish
-                              ? 'bg-teal-100 text-teal-700 dark:bg-teal-950/50 dark:text-teal-300 text-[10px] px-1 py-0 border-0'
-                              : 'bg-blue-100 text-blue-700 dark:bg-blue-950/50 dark:text-blue-300 text-[10px] px-1 py-0 border-0'
-                            }>
-                              {t(isVersionPendingPublish ? 'skill.versionStatus.pendingPublish' : 'skill.versionStatus.reviewing')}
-                            </Badge>
-                          )}
-                        </span>
+                        <AiVersionSelectOption
+                          version={version.version}
+                          status={version.status}
+                          latest={latestVersion === version.version}
+                          publishPipelineInfo={version.publishPipelineInfo}
+                          labels={{
+                            latest: t('skill.latestVersion'),
+                            draft: t('skill.versionStatus.draft'),
+                            reviewing: t('skill.versionStatus.reviewing'),
+                            pendingPublish: t('skill.versionStatus.pendingPublish'),
+                            rejected: t('skill.versionStatus.rejected'),
+                          }}
+                        />
                       </SelectItem>
-                      );
-                    })}
+                    ))}
                   </SelectContent>
                 </Select>
               )}
@@ -849,60 +840,25 @@ export default function SkillDetailPage() {
                   </span>
                 )}
               </div>
-              {/* Enable & Scope toggle switches */}
-              <div className="flex items-center gap-4 mt-1.5 mb-1">
-                <label className="inline-flex items-center gap-2 cursor-pointer select-none">
-                  <Switch
-                    checked={detail.enable}
-                    disabled={enableToggling || !canWriteResource}
-                    onCheckedChange={handleToggleEnable}
-                    className={cn(
-                      detail.enable
-                        ? 'data-[state=checked]:bg-emerald-500'
-                        : '',
-                    )}
-                  />
-                  <span className={cn(
-                    'text-xs font-medium',
-                    detail.enable ? 'text-emerald-700 dark:text-emerald-300' : 'text-muted-foreground',
-                  )}>
-                    {detail.enable ? t('skill.enabled') : t('skill.disabled')}
-                  </span>
-                </label>
-                <div className="h-4 w-px bg-border" />
-                <label className="inline-flex items-center gap-2 cursor-pointer select-none">
-                  <Switch
-                    checked={detail.scope === 'PUBLIC'}
-                    disabled={scopeToggling || !canWriteResource}
-                    onCheckedChange={handleToggleScope}
-                  />
-                  <span className="inline-flex items-center gap-1 text-xs font-medium text-muted-foreground">
-                    {detail.scope === 'PUBLIC' ? <Globe className="h-3 w-3" /> : <Lock className="h-3 w-3" />}
-                    {detail.scope === 'PUBLIC' ? t('skill.scopePublic') : t('skill.scopePrivate')}
-                  </span>
-                </label>
-                {canManageVisibility && (
-                  <>
-                    <div className="h-4 w-px bg-border" />
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="h-7 px-2 text-xs"
-                          onClick={() => setVisibilityDialogOpen(true)}
-                        >
-                          <ShieldAlert className="mr-1 h-3.5 w-3.5" />
-                          {t('common.visibilityAuthorization.entry')}
-                        </Button>
-                      </TooltipTrigger>
-                      <TooltipContent>
-                        {t('common.visibilityAuthorization.title')}
-                      </TooltipContent>
-                    </Tooltip>
-                  </>
-                )}
-              </div>
+              <AiResourceStatusControls
+                enabled={detail.enable}
+                scope={detail.scope}
+                enabledLabel={t('skill.enabled')}
+                disabledLabel={t('skill.disabled')}
+                publicLabel={t('skill.scopePublic')}
+                privateLabel={t('skill.scopePrivate')}
+                enableDisabled={enableToggling || !canWriteResource}
+                scopeDisabled={scopeToggling || !canWriteResource}
+                onEnabledChange={handleToggleEnable}
+                onScopeChange={handleToggleScope}
+                visibilityLabel={canManageVisibility
+                  ? t('common.visibilityAuthorization.entry')
+                  : undefined}
+                visibilityTooltip={t('common.visibilityAuthorization.title')}
+                onVisibilityClick={canManageVisibility
+                  ? () => setVisibilityDialogOpen(true)
+                  : undefined}
+              />
               {/* Description - editable in draft mode */}
               {isEditingDraft ? (
                 <Textarea
@@ -945,14 +901,13 @@ export default function SkillDetailPage() {
 
               {/* Version lifecycle action buttons */}
               {canWriteResource && selectedVersion && currentVersionStatus && (
-                <div className="mt-3 pt-3 border-t border-border/40">
-                  {!detail.enable && (
+                <VersionLifecycleActionBar warning={!detail.enable ? (
                     <p className="flex items-center gap-1 text-[11px] text-amber-600 dark:text-amber-400 mb-2">
                       <AlertTriangle className="h-3 w-3 shrink-0" />
                       {t('skill.skillDisabledWarning')}
                     </p>
-                  )}
-                  <div className="flex items-center gap-2">
+                  ) : undefined}
+                >
                   {/* Draft actions */}
                   {currentVersionStatus === 'draft' && (
                     <>
@@ -1000,7 +955,7 @@ export default function SkillDetailPage() {
                               {t('skill.aiOptimize')}
                             </Button>
                           )}
-                          <div className="h-4 w-px bg-border mx-0.5" />
+                          <VersionLifecycleActionDivider />
                           <Button
                             size="sm"
                             className="h-7 text-xs gap-1.5"
@@ -1026,7 +981,7 @@ export default function SkillDetailPage() {
                             <PipelineStatusDisplay pipelineInfo={currentPipelineInfo} compact />
                           )}
                           {/* Admin-only force-publish when pipeline rejected */}
-                          {globalAdmin && currentPipelineInfo && currentPipelineInfo.status === 'REJECTED' && !currentPipelineInfo.historical && (
+                          {showForcePublish && (
                             <Button
                               variant="outline"
                               size="sm"
@@ -1097,7 +1052,7 @@ export default function SkillDetailPage() {
                         <PipelineStatusDisplay pipelineInfo={currentPipelineInfo} compact />
                       )}
                       {/* Admin-only force-publish when pipeline rejected during reviewing */}
-                      {globalAdmin && currentPipelineInfo && currentPipelineInfo.status === 'REJECTED' && (
+                      {showForcePublish && (
                         <>
                           <PipelineStatusDisplay pipelineInfo={currentPipelineInfo} compact />
                           <Button
@@ -1145,34 +1100,17 @@ export default function SkillDetailPage() {
                   {/* Create new draft (when viewing online/offline version) */}
                   {(currentVersionStatus === 'online' || currentVersionStatus === 'offline') && (() => {
                     const hasDraft = !!(detail.editingVersion || detail.reviewingVersion);
-                    const btn = (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="h-7 text-xs gap-1.5"
-                        disabled={actionLoading || hasDraft}
+                    return (
+                      <CreateDraftFromVersionButton
+                        label={t('skill.createDraftFrom')}
+                        blocked={hasDraft}
+                        blockedMessage={t('skill.draftExistsTip')}
+                        disabled={actionLoading}
                         onClick={() => handleCreateDraft(selectedVersion)}
-                      >
-                        <Plus className="h-3 w-3" />
-                        {t('skill.createDraftFrom')}
-                      </Button>
+                      />
                     );
-                    return hasDraft ? (
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <span>{btn}</span>
-                        </TooltipTrigger>
-                        <TooltipContent className="bg-amber-50 border border-amber-200 text-amber-800 dark:bg-amber-950 dark:border-amber-800 dark:text-amber-200">
-                          <span className="flex items-center gap-1.5">
-                            <AlertCircle className="h-3 w-3 shrink-0" />
-                            {t('skill.draftExistsTip')}
-                          </span>
-                        </TooltipContent>
-                      </Tooltip>
-                    ) : btn;
                   })()}
-                  </div>
-                </div>
+                </VersionLifecycleActionBar>
               )}
 
               {/* Empty state: no versions, show create draft button or editing actions */}

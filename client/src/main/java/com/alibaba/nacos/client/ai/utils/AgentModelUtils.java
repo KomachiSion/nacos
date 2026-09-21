@@ -17,23 +17,22 @@
 package com.alibaba.nacos.client.ai.utils;
 
 import com.alibaba.nacos.api.ai.model.agent.Endpoint;
-import com.alibaba.nacos.api.ai.model.agent.AgentPublishRequest;
-import com.alibaba.nacos.api.ai.model.rad.AgentDiscoveryFilter;
-import com.alibaba.nacos.api.ai.model.rad.AgentDiscoveryRequest;
-import com.alibaba.nacos.api.ai.model.rad.AgentDiscoveryResult;
-import com.alibaba.nacos.api.ai.model.rad.AgentEndpointDeregistrationBatch;
-import com.alibaba.nacos.api.ai.model.rad.AgentEndpointRegistrationBatch;
-import com.alibaba.nacos.api.ai.model.rad.AgentReference;
-import com.alibaba.nacos.api.ai.model.rad.AgentSearchRequest;
+import com.alibaba.nacos.api.ai.model.agent.client.AgentPublishRequest;
+import com.alibaba.nacos.api.ai.model.agent.AgentDiscoveryFilter;
+import com.alibaba.nacos.api.ai.model.agent.AgentDiscoveryRequest;
+import com.alibaba.nacos.api.ai.model.agent.AgentDiscoveryResult;
+import com.alibaba.nacos.api.ai.model.agent.AgentEndpointRegistrationBatch;
+import com.alibaba.nacos.api.ai.model.agent.AgentReference;
+import com.alibaba.nacos.api.ai.model.agent.AgentSearchRequest;
 import com.alibaba.nacos.api.ai.utils.EndpointCanonicalizer;
 import com.alibaba.nacos.api.ai.utils.RadModelValidator;
 import com.alibaba.nacos.api.exception.NacosException;
 import com.alibaba.nacos.api.exception.api.NacosApiException;
 import com.alibaba.nacos.api.model.v2.ErrorCode;
 import com.alibaba.nacos.api.utils.json.JsonUtils;
-import com.alibaba.nacos.common.utils.StringUtils;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 
@@ -76,7 +75,7 @@ public final class AgentModelUtils {
     }
     
     /**
-     * Copy, namespace-bind, and validate a Search request.
+     * Copy a Search request and validate it with its namespace context.
      *
      * @param source caller-owned request
      * @param namespaceId SDK namespace
@@ -86,10 +85,9 @@ public final class AgentModelUtils {
     public static AgentSearchRequest copySearchRequest(AgentSearchRequest source,
         String namespaceId) throws NacosException {
         if (source == null) {
-            throw invalid("AgentSearchRequest must not be null.");
+            throw invalid("AgentSearchQuery must not be null.");
         }
         AgentSearchRequest result = new AgentSearchRequest();
-        result.setNamespaceId(bindNamespace(source.getNamespaceId(), namespaceId));
         result.setAgentNameContains(source.getAgentNameContains());
         result.setTagsAll(copyList(source.getTagsAll()));
         result.setProtocolsAny(copyList(source.getProtocolsAny()));
@@ -99,7 +97,7 @@ public final class AgentModelUtils {
             
             @Override
             public void run() {
-                RadModelValidator.validate(result);
+                RadModelValidator.validate(namespaceId, result);
             }
         });
         return result;
@@ -131,7 +129,7 @@ public final class AgentModelUtils {
     }
     
     /**
-     * Copy, namespace-bind, canonicalize, and validate a registration batch.
+     * Copy and canonicalize a registration batch, validating its namespace context.
      *
      * @param source caller-owned batch
      * @param namespaceId SDK namespace
@@ -141,26 +139,19 @@ public final class AgentModelUtils {
     public static AgentEndpointRegistrationBatch copyRegistrationBatch(
         AgentEndpointRegistrationBatch source, String namespaceId) throws NacosException {
         if (source == null) {
-            throw invalid("AgentEndpointRegistrationBatch must not be null.");
+            throw invalid("AgentEndpointRegistration must not be null.");
         }
         AgentEndpointRegistrationBatch result = new AgentEndpointRegistrationBatch();
-        result.setNamespaceId(bindNamespace(source.getNamespaceId(), namespaceId));
         result.setAgentName(source.getAgentName());
         result.setRuntimeVersion(source.getRuntimeVersion());
         result.setVersionRange(source.getVersionRange());
         result.setProtocol(source.getProtocol());
         try {
-            result.setEndpoints(canonicalizeEndpoints(source.getEndpoints()));
+            RadModelValidator.validate(namespaceId, source);
+            result.setEndpoints(canonicalizeEndpoints(source));
         } catch (IllegalArgumentException e) {
             throw invalid(e.getMessage());
         }
-        validate(new Validation() {
-            
-            @Override
-            public void run() {
-                RadModelValidator.validate(result);
-            }
-        });
         return result;
     }
     
@@ -176,28 +167,23 @@ public final class AgentModelUtils {
     }
     
     /**
-     * Copy, namespace-bind, and validate a natural-key deregistration batch.
+     * Copy deregistration natural keys and validate their publication context.
      *
-     * @param source caller-owned batch
      * @param namespaceId SDK namespace
-     * @return isolated validated deregistration intent
+     * @param agentName Agent name
+     * @param protocol Agent protocol
+     * @param endpoints caller-owned natural keys
+     * @return isolated validated natural keys
      * @throws NacosException when the batch is invalid
      */
-    public static AgentEndpointDeregistrationBatch copyDeregistrationBatch(
-        AgentEndpointDeregistrationBatch source, String namespaceId) throws NacosException {
-        if (source == null) {
-            throw invalid("AgentEndpointDeregistrationBatch must not be null.");
-        }
-        AgentEndpointDeregistrationBatch result = new AgentEndpointDeregistrationBatch();
-        result.setNamespaceId(bindNamespace(source.getNamespaceId(), namespaceId));
-        result.setAgentName(source.getAgentName());
-        result.setProtocol(source.getProtocol());
-        result.setEndpoints(copyEndpoints(source.getEndpoints()));
+    public static List<Endpoint> copyDeregistrationEndpoints(String namespaceId, String agentName,
+        String protocol, List<Endpoint> endpoints) throws NacosException {
+        final List<Endpoint> result = copyEndpoints(endpoints);
         validate(new Validation() {
             
             @Override
             public void run() {
-                RadModelValidator.validate(result);
+                RadModelValidator.validateDeregistration(namespaceId, agentName, protocol, result);
             }
         });
         return result;
@@ -212,17 +198,6 @@ public final class AgentModelUtils {
     public static AgentDiscoveryResult copyDiscoveryResult(AgentDiscoveryResult source) {
         return source == null ? null
             : JsonUtils.toObj(JsonUtils.toJson(source), AgentDiscoveryResult.class);
-    }
-    
-    private static String bindNamespace(String requestedNamespace, String namespaceId)
-        throws NacosException {
-        if (StringUtils.isBlank(requestedNamespace)) {
-            return namespaceId;
-        }
-        if (!namespaceId.equals(requestedNamespace)) {
-            throw invalid("Request namespace does not match the AiService namespace.");
-        }
-        return namespaceId;
     }
     
     private static AgentReference copyReference(AgentReference source) throws NacosException {
@@ -255,13 +230,14 @@ public final class AgentModelUtils {
         return source == null ? null : new ArrayList<>(source);
     }
     
-    private static List<Endpoint> canonicalizeEndpoints(List<Endpoint> source) {
-        if (source == null) {
-            return null;
-        }
-        List<Endpoint> result = new ArrayList<Endpoint>(source.size());
-        for (Endpoint endpoint : source) {
-            result.add(EndpointCanonicalizer.canonicalize(endpoint));
+    private static List<Endpoint> canonicalizeEndpoints(AgentEndpointRegistrationBatch source) {
+        List<Endpoint> result = new ArrayList<Endpoint>(source.getEndpoints().size());
+        for (Endpoint endpoint : source.getEndpoints()) {
+            Endpoint copy = EndpointCanonicalizer.canonicalize(copyEndpoint(endpoint));
+            copy.setBindings(Collections.singletonList(
+                EndpointCanonicalizer.canonicalizeRuntimeBinding(endpoint,
+                    source.getRuntimeVersion(), source.getVersionRange())));
+            result.add(copy);
         }
         return result;
     }
@@ -289,6 +265,7 @@ public final class AgentModelUtils {
         result
             .setMetadata(source.getMetadata() == null ? null : new HashMap<>(source.getMetadata()));
         result.setHealthy(source.getHealthy());
+        result.setEnabled(source.getEnabled());
         return result;
     }
     

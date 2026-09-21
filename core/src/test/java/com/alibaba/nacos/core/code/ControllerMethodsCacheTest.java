@@ -21,7 +21,17 @@ import com.alibaba.nacos.sys.env.EnvUtil;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.mock.web.MockHttpServletRequest;
+import org.springframework.mock.web.MockServletContext;
+import org.springframework.web.context.WebApplicationContext;
+import org.springframework.web.HttpRequestMethodNotSupportedException;
+import org.springframework.web.util.ServletRequestPathUtils;
+import org.springframework.web.method.HandlerMethod;
+import org.springframework.web.servlet.HandlerExecutionChain;
+import org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -40,6 +50,8 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 /**
  * Unit test for {@link ControllerMethodsCache}.
@@ -52,11 +64,138 @@ class ControllerMethodsCacheTest {
     void setUp() {
         cache = new ControllerMethodsCache();
         EnvUtil.setContextPath("/nacos");
+        System.setProperty(ControllerMethodsCache.LEGACY_RESOLVER_ENABLED, "false");
     }
     
     @AfterEach
     void tearDown() {
         EnvUtil.setContextPath(null);
+        System.clearProperty(ControllerMethodsCache.LEGACY_RESOLVER_ENABLED);
+    }
+    
+    @ParameterizedTest
+    @ValueSource(strings = {"GET", "HEAD"})
+    void getMethodUsesSpringMvcHandlerMappingByDefault(String httpMethod) throws Exception {
+        ObjectProvider<RequestMappingHandlerMapping> provider = mock(ObjectProvider.class);
+        RequestMappingHandlerMapping handlerMapping = mock(RequestMappingHandlerMapping.class);
+        MockHttpServletRequest request =
+            new MockHttpServletRequest(httpMethod, "/n%61cos/api/get");
+        Method expected = TestController.class.getMethod("get");
+        HandlerMethod handlerMethod = new HandlerMethod(new TestController(), expected);
+        when(provider.getIfUnique()).thenReturn(handlerMapping);
+        when(handlerMapping.getHandler(request))
+            .thenReturn(new HandlerExecutionChain(handlerMethod));
+        
+        ControllerMethodsCache springCache = new ControllerMethodsCache(provider);
+        
+        assertEquals(expected, springCache.getMethod(request));
+    }
+    
+    @Test
+    void getMethodDefersUnsupportedMethodsToMvcAndClearsParsedPath() throws Exception {
+        ObjectProvider<RequestMappingHandlerMapping> provider = mock(ObjectProvider.class);
+        RequestMappingHandlerMapping mapping = mock(RequestMappingHandlerMapping.class);
+        MockHttpServletRequest request = new MockHttpServletRequest("POST", "/api/get");
+        when(provider.getIfUnique()).thenReturn(mapping);
+        when(mapping.usesPathPatterns()).thenReturn(true);
+        when(mapping.getHandler(request)).thenThrow(
+            new HttpRequestMethodNotSupportedException("POST", Collections.singletonList("GET")));
+        
+        assertNull(new ControllerMethodsCache(provider).getMethod(request));
+        assertEquals(false, ServletRequestPathUtils.hasParsedRequestPath(request));
+    }
+    
+    @Test
+    void getMethodStillFailsClosedOnUnexpectedMappingFailure() throws Exception {
+        ObjectProvider<RequestMappingHandlerMapping> provider = mock(ObjectProvider.class);
+        RequestMappingHandlerMapping mapping = mock(RequestMappingHandlerMapping.class);
+        MockHttpServletRequest request = new MockHttpServletRequest("GET", "/api/get");
+        when(provider.getIfUnique()).thenReturn(mapping);
+        when(mapping.getHandler(request)).thenThrow(new IllegalStateException("mapping failed"));
+        
+        assertThrows(NacosRuntimeException.class,
+            () -> new ControllerMethodsCache(provider).getMethod(request));
+    }
+    
+    @Test
+    void getMethodResolvesHandlerMappingFromRequestWebContext() throws Exception {
+        ObjectProvider<RequestMappingHandlerMapping> parentProvider = mock(ObjectProvider.class);
+        RequestMappingHandlerMapping handlerMapping = mock(RequestMappingHandlerMapping.class);
+        WebApplicationContext webApplicationContext = mock(WebApplicationContext.class);
+        MockServletContext servletContext = new MockServletContext();
+        servletContext.setAttribute(WebApplicationContext.ROOT_WEB_APPLICATION_CONTEXT_ATTRIBUTE,
+            webApplicationContext);
+        MockHttpServletRequest request =
+            new MockHttpServletRequest(servletContext, "GET", "/nacos/api/get");
+        Method expected = TestController.class.getMethod("get");
+        when(webApplicationContext.containsBean("requestMappingHandlerMapping")).thenReturn(true);
+        when(webApplicationContext.getBean("requestMappingHandlerMapping",
+            RequestMappingHandlerMapping.class)).thenReturn(handlerMapping);
+        when(handlerMapping.getHandler(request)).thenReturn(
+            new HandlerExecutionChain(new HandlerMethod(new TestController(), expected)));
+        
+        ControllerMethodsCache springCache = new ControllerMethodsCache(parentProvider);
+        
+        assertEquals(expected, springCache.getMethod(request));
+    }
+    
+    @ParameterizedTest
+    @ValueSource(strings = {"GET", "HEAD"})
+    void getMethodCanDowngradeToLegacyResolver(String httpMethod) throws Exception {
+        ObjectProvider<RequestMappingHandlerMapping> provider = mock(ObjectProvider.class);
+        ControllerMethodsCache springCache = new ControllerMethodsCache(provider);
+        springCache.initClassMethod(Collections.singleton(TestController.class));
+        System.setProperty(ControllerMethodsCache.LEGACY_RESOLVER_ENABLED, "true");
+        MockHttpServletRequest request = new MockHttpServletRequest(httpMethod, "/nacos/api/get");
+        request.setRequestURI("/nacos/api/get");
+        request.setParameter("required", "yes");
+        
+        assertEquals("get", springCache.getMethod(request).getName());
+    }
+    
+    @Test
+    void getMethodFromLegacyResolverWithEncodedContextPath() throws Exception {
+        ObjectProvider<RequestMappingHandlerMapping> provider = mock(ObjectProvider.class);
+        ControllerMethodsCache springCache = new ControllerMethodsCache(provider);
+        springCache.initClassMethod(Collections.singleton(TestController.class));
+        System.setProperty(ControllerMethodsCache.LEGACY_RESOLVER_ENABLED, "true");
+        MockHttpServletRequest request = new MockHttpServletRequest("GET", "/n%61cos/api/get");
+        request.setContextPath("/n%61cos");
+        request.setRequestURI("/n%61cos/api/get");
+        request.setParameter("required", "yes");
+        
+        assertEquals("get", springCache.getMethod(request).getName());
+    }
+    
+    @Test
+    void testHeadMethodFallbackToGet() throws Exception {
+        cache.initClassMethod(Collections.singleton(TestController.class));
+        MockHttpServletRequest request = new MockHttpServletRequest("HEAD", "/nacos/api/get");
+        request.setParameter("required", "yes");
+        assertEquals(TestController.class.getMethod("get"), cache.getMethod(request));
+        assertEquals("HEAD", request.getMethod());
+    }
+    
+    @Test
+    void testHeadMethodWithClassPathOnly() throws Exception {
+        cache.initClassMethod(Collections.singleton(ClassPathOnlyController.class));
+        MockHttpServletRequest request = new MockHttpServletRequest("HEAD", "/nacos/only");
+        assertEquals(ClassPathOnlyController.class.getMethod("index"), cache.getMethod(request));
+    }
+    
+    @Test
+    void testHeadMethodReturnsNullWhenParamsDoNotMatch() {
+        cache.initClassMethod(Collections.singleton(TestController.class));
+        MockHttpServletRequest request = new MockHttpServletRequest("HEAD", "/nacos/api/get");
+        request.setParameter("required", "other");
+        assertNull(cache.getMethod(request));
+    }
+    
+    @Test
+    void testHeadMethodDoesNotMatchPostMapping() {
+        cache.initClassMethod(Collections.singleton(TestController.class));
+        MockHttpServletRequest request = new MockHttpServletRequest("HEAD", "/nacos/api/post");
+        assertNull(cache.getMethod(request));
     }
     
     @Test

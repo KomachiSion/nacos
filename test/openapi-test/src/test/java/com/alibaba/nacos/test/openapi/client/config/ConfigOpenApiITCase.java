@@ -52,7 +52,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  *     content, md5, lastModified, contentType, and beta response fields.</li>
  *     <li>Boundary/validation: omitted {@code namespaceId} uses the public namespace; wrong namespace returns a wrapped
  *     not-found result; {@code dataId} and {@code groupName} are required; v3 does not accept the legacy {@code group}
- *     parameter as a replacement for {@code groupName}; invalid namespace values are rejected by parameter checking.</li>
+ *     parameter as a replacement for {@code groupName}; invalid namespace values and directory-control identity
+ *     segments are rejected by parameter checking.</li>
  *     <li>Exception/error handling: absent config returns HTTP 2xx with {@code RESOURCE_NOT_FOUND}; invalid namespace
  *     returns HTTP 400 with wrapped {@code Result} fields; required-field validation currently returns controlled
  *     HTTP 400 text from this controller path rather than HTTP 500.</li>
@@ -125,7 +126,7 @@ public class ConfigOpenApiITCase extends OpenApiBaseITCase {
         int retryTime = 10;
         while (retryTime-- > 0) {
             HttpRestResult<String> httpResult =
-                nacosRestTemplate.get(url(CLIENT_CONFIG_PATH), Header.EMPTY, query,
+                nacosRestTemplate.get(url(CLIENT_CONFIG_PATH), requestHeader(url(CLIENT_CONFIG_PATH)), query,
                     String.class);
             assertTrue(httpResult.ok());
             actual = JacksonUtils.toObj(httpResult.getData(), new TypeReference<>() {
@@ -184,12 +185,28 @@ public class ConfigOpenApiITCase extends OpenApiBaseITCase {
         assertBadRequestResult(getRaw(CLIENT_CONFIG_PATH, query),
             ErrorCode.PARAMETER_VALIDATE_ERROR, "namespaceId");
     }
+
+    @Test
+    public void testGetConfigDirectoryControlSegmentsReturnBadRequest() throws Exception {
+        Query invalidDataId = Query.newInstance().addParam("dataId", ".")
+            .addParam("groupName", TEST_GROUP).addParam("namespaceId", DEFAULT_NAMESPACE);
+        assertValidationBadRequest(getRaw(CLIENT_CONFIG_PATH, invalidDataId), "dataId");
+
+        Query invalidGroup = Query.newInstance().addParam("dataId", "any")
+            .addParam("groupName", "..").addParam("namespaceId", DEFAULT_NAMESPACE);
+        assertValidationBadRequest(getRaw(CLIENT_CONFIG_PATH, invalidGroup), "group");
+
+        Query invalidNamespace = Query.newInstance().addParam("dataId", "any")
+            .addParam("groupName", TEST_GROUP).addParam("namespaceId", "..");
+        assertValidationBadRequest(getRaw(CLIENT_CONFIG_PATH, invalidNamespace), "namespaceId");
+    }
     
     private HttpRestResult<String> getConfig(String dataId, String group, String namespace)
         throws Exception {
         Query query = Query.newInstance().addParam("dataId", dataId).addParam("groupName", group)
             .addParam("namespaceId", namespace);
-        return nacosRestTemplate.get(url(CLIENT_CONFIG_PATH), Header.EMPTY, query, String.class);
+        return nacosRestTemplate.get(url(CLIENT_CONFIG_PATH), requestHeader(url(CLIENT_CONFIG_PATH)), query,
+                String.class);
     }
     
     private void assertBadRequestResult(HttpResponse response, ErrorCode errorCode,
@@ -209,12 +226,17 @@ public class ConfigOpenApiITCase extends OpenApiBaseITCase {
         assertTrue(response.body().contains("Required parameter"), response.body());
         assertTrue(response.body().contains(expectedField), response.body());
     }
+
+    private void assertValidationBadRequest(HttpResponse response, String expectedField) {
+        assertEquals(400, response.code(), response.body());
+        assertTrue(response.body().contains(expectedField), response.body());
+    }
     
     private boolean publishConfig(String dataId, String groupName, String namespaceId,
         String content) throws Exception {
         Map<String, String> form = buildPublishForm(dataId, groupName, namespaceId, content);
         HttpRestResult<String> httpResult =
-            nacosRestTemplate.postForm(url(ADMIN_CONFIG_PATH), Header.EMPTY, form,
+            nacosRestTemplate.postForm(url(ADMIN_CONFIG_PATH), requestHeader(url(ADMIN_CONFIG_PATH)), form,
                 String.class);
         assertTrue(httpResult.ok(),
             "publish HTTP status should be 2xx, body=" + httpResult.getData());
@@ -230,7 +252,7 @@ public class ConfigOpenApiITCase extends OpenApiBaseITCase {
             Query.newInstance().addParam("dataId", dataId).addParam("groupName", groupName)
                 .addParam("namespaceId", namespaceId).addParam("tag", "");
         HttpRestResult<String> httpResult =
-            nacosRestTemplate.delete(url(ADMIN_CONFIG_PATH), Header.EMPTY, query,
+            nacosRestTemplate.delete(url(ADMIN_CONFIG_PATH), requestHeader(url(ADMIN_CONFIG_PATH)), query,
                 String.class);
         if (!httpResult.ok()) {
             logger().warn("deleteConfig non-OK: code={} body={}", httpResult.getCode(),

@@ -49,6 +49,22 @@ public class FormalHandler extends AbstractConfigQueryHandler {
         
         CacheItem cacheItem = ConfigChainEntryHandler.getThreadLocalCacheItem();
         String md5 = cacheItem.getConfigCache().getMd5();
+        
+        // 304 optimization: compare MD5 from metadata before reading content from disk.
+        // If the client's localMd5 matches, skip content read entirely to reduce I/O overhead.
+        String localMd5 = request.getLocalMd5();
+        if (StringUtils.isNotBlank(localMd5) && localMd5.equals(md5)) {
+            long lastModified = cacheItem.getConfigCache().getLastModifiedTs();
+            String encryptedDataKey = cacheItem.getConfigCache().getEncryptedDataKey();
+            String configType = cacheItem.getType();
+            response.setMd5(md5);
+            response.setLastModified(lastModified);
+            response.setEncryptedDataKey(encryptedDataKey);
+            response.setConfigType(configType);
+            response.setStatus(ConfigQueryChainResponse.ConfigQueryStatus.CONFIG_NOT_MODIFIED);
+            return response;
+        }
+        
         String content = ConfigDiskServiceFactory.getInstance().getContent(dataId, group, tenant);
         if (StringUtils.isBlank(content)) {
             response.setStatus(ConfigQueryChainResponse.ConfigQueryStatus.CONFIG_NOT_FOUND);

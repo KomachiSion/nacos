@@ -30,9 +30,11 @@ import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
@@ -52,9 +54,16 @@ public abstract class AiAdminApiBaseITCase extends OpenApiBaseITCase {
 
     protected static final String DEFAULT_NAMESPACE = "public";
 
+    private static final String AUTH_VISIBILITY_PATH = nacosPath("/v3/auth/visibility");
+
+    private static final String ANONYMOUS_USERNAME = System.getProperty(
+            "nacos.test.auth.anonymous.username", "__nacos_anonymous__");
+
     private static final int MCP_DELETE_MAX_RETRIES = 60;
 
     private static final long MCP_DELETE_RETRY_INTERVAL_MILLIS = 250L;
+
+    private final Set<String> registeredVisibilityGrants = new HashSet<>();
 
     protected static final String ADMIN_A2A_PATH = nacosPath(Constants.A2A.ADMIN_PATH);
 
@@ -139,6 +148,41 @@ public abstract class AiAdminApiBaseITCase extends OpenApiBaseITCase {
         return "oit_" + scenario + "_" + UUID.randomUUID().toString().substring(0, 8);
     }
 
+    protected void grantClientReadVisibility(String resourceType, String resourceName)
+            throws Exception {
+        grantClientReadVisibility(DEFAULT_NAMESPACE, resourceType, resourceName);
+    }
+
+    protected void grantClientReadVisibility(String namespaceId, String resourceType,
+            String resourceName) throws Exception {
+        if (AUTH_ENABLED) {
+            grantReadVisibility(identityUsername(AuthIdentity.CLIENT_READ_WRITE), namespaceId,
+                    resourceType, resourceName);
+        }
+    }
+
+    protected void grantAnonymousReadVisibility(String resourceType, String resourceName)
+            throws Exception {
+        if (AUTH_ENABLED) {
+            grantReadVisibility(ANONYMOUS_USERNAME, DEFAULT_NAMESPACE, resourceType,
+                    resourceName);
+        }
+    }
+
+    private void grantReadVisibility(String username, String namespaceId, String resourceType,
+            String resourceName) throws Exception {
+        String grantKey = username + '\n' + namespaceId + '\n' + resourceType + '\n'
+                + resourceName;
+        if (!registeredVisibilityGrants.add(grantKey)) {
+            return;
+        }
+        Query grant = Query.newInstance().addParam("namespaceId", namespaceId)
+                .addParam("resourceType", resourceType).addParam("resourceName", resourceName)
+                .addParam("username", username).addParam("action", "r");
+        postFormOk(AUTH_VISIBILITY_PATH, grant);
+        addCleanup(() -> deleteQuietly(AUTH_VISIBILITY_PATH, grant));
+    }
+
     protected Query mcpIdentityQuery(String mcpName, String mcpId, String version) {
         Query query = Query.newInstance().addParam("namespaceId", DEFAULT_NAMESPACE);
         addIfNotBlank(query, "mcpName", mcpName);
@@ -156,6 +200,165 @@ public abstract class AiAdminApiBaseITCase extends OpenApiBaseITCase {
         form.put("toolSpecification", mcpToolSpecification(toolName));
         form.put("resourceSpecification", mcpResourceSpecification(resourceName));
         return form;
+    }
+
+    protected Query mcpLifecycleVersionQuery(String mcpName, String version) {
+        return Query.newInstance().addParam("namespaceId", DEFAULT_NAMESPACE)
+                .addParam("mcpName", mcpName).addParam("version", version);
+    }
+
+    protected Query mcpLifecycleDraftQuery(String mcpName, String version) {
+        return mcpLifecycleVersionQuery(mcpName, version).addParam("serverSpecification",
+                mcpServerSpecification(mcpName, version, "lifecycle draft"));
+    }
+
+    protected void assertMcpLifecycleManagedOperations(String basePath, String mcpName,
+            String version) throws Exception {
+        Query listQuery = Query.newInstance().addParam("namespaceId", DEFAULT_NAMESPACE)
+                .addParam("mcpName", mcpName).addParam("status", "ONLINE")
+                .addParam("pageNo", "1").addParam("pageSize", "10");
+        assertMcpLifecycleResourceAbsent(getRaw(basePath + "/versions", listQuery));
+        assertMcpLifecycleResourceAbsent(getRaw(basePath + "/version",
+                mcpLifecycleVersionQuery(mcpName, version)));
+        assertMcpLifecycleResourceAbsent(putRaw(basePath + "/draft",
+                mcpLifecycleDraftQuery(mcpName, version)));
+        assertMcpLifecycleResourceAbsent(deleteRaw(basePath + "/draft",
+                mcpLifecycleVersionQuery(mcpName, version)));
+        assertMcpLifecycleResourceAbsent(postRaw(basePath + "/submit",
+                mcpLifecycleVersionQuery(mcpName, version)));
+        assertMcpLifecycleResourceAbsent(postRaw(basePath + "/publish",
+                mcpLifecycleVersionQuery(mcpName, version)));
+        assertMcpLifecycleResourceAbsent(postRaw(basePath + "/force-publish",
+                mcpLifecycleVersionQuery(mcpName, version)));
+        assertMcpLifecycleResourceAbsent(postRaw(basePath + "/redraft",
+                mcpLifecycleVersionQuery(mcpName, version)));
+        assertMcpLifecycleResourceAbsent(postRaw(basePath + "/online",
+                mcpLifecycleVersionQuery(mcpName, version)));
+        assertMcpLifecycleResourceAbsent(postRaw(basePath + "/offline",
+                mcpLifecycleVersionQuery(mcpName, version)));
+        assertMcpLifecycleResourceAbsent(putRaw(basePath + "/labels",
+                Query.newInstance().addParam("namespaceId", DEFAULT_NAMESPACE)
+                        .addParam("mcpName", mcpName).addParam("labels", "{}")));
+        assertMcpLifecycleResourceAbsent(putRaw(basePath + "/status",
+                Query.newInstance().addParam("namespaceId", DEFAULT_NAMESPACE)
+                        .addParam("mcpName", mcpName).addParam("enabled", "false")));
+        assertMcpLifecycleResourceAbsent(putRaw(basePath + "/scope",
+                Query.newInstance().addParam("namespaceId", DEFAULT_NAMESPACE)
+                        .addParam("mcpName", mcpName).addParam("scope", "PRIVATE")));
+        assertError(putRaw(basePath + "/status", Query.newInstance()
+                .addParam("namespaceId", DEFAULT_NAMESPACE).addParam("mcpName", mcpName)), 400,
+                ErrorCode.PARAMETER_MISSING, "enabled");
+        assertError(putRaw(basePath + "/scope", Query.newInstance()
+                .addParam("namespaceId", DEFAULT_NAMESPACE).addParam("mcpName", mcpName)), 400,
+                ErrorCode.PARAMETER_MISSING, "scope");
+        assertError(putRaw(basePath + "/scope", Query.newInstance()
+                .addParam("namespaceId", DEFAULT_NAMESPACE).addParam("mcpName", mcpName)
+                .addParam("scope", "TEAM")), 400, ErrorCode.PARAMETER_VALIDATE_ERROR,
+                "PUBLIC or PRIVATE");
+
+        HttpResponse createResponse = postRaw(basePath + "/draft",
+                mcpLifecycleDraftQuery(mcpName, version));
+        assertEquals(200, createResponse.code(), createResponse.body());
+        JsonNode created = JacksonUtils.toObj(createResponse.body());
+        assertEquals(0, created.path("code").asInt(), created.toString());
+        assertEquals(mcpName, created.path("data").path("mcpName").asText(),
+                created.toString());
+        assertEquals(version, created.path("data").path("version").asText(),
+                created.toString());
+        JsonNode detail = created.path("data");
+        assertTrue(detail.hasNonNull("resourceStatus"), created.toString());
+        assertTrue(detail.hasNonNull("owner"), created.toString());
+        assertTrue(detail.hasNonNull("scope"), created.toString());
+        assertTrue(detail.path("writable").asBoolean(), created.toString());
+        assertTrue(detail.path("labels").isObject(), created.toString());
+        assertEquals(version, detail.path("editingVersion").asText(), created.toString());
+        assertTrue(detail.path("reviewingVersion").isMissingNode()
+                || detail.path("reviewingVersion").isNull(), created.toString());
+        assertEquals(0, detail.path("onlineCount").asInt(), created.toString());
+        addCleanup(() -> deleteQuietly(basePath, mcpIdentityQuery(mcpName, null, null)));
+
+        JsonNode disabled = putFormOk(basePath + "/status", Map.of(
+                "namespaceId", DEFAULT_NAMESPACE, "mcpName", mcpName, "enabled", "false"));
+        assertEquals("ok", disabled.path("data").asText(), disabled.toString());
+        JsonNode disabledDetail = getJsonOk(basePath + "/version",
+                mcpLifecycleVersionQuery(mcpName, version)).path("data");
+        assertEquals("disable", disabledDetail.path("resourceStatus").asText(),
+                disabledDetail.toString());
+        JsonNode compatibilityDetail = getJsonOk(basePath,
+                mcpIdentityQuery(mcpName, null, version)).path("data");
+        assertFalse(compatibilityDetail.path("enabled").asBoolean(), compatibilityDetail.toString());
+        putFormOk(basePath + "/status", Map.of(
+                "namespaceId", DEFAULT_NAMESPACE, "mcpName", mcpName, "enabled", "true"));
+        putFormOk(basePath + "/scope", Map.of(
+                "namespaceId", DEFAULT_NAMESPACE, "mcpName", mcpName, "scope", "private"));
+        JsonNode privateDetail = getJsonOk(basePath + "/version",
+                mcpLifecycleVersionQuery(mcpName, version)).path("data");
+        assertEquals("PRIVATE", privateDetail.path("scope").asText(), privateDetail.toString());
+        putFormOk(basePath + "/scope", Map.of(
+                "namespaceId", DEFAULT_NAMESPACE, "mcpName", mcpName, "scope", "PUBLIC"));
+
+        JsonNode deleted = JacksonUtils.toObj(deleteRaw(basePath + "/draft",
+                mcpLifecycleVersionQuery(mcpName, version)).body());
+        assertEquals(0, deleted.path("code").asInt(), deleted.toString());
+        JsonNode emptyDetail = getJsonOk(basePath, mcpIdentityQuery(mcpName, null, null))
+                .path("data");
+        assertEquals(mcpName, emptyDetail.path("name").asText(), emptyDetail.toString());
+        assertEquals(0, emptyDetail.path("allVersions").size(), emptyDetail.toString());
+        HttpResponse recreateResponse = postRaw(basePath + "/draft",
+                mcpLifecycleDraftQuery(mcpName, version));
+        assertEquals(200, recreateResponse.code(), recreateResponse.body());
+        JsonNode recreated = JacksonUtils.toObj(recreateResponse.body());
+        assertEquals(version, recreated.path("data").path("version").asText(),
+                recreated.toString());
+        JsonNode redeleted = JacksonUtils.toObj(deleteRaw(basePath + "/draft",
+                mcpLifecycleVersionQuery(mcpName, version)).body());
+        assertEquals(0, redeleted.path("code").asInt(), redeleted.toString());
+    }
+
+    protected void assertMcpLifecycleCutoverGate(String basePath, String mcpName,
+            String version) throws Exception {
+        Query listQuery = Query.newInstance().addParam("namespaceId", DEFAULT_NAMESPACE)
+                .addParam("mcpName", mcpName).addParam("status", "ONLINE")
+                .addParam("pageNo", "1").addParam("pageSize", "10");
+        assertMcpLifecycleCutoverConflict(getRaw(basePath + "/versions", listQuery));
+        assertMcpLifecycleCutoverConflict(getRaw(basePath + "/version",
+                mcpLifecycleVersionQuery(mcpName, version)));
+        assertMcpLifecycleCutoverConflict(postRaw(basePath + "/draft",
+                mcpLifecycleDraftQuery(mcpName, version)));
+        assertMcpLifecycleCutoverConflict(putRaw(basePath + "/draft",
+                mcpLifecycleDraftQuery(mcpName, version)));
+        assertMcpLifecycleCutoverConflict(deleteRaw(basePath + "/draft",
+                mcpLifecycleVersionQuery(mcpName, version)));
+        assertMcpLifecycleCutoverConflict(postRaw(basePath + "/submit",
+                mcpLifecycleVersionQuery(mcpName, version)));
+        assertMcpLifecycleCutoverConflict(postRaw(basePath + "/publish",
+                mcpLifecycleVersionQuery(mcpName, version)));
+        assertMcpLifecycleCutoverConflict(postRaw(basePath + "/force-publish",
+                mcpLifecycleVersionQuery(mcpName, version)));
+        assertMcpLifecycleCutoverConflict(postRaw(basePath + "/redraft",
+                mcpLifecycleVersionQuery(mcpName, version)));
+        assertMcpLifecycleCutoverConflict(postRaw(basePath + "/online",
+                mcpLifecycleVersionQuery(mcpName, version)));
+        assertMcpLifecycleCutoverConflict(postRaw(basePath + "/offline",
+                mcpLifecycleVersionQuery(mcpName, version)));
+        assertMcpLifecycleCutoverConflict(putRaw(basePath + "/labels",
+                Query.newInstance().addParam("namespaceId", DEFAULT_NAMESPACE)
+                        .addParam("mcpName", mcpName).addParam("labels", "{}")));
+        assertMcpLifecycleCutoverConflict(putRaw(basePath + "/status",
+                Query.newInstance().addParam("namespaceId", DEFAULT_NAMESPACE)
+                        .addParam("mcpName", mcpName).addParam("enabled", "false")));
+        assertMcpLifecycleCutoverConflict(putRaw(basePath + "/scope",
+                Query.newInstance().addParam("namespaceId", DEFAULT_NAMESPACE)
+                        .addParam("mcpName", mcpName).addParam("scope", "PRIVATE")));
+    }
+
+    private void assertMcpLifecycleResourceAbsent(HttpResponse response) throws Exception {
+        assertError(response, 404, ErrorCode.MCP_SERVER_NOT_FOUND, "not found");
+    }
+
+    protected void assertMcpLifecycleCutoverConflict(HttpResponse response) throws Exception {
+        assertError(response, 409, ErrorCode.RESOURCE_CONFLICT,
+                "unavailable before LIFECYCLE_MANAGED cutover");
     }
 
     protected void deleteMcpServerQuietly(String mcpName, String mcpId) throws Exception {
@@ -239,6 +442,22 @@ public abstract class AiAdminApiBaseITCase extends OpenApiBaseITCase {
         form.put("registrationType", registrationType);
         form.put("agentCard", agentCard);
         return form;
+    }
+
+    /**
+     * Create a public Agent through the historical A2A contract, then verify its canonical view.
+     *
+     * @param agentName unique fixture name
+     * @param version initial online version
+     * @throws Exception when registration or verification fails
+     */
+    protected void publishPublicAgent(String agentName, String version) throws Exception {
+        addCleanup(() -> deleteAgentDefinitionQuietly(DEFAULT_NAMESPACE, agentName));
+        postFormOk(ADMIN_A2A_PATH, buildAgentCardForm(agentName, version, "URL",
+                buildV1AgentCard(agentName, version, "1.0")));
+        JsonNode overview = getJsonOk(ADMIN_AGENT_PATH,
+                agentIdentityQuery(DEFAULT_NAMESPACE, agentName)).get("data");
+        assertEquals("PUBLIC", overview.get("agent").get("scope").asText(), overview.toString());
     }
 
     protected Query agentIdentityQuery(String namespaceId, String agentName) {
@@ -328,14 +547,14 @@ public abstract class AiAdminApiBaseITCase extends OpenApiBaseITCase {
     }
 
     protected HttpResponse postFormRaw(String path, Map<String, String> form) throws Exception {
-        HttpRestResult<String> result = nacosRestTemplate.postForm(requestUrl(path), Header.EMPTY,
-                form, String.class);
+        HttpRestResult<String> result = nacosRestTemplate.postForm(requestUrl(path),
+                requestHeader(requestUrl(path)), form, String.class);
         return toHttpResponse(result);
     }
 
     protected HttpResponse putFormRaw(String path, Map<String, String> form) throws Exception {
-        HttpRestResult<String> result = nacosRestTemplate.putForm(requestUrl(path), Header.EMPTY,
-                form, String.class);
+        HttpRestResult<String> result = nacosRestTemplate.putForm(requestUrl(path),
+                requestHeader(requestUrl(path)), form, String.class);
         return toHttpResponse(result);
     }
 
@@ -381,7 +600,7 @@ public abstract class AiAdminApiBaseITCase extends OpenApiBaseITCase {
         callInterface.put("protocolVersion", "1.0");
         callInterface.put("descriptorMediaType", "application/json");
         callInterface.put("nativeDescriptor", descriptor);
-        callInterface.put("endpointSourceOrder", Collections.singletonList("RUNTIME"));
+        callInterface.put("endpointSourceOrder", java.util.Arrays.asList("RUNTIME", "DECLARED"));
         return callInterface;
     }
 
@@ -574,6 +793,10 @@ public abstract class AiAdminApiBaseITCase extends OpenApiBaseITCase {
         assertTrue(skillMd.contains("version: " + version), skillMd);
         assertTrue(skillMd.contains(body), skillMd);
         JsonNode resource = findSkillResource(data.get("resource"), "references", "guide.md");
+        if (guideContent == null) {
+            assertTrue(resource.isMissingNode(), data.toString());
+            return;
+        }
         assertNotNull(resource, data.toString());
         assertEquals("guide.md", resource.get("name").asText(), data.toString());
         assertEquals("references", resource.get("type").asText(), data.toString());
@@ -614,14 +837,21 @@ public abstract class AiAdminApiBaseITCase extends OpenApiBaseITCase {
         assertTrue(skillMd.contains("name: " + skillName), skillMd);
         assertTrue(skillMd.contains("version: " + version), skillMd);
         assertTrue(skillMd.contains(body), skillMd);
-        assertEquals(guideContent, entries.get(skillName + "/references/guide.md"));
+        if (guideContent == null) {
+            assertFalse(entries.containsKey(skillName + "/references/guide.md"),
+                    entries.keySet().toString());
+        } else {
+            assertEquals(guideContent, entries.get(skillName + "/references/guide.md"));
+        }
     }
 
     protected byte[] buildSkillZip(String skillName, String version, String body,
             String guideContent) throws Exception {
         Map<String, String> entries = new LinkedHashMap<>();
         entries.put("SKILL.md", skillMarkdown(skillName, version, body));
-        entries.put("references/guide.md", guideContent);
+        if (guideContent != null) {
+            entries.put("references/guide.md", guideContent);
+        }
         return zipEntries(entries);
     }
 
@@ -949,12 +1179,14 @@ public abstract class AiAdminApiBaseITCase extends OpenApiBaseITCase {
         card.put("name", skillName);
         card.put("description", "skill admin openapi integration test");
         card.put("skillMd", skillMarkdown(skillName, null, body));
-        Map<String, Object> guide = new LinkedHashMap<>();
-        guide.put("name", "guide.md");
-        guide.put("type", "references");
-        guide.put("content", guideContent);
         Map<String, Object> resources = new LinkedHashMap<>();
-        resources.put("references::guide.md", guide);
+        if (guideContent != null) {
+            Map<String, Object> guide = new LinkedHashMap<>();
+            guide.put("name", "guide.md");
+            guide.put("type", "references");
+            guide.put("content", guideContent);
+            resources.put("references::guide.md", guide);
+        }
         card.put("resource", resources);
         return JacksonUtils.toJson(card);
     }

@@ -19,13 +19,15 @@ package com.alibaba.nacos.ai.service.agent.storage;
 import com.alibaba.nacos.ai.constant.Constants;
 import com.alibaba.nacos.ai.model.agent.AgentVersionContent;
 import com.alibaba.nacos.ai.model.agent.AgentVersionStorageDescriptor;
+import com.alibaba.nacos.ai.storage.AiResourceStorageUtils;
 import com.alibaba.nacos.ai.storage.NacosConfigAiResourceStorage;
 import com.alibaba.nacos.api.exception.NacosException;
 import com.alibaba.nacos.common.utils.StringUtils;
 import com.alibaba.nacos.plugin.ai.storage.AiResourceStorageRouter;
+import com.alibaba.nacos.plugin.ai.storage.model.AiResourceStorageConsistencyMode;
 import com.alibaba.nacos.plugin.ai.storage.model.StorageKey;
 import com.alibaba.nacos.plugin.ai.storage.spi.AiResourceStorage;
-import com.alibaba.nacos.sys.env.EnvUtil;
+import com.alibaba.nacos.plugin.ai.storage.spi.AiResourceStorageChangeListener;
 import org.springframework.stereotype.Service;
 
 import java.util.Objects;
@@ -197,6 +199,36 @@ public class AgentVersionStorageService {
         }
     }
     
+    /**
+     * Resolve the local-read consistency contract of one persisted Agent Version.
+     *
+     * @param descriptor Version storage pointer
+     * @return selected provider consistency mode
+     * @throws NacosException when the descriptor or provider is unavailable
+     */
+    public AiResourceStorageConsistencyMode consistencyMode(
+        AgentVersionStorageDescriptor descriptor) throws NacosException {
+        return route(checkedStorageKey(descriptor)).consistencyMode();
+    }
+    
+    /**
+     * Attach a best-effort local visibility listener to AI Storage providers.
+     *
+     * @param listener listener to attach
+     */
+    public void addChangeListener(AiResourceStorageChangeListener listener) {
+        storageRouter.addChangeListener(listener);
+    }
+    
+    /**
+     * Detach a previously attached local visibility listener.
+     *
+     * @param listener listener to detach
+     */
+    public void removeChangeListener(AiResourceStorageChangeListener listener) {
+        storageRouter.removeChangeListener(listener);
+    }
+    
     private AgentVersionStorageDescriptor buildDescriptor(StorageKey storageKey,
         AgentVersionContentSerializer.SerializedContent serializedContent) {
         AgentVersionStorageDescriptor result = new AgentVersionStorageDescriptor();
@@ -253,8 +285,8 @@ public class AgentVersionStorageService {
     }
     
     private static String configuredProvider() {
-        return EnvUtil.getProperty(Constants.Agent.AGENT_STORAGE_PROVIDER_CONFIG_KEY,
-            DEFAULT_STORAGE_PROVIDER);
+        return AiResourceStorageUtils.resolveProvider(
+            Constants.Agent.AGENT_STORAGE_PROVIDER_CONFIG_KEY, DEFAULT_STORAGE_PROVIDER);
     }
     
     private static NacosException corruptedContent(String message, Throwable cause) {

@@ -18,9 +18,13 @@ package com.alibaba.nacos.console.handler.impl.inner.ai;
 
 import com.alibaba.nacos.ai.constant.Constants;
 import com.alibaba.nacos.ai.service.McpLegacyImportAdapter;
-import com.alibaba.nacos.ai.service.McpServerOperationService;
+import com.alibaba.nacos.ai.service.mcp.McpCompatibilityOperationService;
+import com.alibaba.nacos.ai.service.mcp.McpOperationService;
 import com.alibaba.nacos.api.ai.constant.AiConstants;
 import com.alibaba.nacos.api.ai.model.mcp.McpEndpointSpec;
+import com.alibaba.nacos.api.ai.model.mcp.McpServerVersionDetail;
+import com.alibaba.nacos.api.ai.model.mcp.McpServerVersionSummary;
+import com.alibaba.nacos.api.ai.model.mcp.McpResourceSpecification;
 import com.alibaba.nacos.api.ai.model.mcp.McpServerBasicInfo;
 import com.alibaba.nacos.api.ai.model.mcp.McpServerDetailInfo;
 import com.alibaba.nacos.api.ai.model.mcp.McpServerImportRequest;
@@ -35,6 +39,8 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.util.Map;
+
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.mockito.ArgumentMatchers.any;
@@ -46,16 +52,20 @@ import static org.mockito.Mockito.when;
 class McpInnerHandlerTest {
     
     @Mock
-    McpServerOperationService mcpServerOperationService;
+    McpOperationService mcpServerOperationService;
     
     @Mock
     McpLegacyImportAdapter mcpLegacyImportAdapter;
+    
+    @Mock
+    McpCompatibilityOperationService lifecycleOperationService;
     
     McpInnerHandler mcpInnerHandler;
     
     @BeforeEach
     void setUp() {
-        mcpInnerHandler = new McpInnerHandler(mcpServerOperationService, mcpLegacyImportAdapter);
+        mcpInnerHandler = new McpInnerHandler(mcpServerOperationService, mcpLegacyImportAdapter,
+            lifecycleOperationService);
     }
     
     @Test
@@ -121,6 +131,68 @@ class McpInnerHandlerTest {
         verify(mcpServerOperationService).deleteMcpServer(AiConstants.Mcp.MCP_DEFAULT_NAMESPACE,
             "test", "id",
             "version");
+    }
+    
+    @Test
+    void standardLifecycleMethodsDelegateToCompatibilityRouter() throws NacosException {
+        McpServerBasicInfo server = new McpServerBasicInfo();
+        McpToolSpecification tools = new McpToolSpecification();
+        McpResourceSpecification resources = new McpResourceSpecification();
+        McpEndpointSpec endpoint = new McpEndpointSpec();
+        McpServerVersionDetail detail = new McpServerVersionDetail();
+        McpServerVersionSummary summary = new McpServerVersionSummary();
+        Page<McpServerVersionSummary> page = new Page<>();
+        Map<String, String> labels = Map.of("stable", "1.0.0");
+        when(lifecycleOperationService.listMcpServerVersions("ns", "test", "draft", 1, 10))
+            .thenReturn(page);
+        when(lifecycleOperationService.getMcpServerVersion("ns", "test", "1.0.0"))
+            .thenReturn(detail);
+        when(lifecycleOperationService.createMcpServerDraft("ns", server, tools, resources,
+            endpoint)).thenReturn(detail);
+        when(lifecycleOperationService.updateMcpServerDraft("ns", server, tools, resources,
+            endpoint)).thenReturn(detail);
+        when(lifecycleOperationService.submitMcpServerVersion("ns", "test", "1.0.0"))
+            .thenReturn(summary);
+        when(lifecycleOperationService.publishMcpServerVersion("ns", "test", "1.0.0"))
+            .thenReturn(summary);
+        when(lifecycleOperationService.forcePublishMcpServerVersion("ns", "test", "1.0.0"))
+            .thenReturn(summary);
+        when(lifecycleOperationService.redraftMcpServerVersion("ns", "test", "1.0.0"))
+            .thenReturn(summary);
+        when(lifecycleOperationService.onlineMcpServerVersion("ns", "test", "1.0.0"))
+            .thenReturn(summary);
+        when(lifecycleOperationService.offlineMcpServerVersion("ns", "test", "1.0.0"))
+            .thenReturn(summary);
+        when(lifecycleOperationService.updateMcpServerLabels("ns", "test", labels))
+            .thenReturn(labels);
+        
+        assertEquals(page,
+            mcpInnerHandler.listMcpServerVersions("ns", "test", "draft", 1, 10));
+        assertEquals(detail,
+            mcpInnerHandler.getMcpServerVersion("ns", "test", "1.0.0"));
+        assertEquals(detail,
+            mcpInnerHandler.createMcpServerDraft("ns", server, tools, resources, endpoint));
+        assertEquals(detail,
+            mcpInnerHandler.updateMcpServerDraft("ns", server, tools, resources, endpoint));
+        mcpInnerHandler.deleteMcpServerDraft("ns", "test", "1.0.0");
+        assertEquals(summary,
+            mcpInnerHandler.submitMcpServerVersion("ns", "test", "1.0.0"));
+        assertEquals(summary,
+            mcpInnerHandler.publishMcpServerVersion("ns", "test", "1.0.0"));
+        assertEquals(summary,
+            mcpInnerHandler.forcePublishMcpServerVersion("ns", "test", "1.0.0"));
+        assertEquals(summary,
+            mcpInnerHandler.redraftMcpServerVersion("ns", "test", "1.0.0"));
+        assertEquals(summary,
+            mcpInnerHandler.onlineMcpServerVersion("ns", "test", "1.0.0"));
+        assertEquals(summary,
+            mcpInnerHandler.offlineMcpServerVersion("ns", "test", "1.0.0"));
+        assertEquals(labels, mcpInnerHandler.updateMcpServerLabels("ns", "test", labels));
+        mcpInnerHandler.updateMcpServerStatus("ns", "test", false);
+        mcpInnerHandler.updateMcpServerScope("ns", "test", "PRIVATE");
+        verify(lifecycleOperationService).deleteMcpServerDraft("ns", "test", "1.0.0");
+        verify(lifecycleOperationService).updateMcpServerStatus("ns", "test", false);
+        verify(lifecycleOperationService).updateMcpServerScope("ns", "test", "PRIVATE");
     }
     
     @Test

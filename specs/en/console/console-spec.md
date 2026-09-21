@@ -125,6 +125,10 @@ Rules:
 The current v3 Console API surface is described by the
 [V3 API Surface](../http-api/v3-api-surface.md).
 
+Remote Admin business errors must follow the [Response And Error Spec](../http-api/response-error-spec.md):
+independent Console preserves upstream HTTP status, business code, summary, and
+string detail rather than converting every typed failure to `SERVER_ERROR`.
+
 ## 5. UI Entry And Static Assets
 
 Console owns the browser entry and static asset serving behavior:
@@ -140,6 +144,13 @@ Console owns the browser entry and static asset serving behavior:
 
 Console guide and announcement content are UI presentation data. They are not
 canonical Core server state and must not be used as domain configuration.
+
+Lifecycle-managed AI Resource detail pages should share the same status and
+Version presentation primitives. MCP, Skill, and Prompt must not independently
+reimplement enabled/disabled, public/private, latest, draft, reviewing, pending,
+or rejected visual states. On MCP detail, a new draft is created from the selected
+online Version; the generic new-Version entry is shown only for a retained MCP
+Resource that has no Version after its sole initial draft was deleted.
 
 ## 6. Handler And Proxy Boundary
 
@@ -197,11 +208,13 @@ not change Nacos Server cluster membership by itself.
 
 ## 8. Security Boundary
 
-Console has two security directions:
+Console has three security directions:
 
 1. browser or operator traffic entering the Console API;
 2. Console-originated remote traffic going from an independent Console process
-   to Nacos Server.
+   to Nacos Server;
+3. Console-originated traffic to explicitly configured or request-selected
+   external systems.
 
 Rules:
 
@@ -213,13 +226,42 @@ Rules:
   intentionally public health, static asset, bootstrap, or presentation
   endpoints;
 - incoming browser requests must not be trusted as server identity requests;
-- independent Console-to-Server calls must carry the configured server identity
-  when server identity is enabled;
+- a Console API must not turn a request-selected URL into an unrestricted
+  server-side network target. `GET /v3/console/ai/mcp/importToolsFromMcp`
+  allows public targets by default and can be disabled with
+  `nacos.console.ai.mcp.import.enabled`; every private or local target address
+  must match the operator-owned
+  `nacos.console.ai.mcp.import.allowed-private-addresses` IP/CIDR allowlist,
+  the endpoint must remain relative to the validated base URL, invalid
+  configuration must fail closed, and redirects must not be followed;
+- independent Console-to-Server calls for an authenticated operator must
+  forward every non-blank request identity parameter recorded by the identity
+  builder, using the canonical name declared by the selected auth plugin;
+- transport-derived fields and auth result metadata in `IdentityContext` must
+  not be forwarded;
+- when at least one request identity parameter is forwarded, the call must not
+  also carry the configured server identity, so the target Server authenticates
+  and authorizes the operator;
+- when no non-blank request identity parameter is available, independent
+  Console-to-Server calls must fall back to the configured server identity when
+  server identity is enabled;
 - `nacos.core.auth.server.identity.key` and
   `nacos.core.auth.server.identity.value` must match between independent Console
   and the target Nacos Server deployment;
+- the target Server must enable Admin API authentication and use a compatible
+  auth plugin when operator identity forwarding is used;
 - the auth plugin token secret used by Console login and token verification must
   be configured consistently with the selected auth plugin behavior.
+
+An independently deployed Console must initialize its local auth plugin runtime before accepting
+requests. It applies `STATIC > DEFAULT` configuration to every configurable auth implementation so
+shared auth infrastructure remains available, and starts plugin-owned resources only for the
+selected implementation. A missing selected implementation is a startup error. This Console-local
+lifecycle must not start the Core plugin manager or access Server-owned plugin state,
+runtime-persisted configuration, local-only overrides, storage, or cluster synchronization.
+
+Static configuration refresh may reapply auth fields declared `RUNTIME`. Auth selection, token
+secrets, and other `RESTART` fields retain their startup values until the Console restarts.
 
 Console auth is part of the shared auth model and must follow the
 [Authorization Spec](../http-api/authorization-spec.md).

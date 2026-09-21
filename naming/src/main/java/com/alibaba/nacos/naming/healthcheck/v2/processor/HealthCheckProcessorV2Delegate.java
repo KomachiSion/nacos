@@ -16,8 +16,11 @@
 
 package com.alibaba.nacos.naming.healthcheck.v2.processor;
 
+import com.alibaba.nacos.api.naming.pojo.healthcheck.impl.Http;
 import com.alibaba.nacos.naming.core.v2.metadata.ClusterMetadata;
+import com.alibaba.nacos.naming.core.v2.pojo.InstancePublishInfo;
 import com.alibaba.nacos.naming.core.v2.pojo.Service;
+import com.alibaba.nacos.naming.healthcheck.HealthCheckTargetUtil;
 import com.alibaba.nacos.naming.healthcheck.extend.HealthCheckExtendProvider;
 import com.alibaba.nacos.naming.healthcheck.extend.HealthCheckProcessorExtendV2;
 import com.alibaba.nacos.naming.healthcheck.v2.HealthCheckTaskV2;
@@ -40,7 +43,8 @@ public class HealthCheckProcessorV2Delegate implements HealthCheckProcessorV2 {
     private final Map<String, HealthCheckProcessorV2> healthCheckProcessorMap = new HashMap<>();
     
     public HealthCheckProcessorV2Delegate(HealthCheckExtendProvider provider,
-        HealthCheckProcessorExtendV2 healthCheckProcessorExtend) {
+        HealthCheckProcessorExtendV2 healthCheckProcessorExtend,
+        HealthCheckCommonV2 healthCheckCommon) {
         provider.setHealthCheckProcessorExtend(healthCheckProcessorExtend);
         provider.init();
     }
@@ -62,7 +66,27 @@ public class HealthCheckProcessorV2Delegate implements HealthCheckProcessorV2 {
         if (processor == null) {
             processor = healthCheckProcessorMap.get(NoneHealthCheckProcessor.TYPE);
         }
+        if (isInvalidActiveCheckTarget(task, service, metadata, processor)) {
+            return;
+        }
         processor.process(task, service, metadata);
+    }
+    
+    private boolean isInvalidActiveCheckTarget(HealthCheckTaskV2 task, Service service,
+        ClusterMetadata metadata, HealthCheckProcessorV2 processor) {
+        if (NoneHealthCheckProcessor.TYPE.equals(processor.getType())) {
+            return false;
+        }
+        InstancePublishInfo instance = task.getClient().getInstancePublishInfo(service);
+        if (instance != null && !HealthCheckTargetUtil.isValidAddress(instance.getIp())) {
+            return true;
+        }
+        if (!HttpHealthCheckProcessor.TYPE.equals(processor.getType())) {
+            return false;
+        }
+        return !(metadata.getHealthChecker() instanceof Http)
+            || !HealthCheckTargetUtil.isValidHttpHealthChecker(
+                (Http) metadata.getHealthChecker());
     }
     
     @Override

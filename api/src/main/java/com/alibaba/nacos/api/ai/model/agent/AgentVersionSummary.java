@@ -16,23 +16,31 @@
 
 package com.alibaba.nacos.api.ai.model.agent;
 
-import com.fasterxml.jackson.annotation.JsonInclude;
-
 import java.io.Serializable;
+import java.util.List;
 
 /**
- * Bounded Agent version summary for management views.
+ * Agent version summary shared by management and online catalog views.
+ *
+ * <p>Online catalogs populate version, labels and protocols. Version management queries populate
+ * status, publication and audit metadata. Exact definition content belongs to
+ * {@link AgentVersionDetail}.</p>
  *
  * @author Nacos
  */
-@JsonInclude(JsonInclude.Include.NON_NULL)
 public class AgentVersionSummary implements Serializable {
     
     private static final long serialVersionUID = 1L;
     
     private String version;
     
+    private List<String> labels;
+    
+    private List<String> protocols;
+    
     private String status;
+    
+    private String publishPipelineInfo;
     
     private String author;
     
@@ -43,6 +51,22 @@ public class AgentVersionSummary implements Serializable {
     private Long createTime;
     
     private Long updateTime;
+    
+    public List<String> getLabels() {
+        return labels;
+    }
+    
+    public void setLabels(List<String> labels) {
+        this.labels = labels;
+    }
+    
+    public List<String> getProtocols() {
+        return protocols;
+    }
+    
+    public void setProtocols(List<String> protocols) {
+        this.protocols = protocols;
+    }
     
     public String getVersion() {
         return version;
@@ -58,6 +82,14 @@ public class AgentVersionSummary implements Serializable {
     
     public void setStatus(String status) {
         this.status = status;
+    }
+    
+    public String getPublishPipelineInfo() {
+        return publishPipelineInfo;
+    }
+    
+    public void setPublishPipelineInfo(String publishPipelineInfo) {
+        this.publishPipelineInfo = publishPipelineInfo;
     }
     
     public String getAuthor() {

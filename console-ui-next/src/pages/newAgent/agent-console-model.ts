@@ -18,11 +18,13 @@ import type {
   AgentCallInterface,
   AgentDraftCreateData,
   AgentDraftUpdateData,
-  AgentMetadata,
+  AgentSummary,
   AgentMetadataUpdateData,
   AgentVersionStatus,
   NamingServiceRef,
 } from '@/types/agent';
+import type { PublishPipelineInfo } from '@/types/pipeline';
+import { canForcePublish } from '@/components/ai/version-lifecycle';
 
 export type AgentEditorMode = 'create' | 'metadata' | 'draft-create' | 'draft-edit';
 
@@ -34,9 +36,7 @@ export type StructuredProtocolEditorKind = Exclude<ProtocolEditorKind, 'raw'>;
 
 export type EndpointSourceMode =
   | 'declared-runtime'
-  | 'runtime-declared'
-  | 'declared-only'
-  | 'runtime-only';
+  | 'runtime-declared';
 
 export interface DeclaredEndpointEditorValue {
   uri: string;
@@ -169,27 +169,48 @@ function endpointSourceOrder(mode: EndpointSourceMode): AgentCallInterface['endp
       return ['DECLARED', 'RUNTIME'];
     case 'runtime-declared':
       return ['RUNTIME', 'DECLARED'];
-    case 'declared-only':
-      return ['DECLARED'];
-    case 'runtime-only':
-      return ['RUNTIME'];
   }
 }
 
 function endpointSourceMode(
   order: AgentCallInterface['endpointSourceOrder'],
 ): EndpointSourceMode {
-  const key = order.join(',');
+  const key = Array.isArray(order) ? order.join(',') : '';
   switch (key) {
     case 'RUNTIME,DECLARED':
       return 'runtime-declared';
-    case 'DECLARED':
-      return 'declared-only';
-    case 'RUNTIME':
-      return 'runtime-only';
-    default:
+    case 'DECLARED,RUNTIME':
       return 'declared-runtime';
+    default:
+      throw new Error('endpointSourceOrder must contain both DECLARED and RUNTIME');
   }
+}
+
+export type EndpointSourceLabelKey =
+  | 'agent.endpointSourceDeclaredFirst'
+  | 'agent.endpointSourceRuntimeFirst';
+
+export function endpointSourceModeLabelKey(mode: EndpointSourceMode): EndpointSourceLabelKey {
+  switch (mode) {
+    case 'declared-runtime':
+      return 'agent.endpointSourceDeclaredFirst';
+    case 'runtime-declared':
+      return 'agent.endpointSourceRuntimeFirst';
+  }
+}
+
+export function endpointSourceOrderLabelKey(
+  order: AgentCallInterface['endpointSourceOrder'],
+): EndpointSourceLabelKey | null {
+  const key = Array.isArray(order) ? order.join(',') : '';
+  if (key !== 'DECLARED,RUNTIME' && key !== 'RUNTIME,DECLARED') {
+    return null;
+  }
+  return endpointSourceModeLabelKey(endpointSourceMode(order));
+}
+
+export function formatProtocolLabel(protocol: string): string {
+  return protocol.toLowerCase() === 'a2a' ? 'A2A' : protocol;
 }
 
 function normalizeA2aInterface(
@@ -228,7 +249,7 @@ function normalizeA2aAgentCard(
   agentName: string,
   version: string,
   text: string,
-): { card: Record<string, unknown>; declaredEndpoints: AgentCallInterface['declaredEndpoints'] } {
+): { card: Record<string, unknown>; declaredEndpoints: NonNullable<AgentCallInterface['endpointSets']>[number]['endpoints'] } {
   const parsed = parseAgentCardJson(required(text, 'agentCard'));
   if (!isObject(parsed)) {
     throw new Error('agentCard must be a JSON object');
@@ -284,6 +305,78 @@ function normalizeA2aAgentCard(
   return { card, declaredEndpoints };
 }
 
+export function a2aDeclaredEndpointsFromAgentCard(
+  text: string,
+): DeclaredEndpointEditorValue[] {
+  const parsed = parseAgentCardJson(required(text, 'agentCard'));
+  if (!isObject(parsed)) {
+    throw new Error('agentCard must be a JSON object');
+  }
+  let interfaces: unknown[] = [];
+  if (Array.isArray(parsed.supportedInterfaces) && parsed.supportedInterfaces.length > 0) {
+    interfaces = parsed.supportedInterfaces;
+  } else if (parsed.url) {
+    interfaces = [{
+      url: parsed.url,
+      protocolBinding: parsed.preferredTransport,
+      transport: parsed.preferredTransport,
+    }];
+    if (Array.isArray(parsed.additionalInterfaces)) {
+      interfaces.push(...parsed.additionalInterfaces);
+    }
+  }
+  return interfaces.flatMap((item) => {
+    if (!isObject(item)) {
+      return [];
+    }
+    const uri = optionalString(item.url) || '';
+    const transport = optionalString(item.protocolBinding) || optionalString(item.transport) || '';
+    return uri || transport ? [{ uri, transport }] : [];
+  });
+}
+
+export function updateA2aAgentCardEndpoints(
+  text: string,
+  endpoints: DeclaredEndpointEditorValue[],
+): string {
+  const parsed = parseAgentCardJson(required(text, 'agentCard'));
+  if (!isObject(parsed)) {
+    throw new Error('agentCard must be a JSON object');
+  }
+  const existingInterfaces = Array.isArray(parsed.supportedInterfaces)
+    ? parsed.supportedInterfaces
+    : [];
+  const fallbackVersion = optionalString(parsed.protocolVersion);
+  const interfaces = endpoints.map((endpoint, index) => {
+    const existing = isObject(existingInterfaces[index]) ? existingInterfaces[index] : {};
+    const protocolVersion = optionalString(existing.protocolVersion) || fallbackVersion;
+    return {
+      ...existing,
+      url: endpoint.uri,
+      protocolBinding: endpoint.transport,
+      transport: endpoint.transport,
+      ...(protocolVersion ? { protocolVersion } : {}),
+    };
+  });
+  const card: Record<string, unknown> = {
+    ...parsed,
+    supportedInterfaces: interfaces,
+    additionalInterfaces: interfaces.slice(1),
+  };
+  if (interfaces.length > 0) {
+    card.url = interfaces[0].url;
+    card.preferredTransport = interfaces[0].protocolBinding;
+    if (interfaces[0].protocolVersion) {
+      card.protocolVersion = interfaces[0].protocolVersion;
+    }
+  } else {
+    delete card.url;
+    delete card.preferredTransport;
+    card.additionalInterfaces = [];
+  }
+  return JSON.stringify(card, null, 2);
+}
+
 function editorFromValues(values: AgentEditorValues): StructuredProtocolEditorValues {
   if (values.protocolEditorKind === 'raw') {
     throw new Error('raw callInterfaces cannot be converted to a structured protocol');
@@ -312,8 +405,8 @@ function buildStructuredCallInterface(
       protocolVersion: String(normalized.card.protocolVersion),
       descriptorMediaType: 'application/json',
       nativeDescriptor: normalized.card,
-      endpointSourceOrder: ['DECLARED', 'RUNTIME'],
-      declaredEndpoints: normalized.declaredEndpoints,
+      endpointSourceOrder: endpointSourceOrder(editor.endpointSourceMode),
+      endpointSets: [{ source: 'DECLARED', endpoints: normalized.declaredEndpoints }],
     };
   }
   const nativeDescriptor = parseJson(
@@ -343,7 +436,8 @@ function buildStructuredCallInterface(
     descriptorMediaType: required(editor.customDescriptorMediaType, 'descriptorMediaType'),
     nativeDescriptor,
     endpointSourceOrder: endpointSourceOrder(editor.endpointSourceMode),
-    declaredEndpoints: declaredEndpoints.length > 0 ? declaredEndpoints : undefined,
+    endpointSets: declaredEndpoints.length > 0
+      ? [{ source: 'DECLARED', endpoints: declaredEndpoints }] : undefined,
   };
 }
 
@@ -396,6 +490,12 @@ function serializeCallInterfaces(
   );
   if (!Array.isArray(parsed) || parsed.length === 0) {
     throw new Error('callInterfaces must be a non-empty JSON array');
+  }
+  for (const callInterface of parsed) {
+    if (!isObject(callInterface)) {
+      throw new Error('callInterface must be a JSON object');
+    }
+    endpointSourceMode(callInterface.endpointSourceOrder as AgentCallInterface['endpointSourceOrder']);
   }
   return JSON.stringify(parsed);
 }
@@ -451,6 +551,14 @@ export function createStructuredProtocolEditor(
   kind: StructuredProtocolEditorKind = 'a2a',
   agentCard = '{}',
 ): StructuredProtocolEditorValues {
+  let declaredEndpoints: DeclaredEndpointEditorValue[] = [{ uri: '', transport: 'HTTP' }];
+  if (kind === 'a2a') {
+    try {
+      declaredEndpoints = a2aDeclaredEndpointsFromAgentCard(agentCard);
+    } catch {
+      declaredEndpoints = [];
+    }
+  }
   return {
     protocolEditorKind: kind,
     agentCard,
@@ -459,7 +567,7 @@ export function createStructuredProtocolEditor(
     customDescriptorMediaType: 'application/json',
     customNativeDescriptor: '{}',
     endpointSourceMode: 'declared-runtime',
-    declaredEndpoints: [{ uri: '', transport: 'HTTP' }],
+    declaredEndpoints,
   };
 }
 
@@ -512,12 +620,13 @@ export function projectA2aAgentCard(
 export function buildDraftUpdateData(
   namespaceId: string,
   values: AgentEditorValues,
+  protocolEditors?: StructuredProtocolEditorValues[],
 ): AgentDraftUpdateData {
   return {
     namespaceId,
     agentName: required(values.agentName, 'agentName'),
     version: required(values.version, 'version'),
-    callInterfaces: serializeCallInterfaces(values),
+    callInterfaces: serializeCallInterfaces(values, protocolEditors),
     changeDescription: values.changeDescription.trim() || undefined,
   };
 }
@@ -539,7 +648,18 @@ export function buildMetadataUpdateData(
   };
 }
 
-export function metadataToEditorValues(agent: AgentMetadata): AgentEditorValues {
+export function buildAgentStatusUpdateData(
+  namespaceId: string,
+  agent: AgentSummary,
+  enabled: boolean,
+): AgentMetadataUpdateData {
+  return buildMetadataUpdateData(namespaceId, metadataToEditorValues({
+    ...agent,
+    status: enabled ? 'enable' : 'disable',
+  }));
+}
+
+export function metadataToEditorValues(agent: AgentSummary): AgentEditorValues {
   return {
     agentName: agent.agentName,
     version: '',
@@ -570,6 +690,35 @@ export function callInterfacesToText(callInterfaces: AgentCallInterface[]): stri
   return JSON.stringify(callInterfaces, null, 2);
 }
 
+export function callInterfacesToProtocolEditors(
+  callInterfaces: AgentCallInterface[],
+): StructuredProtocolEditorValues[] {
+  return callInterfaces.map((callInterface) => {
+    const common = {
+      endpointSourceMode: endpointSourceMode(callInterface.endpointSourceOrder),
+      declaredEndpoints: declaredEndpointsOf(callInterface).map((endpoint) => ({
+        uri: endpoint.uri,
+        transport: endpoint.transport,
+      })),
+    };
+    if (callInterface.protocol.toLowerCase() === 'a2a') {
+      return {
+        ...createStructuredProtocolEditor('a2a'),
+        ...common,
+        agentCard: JSON.stringify(callInterface.nativeDescriptor, null, 2),
+      };
+    }
+    return {
+      ...createStructuredProtocolEditor('custom'),
+      ...common,
+      customProtocol: callInterface.protocol,
+      customProtocolVersion: callInterface.protocolVersion || '',
+      customDescriptorMediaType: callInterface.descriptorMediaType || '',
+      customNativeDescriptor: JSON.stringify(callInterface.nativeDescriptor, null, 2),
+    };
+  });
+}
+
 export function callInterfacesToEditorValues(
   callInterfaces: AgentCallInterface[],
 ): Partial<AgentEditorValues> {
@@ -584,6 +733,11 @@ export function callInterfacesToEditorValues(
     return {
       protocolEditorKind: 'a2a',
       agentCard: JSON.stringify(callInterface.nativeDescriptor, null, 2),
+      endpointSourceMode: endpointSourceMode(callInterface.endpointSourceOrder),
+      declaredEndpoints: declaredEndpointsOf(callInterface).map((endpoint) => ({
+        uri: endpoint.uri,
+        transport: endpoint.transport,
+      })),
       callInterfaces: callInterfacesToText(callInterfaces),
     };
   }
@@ -591,10 +745,10 @@ export function callInterfacesToEditorValues(
     protocolEditorKind: 'custom',
     customProtocol: callInterface.protocol,
     customProtocolVersion: callInterface.protocolVersion || '',
-    customDescriptorMediaType: callInterface.descriptorMediaType,
+    customDescriptorMediaType: callInterface.descriptorMediaType || '',
     customNativeDescriptor: JSON.stringify(callInterface.nativeDescriptor, null, 2),
     endpointSourceMode: endpointSourceMode(callInterface.endpointSourceOrder),
-    declaredEndpoints: (callInterface.declaredEndpoints || []).map((endpoint) => ({
+    declaredEndpoints: declaredEndpointsOf(callInterface).map((endpoint) => ({
       uri: endpoint.uri,
       transport: endpoint.transport,
     })),
@@ -602,14 +756,22 @@ export function callInterfacesToEditorValues(
   };
 }
 
-export function getVersionActions(status: AgentVersionStatus): AgentVersionAction[] {
+export function getVersionActions(
+  status: AgentVersionStatus,
+  pipelineInfo: PublishPipelineInfo | null = null,
+  globalAdmin = false,
+): AgentVersionAction[] {
+  const showForcePublish = status !== 'draft'
+    && canForcePublish(status, pipelineInfo, globalAdmin);
   switch (status) {
     case 'draft':
-      return ['editDraft', 'submit', 'forcePublish', 'deleteDraft'];
+      return ['editDraft', 'submit', 'deleteDraft'];
     case 'reviewing':
-      return ['forcePublish'];
+      return showForcePublish ? ['forcePublish'] : [];
     case 'reviewed':
-      return ['publish', 'forcePublish', 'redraft'];
+      return showForcePublish
+        ? ['publish', 'forcePublish', 'redraft']
+        : ['publish', 'redraft'];
     case 'online':
       return ['offline'];
     case 'offline':
@@ -619,10 +781,6 @@ export function getVersionActions(status: AgentVersionStatus): AgentVersionActio
 
 export function getProtocols(callInterfaces: AgentCallInterface[]): string[] {
   return [...new Set(callInterfaces.map((item) => item.protocol))];
-}
-
-export function usesRuntimeSource(callInterface: AgentCallInterface | undefined): boolean {
-  return callInterface?.endpointSourceOrder.includes('RUNTIME') === true;
 }
 
 export function runtimeCacheKey(version: string, protocol: string): string {
@@ -636,4 +794,16 @@ export function namingDetailPath(ref: NamingServiceRef): string {
     namespace: ref.namespaceId,
   });
   return `/serviceDetail?${params.toString()}`;
+}
+
+export function declaredEndpointsOf(callInterface?: AgentCallInterface) {
+  return callInterface?.endpointSets?.find((set) => set.source === 'DECLARED')?.endpoints || [];
+}
+
+/** Endpoint state is derived from the two effective server flags. */
+export function runtimeEndpointStatus(endpoint: { enabled?: boolean; healthy?: boolean }): string {
+  if (endpoint.enabled === false) {
+    return 'DISABLED';
+  }
+  return endpoint.healthy === false ? 'UNHEALTHY' : 'AVAILABLE';
 }

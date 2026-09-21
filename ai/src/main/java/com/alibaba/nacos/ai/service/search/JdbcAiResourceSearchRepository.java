@@ -31,6 +31,7 @@ import org.springframework.stereotype.Repository;
 import org.springframework.transaction.support.TransactionTemplate;
 
 import javax.sql.DataSource;
+import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -65,6 +66,9 @@ public class JdbcAiResourceSearchRepository implements AiResourceSearchRepositor
     
     private static final RowMapper<AiResourceSearchHit> HIT_ROW_MAPPER =
         new AiResourceSearchHitRowMapper();
+    
+    private static final RowMapper<AiResourceSearchChunk> CHUNK_ROW_MAPPER =
+        new AiResourceSearchChunkRowMapper();
     
     private final JdbcTemplate injectedJdbcTemplate;
     
@@ -114,6 +118,30 @@ public class JdbcAiResourceSearchRepository implements AiResourceSearchRepositor
             result.add(insertChunk(chunk));
         }
         return result;
+    }
+    
+    @Override
+    public List<AiResourceSearchChunk> replaceEnhancementChunks(AiResourceSearchDocument entry,
+        List<AiResourceSearchChunk> chunks) {
+        return getTransactionTemplate().execute(status -> {
+            if (entry == null || entry.getId() == null || !entryExists(entry)) {
+                throw new IllegalStateException("AI resource search document changed");
+            }
+            getJdbcTemplate().update("DELETE FROM ai_resource_search_chunk WHERE document_id=? "
+                + "AND chunk_type IN (?, ?, ?)", entry.getId(),
+                AiResourceSearchConstants.CHUNK_TYPE_AI_SUMMARY,
+                AiResourceSearchConstants.CHUNK_TYPE_SEARCH_INTENT,
+                AiResourceSearchConstants.CHUNK_TYPE_SEARCH_TERM);
+            appendChunks(entry, chunks);
+            return listChunks(entry.getId());
+        });
+    }
+    
+    @Override
+    public List<AiResourceSearchChunk> listChunks(long documentId) {
+        return getJdbcTemplate().query(
+            "SELECT * FROM ai_resource_search_chunk WHERE document_id=? ORDER BY id",
+            CHUNK_ROW_MAPPER, documentId);
     }
     
     @Override
@@ -234,6 +262,30 @@ public class JdbcAiResourceSearchRepository implements AiResourceSearchRepositor
     }
     
     @Override
+    public List<AiResourceSearchDocument> scanEnabledEntriesByResourceKey(String namespaceId,
+        List<String> resourceTypes, String afterResourceType, String afterResourceName,
+        long afterId, int limit) {
+        List<Object> args = new ArrayList<>();
+        StringBuilder sql = new StringBuilder(
+            "SELECT * FROM ai_resource_search_document WHERE namespace_id=? AND status=?");
+        args.add(namespaceId);
+        args.add(AiResourceSearchConstants.STATUS_ENABLED);
+        appendResourceTypeFilter(sql, args, resourceTypes);
+        if (afterResourceType != null) {
+            sql.append(" AND (resource_type>? OR (resource_type=? AND resource_name>?) "
+                + "OR (resource_type=? AND resource_name=? AND id>?))");
+            args.add(afterResourceType);
+            args.add(afterResourceType);
+            args.add(afterResourceName);
+            args.add(afterResourceType);
+            args.add(afterResourceName);
+            args.add(afterId);
+        }
+        sql.append(" ORDER BY resource_type, resource_name, id");
+        return queryWithMaxRows(sql.toString(), args, ENTRY_ROW_MAPPER, limit);
+    }
+    
+    @Override
     public List<AiResourceSearchDocument> scanEntries(String namespaceId,
         List<String> resourceTypes, long afterId, int limit) {
         return scanEntriesBatch(namespaceId, resourceTypes, afterId, limit, false);
@@ -250,8 +302,8 @@ public class JdbcAiResourceSearchRepository implements AiResourceSearchRepositor
     private long insertEntry(AiResourceSearchDocument entry) {
         KeyHolder keyHolder = new GeneratedKeyHolder();
         getJdbcTemplate().update(connection -> {
-            PreparedStatement ps = connection.prepareStatement(SQL_INSERT_ENTRY,
-                new String[] {"id"});
+            PreparedStatement ps = prepareStatementWithGeneratedKey(connection,
+                SQL_INSERT_ENTRY);
             ps.setString(1, entry.getNamespaceId());
             ps.setString(2, entry.getResourceType());
             ps.setString(3, entry.getResourceName());
@@ -278,8 +330,8 @@ public class JdbcAiResourceSearchRepository implements AiResourceSearchRepositor
     private AiResourceSearchChunk insertChunk(AiResourceSearchChunk chunk) {
         KeyHolder keyHolder = new GeneratedKeyHolder();
         getJdbcTemplate().update(connection -> {
-            PreparedStatement ps = connection.prepareStatement(SQL_INSERT_CHUNK,
-                new String[] {"id"});
+            PreparedStatement ps = prepareStatementWithGeneratedKey(connection,
+                SQL_INSERT_CHUNK);
             ps.setLong(1, chunk.getDocumentId());
             ps.setString(2, chunk.getNamespaceId());
             ps.setString(3, chunk.getResourceType());
@@ -301,6 +353,12 @@ public class JdbcAiResourceSearchRepository implements AiResourceSearchRepositor
         }
         chunk.setId(key.longValue());
         return chunk;
+    }
+    
+    private PreparedStatement prepareStatementWithGeneratedKey(Connection connection, String sql)
+        throws SQLException {
+        String primaryKey = connection.getMetaData().storesUpperCaseIdentifiers() ? "ID" : "id";
+        return connection.prepareStatement(sql, new String[] {primaryKey});
     }
     
     private boolean entryExists(AiResourceSearchDocument entry) {
@@ -433,6 +491,31 @@ public class JdbcAiResourceSearchRepository implements AiResourceSearchRepositor
             hit.setChunkType(rs.getString("chunk_type"));
             hit.setScore(rs.getDouble("score"));
             return hit;
+        }
+    }
+    
+    private static class AiResourceSearchChunkRowMapper
+        implements RowMapper<AiResourceSearchChunk> {
+        
+        @Override
+        public AiResourceSearchChunk mapRow(ResultSet rs, int rowNum) throws SQLException {
+            AiResourceSearchChunk chunk = new AiResourceSearchChunk();
+            chunk.setId(rs.getLong("id"));
+            chunk.setGmtCreate(rs.getTimestamp("gmt_create"));
+            chunk.setGmtModified(rs.getTimestamp("gmt_modified"));
+            chunk.setDocumentId(rs.getLong("document_id"));
+            chunk.setNamespaceId(rs.getString("namespace_id"));
+            chunk.setResourceType(rs.getString("resource_type"));
+            chunk.setResourceName(rs.getString("resource_name"));
+            chunk.setResourceVersion(rs.getString("resource_version"));
+            chunk.setChunkType(rs.getString("chunk_type"));
+            chunk.setChunkText(rs.getString("chunk_text"));
+            chunk.setCanonicalText(rs.getString("canonical_text"));
+            chunk.setLanguage(rs.getString("language"));
+            chunk.setChunkHash(rs.getString("chunk_hash"));
+            chunk.setMetadata(rs.getString("metadata"));
+            chunk.setStatus(rs.getString("status"));
+            return chunk;
         }
     }
 }

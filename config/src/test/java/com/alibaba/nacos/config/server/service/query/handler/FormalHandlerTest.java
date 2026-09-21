@@ -119,4 +119,67 @@ class FormalHandlerTest {
         assertEquals("formalHandler", formalHandler.getName());
     }
     
+    @Test
+    public void handleWithMatchingLocalMd5ShouldSkipContentRead() throws IOException {
+        // 304 optimization: when client's localMd5 matches server metadata MD5,
+        // FormalHandler must skip disk content read entirely and return CONFIG_NOT_MODIFIED.
+        when(cacheItem.getConfigCache()).thenReturn(configCache);
+        when(configCache.getMd5()).thenReturn("matching-md5-123");
+        when(configCache.getLastModifiedTs()).thenReturn(123456789L);
+        when(configCache.getEncryptedDataKey()).thenReturn("enc-key-456");
+        when(cacheItem.getType()).thenReturn("yaml");
+        
+        ConfigQueryChainRequest request = new ConfigQueryChainRequest();
+        request.setDataId("dataId");
+        request.setGroup("group");
+        request.setTenant("tenant");
+        request.setLocalMd5("matching-md5-123");
+        
+        ConfigQueryChainResponse response = formalHandler.handle(request);
+        
+        // Verify 304 response
+        assertEquals(ConfigQueryChainResponse.ConfigQueryStatus.CONFIG_NOT_MODIFIED,
+            response.getStatus());
+        assertEquals("matching-md5-123", response.getMd5());
+        assertEquals(123456789L, response.getLastModified());
+        assertEquals("enc-key-456", response.getEncryptedDataKey());
+        assertEquals("yaml", response.getConfigType());
+        // Content must be null (not read from disk)
+        assertEquals(null, response.getContent());
+        
+        // Verify disk content read was NEVER called
+        Mockito.verify(configDiskService, Mockito.never())
+            .getContent(Mockito.anyString(), Mockito.anyString(), Mockito.anyString());
+    }
+    
+    @Test
+    public void handleWithNonMatchingLocalMd5ShouldReadContent() throws IOException {
+        // When localMd5 does not match, FormalHandler must read content from disk normally.
+        when(cacheItem.getConfigCache()).thenReturn(configCache);
+        when(configCache.getMd5()).thenReturn("server-md5-abc");
+        when(configCache.getLastModifiedTs()).thenReturn(987654321L);
+        when(configCache.getEncryptedDataKey()).thenReturn("server-enc-key");
+        when(cacheItem.getType()).thenReturn("properties");
+        when(configDiskService.getContent("dataId", "group", "tenant"))
+            .thenReturn("actual-config-content");
+        
+        ConfigQueryChainRequest request = new ConfigQueryChainRequest();
+        request.setDataId("dataId");
+        request.setGroup("group");
+        request.setTenant("tenant");
+        request.setLocalMd5("client-md5-different");
+        
+        ConfigQueryChainResponse response = formalHandler.handle(request);
+        
+        // Verify normal response with content
+        assertEquals(ConfigQueryChainResponse.ConfigQueryStatus.CONFIG_FOUND_FORMAL,
+            response.getStatus());
+        assertEquals("actual-config-content", response.getContent());
+        assertEquals("server-md5-abc", response.getMd5());
+        
+        // Verify disk content read WAS called
+        Mockito.verify(configDiskService, Mockito.times(1))
+            .getContent("dataId", "group", "tenant");
+    }
+    
 }

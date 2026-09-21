@@ -18,19 +18,26 @@ import { describe, expect, it } from 'vitest';
 import type { AgentCallInterface } from '@/types/agent';
 import type { AgentEditorValues, EndpointSourceMode } from '../agent-console-model';
 import {
+  a2aDeclaredEndpointsFromAgentCard,
   buildDraftCreateData,
   buildDraftUpdateData,
+  buildAgentStatusUpdateData,
   buildMetadataUpdateData,
   callInterfacesToEditorValues,
+  callInterfacesToProtocolEditors,
   callInterfacesToText,
   createStructuredProtocolEditor,
+  endpointSourceModeLabelKey,
+  endpointSourceOrderLabelKey,
+  formatProtocolLabel,
   getProtocols,
   getVersionActions,
   metadataToEditorValues,
   namingDetailPath,
   projectA2aAgentCard,
   runtimeCacheKey,
-  usesRuntimeSource,
+  runtimeEndpointStatus,
+  updateA2aAgentCardEndpoints,
 } from '../agent-console-model';
 
 const CALL_INTERFACES: AgentCallInterface[] = [
@@ -40,7 +47,7 @@ const CALL_INTERFACES: AgentCallInterface[] = [
     descriptorMediaType: 'application/json',
     nativeDescriptor: { name: 'demo' },
     endpointSourceOrder: ['RUNTIME', 'DECLARED'],
-    declaredEndpoints: [],
+    endpointSets: [{ source: 'DECLARED', endpoints: [] }],
   },
 ];
 
@@ -77,6 +84,32 @@ function parseInterface(result: { callInterfaces?: string }): AgentCallInterface
 }
 
 describe('Agent Console editor model', () => {
+  it('accepts nullable response fields and effective Endpoint defaults in the editor', () => {
+    const callInterface: AgentCallInterface = {
+      protocol: 'custom',
+      protocolVersion: null,
+      descriptorMediaType: 'application/json',
+      nativeDescriptor: { method: 'invoke' },
+      endpointSourceOrder: ['DECLARED', 'RUNTIME'],
+      endpointSets: [{
+        source: 'DECLARED',
+        sourceRevision: null,
+        lastUpdatedTime: null,
+        endpoints: [{
+          uri: 'https://example.com/rpc', transport: 'HTTP',
+          priority: 0, weight: 1, healthy: true, enabled: true,
+          metadata: null, bindings: null,
+        }],
+      }],
+    };
+    const expected = [{ uri: 'https://example.com/rpc', transport: 'HTTP' }];
+    const editor = callInterfacesToEditorValues([callInterface]);
+    expect(editor.customProtocolVersion).toBe('');
+    expect(editor.declaredEndpoints).toEqual(expected);
+    expect(callInterfacesToProtocolEditors([callInterface])[0].declaredEndpoints).toEqual(expected);
+    expect(JSON.parse(editor.callInterfaces || '[]')[0].endpointSets[0].endpoints[0].healthy).toBe(true);
+  });
+
   it('builds the complete initial draft with raw direct content', () => {
     expect(buildDraftCreateData('public', values(), true, 'direct')).toEqual({
       namespaceId: 'public',
@@ -97,6 +130,7 @@ describe('Agent Console editor model', () => {
   it('normalizes an A2A 1.0 Agent Card and derives HTTP+JSON endpoints', () => {
     const result = buildDraftCreateData('public', values({
       protocolEditorKind: 'a2a',
+      endpointSourceMode: 'declared-runtime',
       agentCard: JSON.stringify({
         name: 'ignored-name',
         version: 'ignored-version',
@@ -132,7 +166,7 @@ describe('Agent Console editor model', () => {
     expect(callInterface.protocolVersion).toBe('0.3');
     expect(callInterface.descriptorMediaType).toBe('application/json');
     expect(callInterface.endpointSourceOrder).toEqual(['DECLARED', 'RUNTIME']);
-    expect(callInterface.declaredEndpoints).toEqual([
+    expect(callInterface.endpointSets?.[0].endpoints).toEqual([
       { uri: 'https://agent.example.com/a2a', transport: 'HTTP+JSON' },
       { uri: 'ws://stream.example.com/a2a', transport: 'WebSocket' },
     ]);
@@ -164,7 +198,7 @@ describe('Agent Console editor model', () => {
       }),
     }), true, 'direct'));
 
-    expect(callInterface.declaredEndpoints).toEqual([
+    expect(callInterface.endpointSets?.[0].endpoints).toEqual([
       { uri: 'http://legacy.example.com/a2a', transport: 'HTTP+JSON' },
       { uri: 'wss://stream.example.com/a2a', transport: 'HTTP+JSON' },
       { uri: 'https://api.example.com:8443/a2a', transport: 'HTTP+JSON' },
@@ -245,7 +279,10 @@ describe('Agent Console editor model', () => {
       description: 'Keeps comma-like text,}',
     });
     expect(projection.protocolEditor.declaredEndpoints).toEqual([
-      { uri: '', transport: 'HTTP' },
+      {
+        uri: 'https://research-agent.example.com/a2a/v1',
+        transport: 'HTTP+JSON',
+      },
     ]);
   });
 
@@ -281,7 +318,7 @@ describe('Agent Console editor model', () => {
       customProtocol: 'json-rpc',
       customProtocolVersion: '2.0',
       customNativeDescriptor: '{"method":"invoke"}',
-      endpointSourceMode: 'runtime-only' as const,
+      endpointSourceMode: 'runtime-declared' as const,
       declaredEndpoints: [],
     };
     const result = buildDraftCreateData('public', values(), true, 'direct', [a2a, custom]);
@@ -290,7 +327,7 @@ describe('Agent Console editor model', () => {
     expect(callInterfaces.map((item) => item.protocol)).toEqual(['a2a', 'json-rpc']);
     expect(callInterfaces[1]).toMatchObject({
       protocolVersion: '2.0',
-      endpointSourceOrder: ['RUNTIME'],
+      endpointSourceOrder: ['RUNTIME', 'DECLARED'],
       nativeDescriptor: { method: 'invoke' },
     });
   });
@@ -319,8 +356,6 @@ describe('Agent Console editor model', () => {
   it.each([
     ['declared-runtime', ['DECLARED', 'RUNTIME']],
     ['runtime-declared', ['RUNTIME', 'DECLARED']],
-    ['declared-only', ['DECLARED']],
-    ['runtime-only', ['RUNTIME']],
   ] as Array<[EndpointSourceMode, string[]]>) (
     'builds custom protocol source mode %s',
     (endpointSourceMode, expected) => {
@@ -342,10 +377,40 @@ describe('Agent Console editor model', () => {
         descriptorMediaType: 'application/json',
         nativeDescriptor: ['native', 'descriptor'],
         endpointSourceOrder: expected,
-        declaredEndpoints: [
+        endpointSets: [{ source: 'DECLARED', endpoints: [
           { uri: 'https://api.example.com/rpc', transport: 'HTTP+JSON' },
-        ],
+        ] }],
       });
+    },
+  );
+
+  it.each([
+    ['declared-runtime', ['DECLARED', 'RUNTIME']],
+    ['runtime-declared', ['RUNTIME', 'DECLARED']],
+  ] as Array<[EndpointSourceMode, string[]]>) (
+    'builds A2A protocol source mode %s',
+    (endpointSourceMode, expected) => {
+      const editor = {
+        ...createStructuredProtocolEditor('a2a', JSON.stringify({
+          name: 'demo-agent',
+          version: '1.0.0',
+          protocolVersion: '0.3',
+          supportedInterfaces: [{
+            url: 'https://agent.example.com/a2a',
+            protocolBinding: 'HTTP+JSON',
+            protocolVersion: '0.3',
+          }],
+        })),
+        endpointSourceMode,
+      };
+      const callInterface = parseInterface(buildDraftCreateData(
+        'public',
+        values(),
+        true,
+        'direct',
+        [editor],
+      ));
+      expect(callInterface.endpointSourceOrder).toEqual(expected);
     },
   );
 
@@ -358,7 +423,7 @@ describe('Agent Console editor model', () => {
     }), true, 'direct'));
     expect(callInterface.protocolVersion).toBe('2.0');
     expect(callInterface.nativeDescriptor).toBe('opaque');
-    expect(callInterface.declaredEndpoints).toBeUndefined();
+    expect(callInterface.endpointSets?.[0].endpoints).toBeUndefined();
   });
 
   it('builds a subsequent draft by copying one exact version without metadata', () => {
@@ -414,6 +479,133 @@ describe('Agent Console editor model', () => {
       extensions: '{"region":"cn-hangzhou"}',
       status: 'enable',
     });
+  });
+
+  it('loads and submits every protocol when editing a multi-protocol draft', () => {
+    const callInterfaces: AgentCallInterface[] = [
+      {
+        protocol: 'a2a',
+        protocolVersion: '0.3',
+        descriptorMediaType: 'application/json',
+        nativeDescriptor: {
+          name: 'demo-agent',
+          version: '1.0.0',
+          protocolVersion: '0.3',
+          supportedInterfaces: [{
+            url: 'https://agent.example.com/a2a',
+            protocolBinding: 'HTTP+JSON',
+            protocolVersion: '0.3',
+          }],
+        },
+        endpointSourceOrder: ['DECLARED', 'RUNTIME'],
+        endpointSets: [{ source: 'DECLARED', endpoints: [{
+          uri: 'https://agent.example.com/a2a',
+          transport: 'HTTP+JSON',
+        }] }],
+      },
+      {
+        protocol: 'json-rpc',
+        protocolVersion: '2.0',
+        descriptorMediaType: 'application/json',
+        nativeDescriptor: { method: 'invoke' },
+        endpointSourceOrder: ['RUNTIME', 'DECLARED'],
+      },
+    ];
+
+    const editors = callInterfacesToProtocolEditors(callInterfaces);
+    expect(editors.map((editor) => editor.protocolEditorKind)).toEqual(['a2a', 'custom']);
+    expect(editors[0].endpointSourceMode).toBe('declared-runtime');
+    expect(editors[1]).toMatchObject({
+      customProtocol: 'json-rpc',
+      customProtocolVersion: '2.0',
+      endpointSourceMode: 'runtime-declared',
+    });
+
+    const updated = JSON.parse(buildDraftUpdateData(
+      'public',
+      values(),
+      editors,
+    ).callInterfaces) as AgentCallInterface[];
+    expect(updated.map((callInterface) => callInterface.protocol)).toEqual([
+      'a2a',
+      'json-rpc',
+    ]);
+    expect(updated[0].endpointSourceOrder).toEqual(['DECLARED', 'RUNTIME']);
+    expect(updated[1]).toMatchObject({
+      protocolVersion: '2.0',
+      nativeDescriptor: { method: 'invoke' },
+      endpointSourceOrder: ['RUNTIME', 'DECLARED'],
+    });
+  });
+
+  it('formats protocol and Endpoint source labels for the Console', () => {
+    expect(formatProtocolLabel('a2a')).toBe('A2A');
+    expect(formatProtocolLabel('A2A')).toBe('A2A');
+    expect(formatProtocolLabel('json-rpc')).toBe('json-rpc');
+    expect(endpointSourceModeLabelKey('declared-runtime'))
+      .toBe('agent.endpointSourceDeclaredFirst');
+    expect(endpointSourceOrderLabelKey(['RUNTIME', 'DECLARED']))
+      .toBe('agent.endpointSourceRuntimeFirst');
+    expect(endpointSourceOrderLabelKey(['DECLARED']))
+      .toBeNull();
+    expect(endpointSourceOrderLabelKey(['RUNTIME']))
+      .toBeNull();
+  });
+
+  it('keeps editable A2A declared endpoints synchronized with supportedInterfaces', () => {
+    const original = JSON.stringify({
+      name: 'demo-agent',
+      version: '1.0.0',
+      protocolVersion: '0.3',
+      extension: 'preserved',
+      supportedInterfaces: [{
+        url: 'https://old.example.com/a2a',
+        protocolBinding: 'HTTP+JSON',
+        protocolVersion: '0.3',
+        extension: 'interface-preserved',
+      }],
+    });
+    expect(a2aDeclaredEndpointsFromAgentCard(original)).toEqual([{
+      uri: 'https://old.example.com/a2a',
+      transport: 'HTTP+JSON',
+    }]);
+
+    const endpoints = [{
+      uri: 'https://new.example.com/a2a',
+      transport: 'HTTP+JSON',
+    }, {
+      uri: 'wss://new.example.com/events',
+      transport: 'WebSocket',
+    }];
+    const updatedText = updateA2aAgentCardEndpoints(original, endpoints);
+    const updatedCard = JSON.parse(updatedText) as Record<string, unknown>;
+    expect(updatedCard).toMatchObject({
+      extension: 'preserved',
+      url: 'https://new.example.com/a2a',
+      preferredTransport: 'HTTP+JSON',
+      supportedInterfaces: [{
+        url: 'https://new.example.com/a2a',
+        protocolBinding: 'HTTP+JSON',
+        protocolVersion: '0.3',
+        extension: 'interface-preserved',
+      }, {
+        url: 'wss://new.example.com/events',
+        protocolBinding: 'WebSocket',
+        protocolVersion: '0.3',
+      }],
+    });
+    expect(updatedCard.additionalInterfaces).toEqual([
+      expect.objectContaining({ url: 'wss://new.example.com/events' }),
+    ]);
+
+    const editor = createStructuredProtocolEditor('a2a', updatedText);
+    expect(editor.declaredEndpoints).toEqual(endpoints);
+    const updatedDraft = JSON.parse(buildDraftUpdateData(
+      'public',
+      values({ protocolEditorKind: 'a2a', agentCard: updatedText }),
+      [editor],
+    ).callInterfaces) as AgentCallInterface[];
+    expect(updatedDraft[0].endpointSets?.[0].endpoints).toEqual(endpoints);
   });
 
   it.each([
@@ -521,11 +713,43 @@ describe('Agent Console editor model', () => {
     }).extensions).toBe('');
   });
 
+  it('updates Agent status without dropping replacement-style metadata fields', () => {
+    const agent = {
+      namespaceId: 'public',
+      agentName: 'demo-agent',
+      displayName: 'Demo Agent',
+      description: 'Description',
+      iconUrl: 'https://example.com/icon.png',
+      provider: { name: 'Provider', url: 'https://example.com' },
+      tags: ['alpha', 'beta'],
+      extensions: { region: 'cn-hangzhou' },
+      status: 'disable' as const,
+      owner: 'nacos',
+      scope: 'PRIVATE' as const,
+    };
+
+    expect(buildAgentStatusUpdateData('public', agent, true)).toEqual({
+      namespaceId: 'public',
+      agentName: 'demo-agent',
+      displayName: 'Demo Agent',
+      description: 'Description',
+      iconUrl: 'https://example.com/icon.png',
+      provider: '{"name":"Provider","url":"https://example.com"}',
+      tags: '["alpha","beta"]',
+      extensions: '{"region":"cn-hangzhou"}',
+      status: 'enable',
+    });
+    expect(buildAgentStatusUpdateData('public', { ...agent, status: 'enable' }, false).status)
+      .toBe('disable');
+  });
+
   it('maps A2A, custom, and multi-interface content back to the right editor', () => {
     const a2a = { ...CALL_INTERFACES[0], protocol: 'A2A' };
     expect(callInterfacesToEditorValues([a2a])).toMatchObject({
       protocolEditorKind: 'a2a',
       agentCard: '{\n  "name": "demo"\n}',
+      endpointSourceMode: 'runtime-declared',
+      declaredEndpoints: [],
     });
     expect(callInterfacesToEditorValues(CALL_INTERFACES)).toEqual({
       protocolEditorKind: 'custom',
@@ -538,11 +762,11 @@ describe('Agent Console editor model', () => {
       callInterfaces: callInterfacesToText(CALL_INTERFACES),
     });
     expect(callInterfacesToEditorValues([
-      { ...CALL_INTERFACES[0], endpointSourceOrder: ['DECLARED'] },
-    ])).toMatchObject({ endpointSourceMode: 'declared-only' });
+      { ...CALL_INTERFACES[0], endpointSourceOrder: ['DECLARED', 'RUNTIME'] },
+    ])).toMatchObject({ endpointSourceMode: 'declared-runtime' });
     expect(callInterfacesToEditorValues([
-      { ...CALL_INTERFACES[0], endpointSourceOrder: ['RUNTIME'] },
-    ])).toMatchObject({ endpointSourceMode: 'runtime-only' });
+      { ...CALL_INTERFACES[0], endpointSourceOrder: ['RUNTIME', 'DECLARED'] },
+    ])).toMatchObject({ endpointSourceMode: 'runtime-declared' });
     expect(callInterfacesToEditorValues([
       { ...CALL_INTERFACES[0], endpointSourceOrder: ['DECLARED', 'RUNTIME'] },
     ])).toMatchObject({ endpointSourceMode: 'declared-runtime' });
@@ -557,14 +781,28 @@ describe('Agent Console editor model', () => {
   });
 
   it('defines lifecycle actions and discovery display helpers', () => {
+    const rejectedPipeline = {
+      executionId: 'pipeline-1',
+      status: 'REJECTED' as const,
+      pipeline: [],
+    };
     expect(getVersionActions('draft')).toEqual([
       'editDraft',
       'submit',
-      'forcePublish',
       'deleteDraft',
     ]);
-    expect(getVersionActions('reviewing')).toEqual(['forcePublish']);
-    expect(getVersionActions('reviewed')).toEqual(['publish', 'forcePublish', 'redraft']);
+    expect(getVersionActions('draft', rejectedPipeline, true)).not.toContain('forcePublish');
+    expect(getVersionActions('reviewing')).toEqual([]);
+    expect(getVersionActions('reviewing', rejectedPipeline, true)).toEqual(['forcePublish']);
+    expect(getVersionActions('reviewed')).toEqual(['publish', 'redraft']);
+    expect(getVersionActions('reviewed', rejectedPipeline, false))
+      .toEqual(['publish', 'redraft']);
+    expect(getVersionActions('reviewed', rejectedPipeline, true))
+      .toEqual(['publish', 'forcePublish', 'redraft']);
+    expect(getVersionActions('reviewed', {
+      ...rejectedPipeline,
+      status: 'APPROVED',
+    }, true)).toEqual(['publish', 'redraft']);
     expect(getVersionActions('online')).toEqual(['offline']);
     expect(getVersionActions('offline')).toEqual(['online']);
 
@@ -574,12 +812,6 @@ describe('Agent Console editor model', () => {
       { ...CALL_INTERFACES[0], protocol: 'mcp' },
     ];
     expect(getProtocols(duplicateInterfaces)).toEqual(['custom', 'mcp']);
-    expect(usesRuntimeSource(CALL_INTERFACES[0])).toBe(true);
-    expect(usesRuntimeSource({
-      ...CALL_INTERFACES[0],
-      endpointSourceOrder: ['DECLARED'],
-    })).toBe(false);
-    expect(usesRuntimeSource(undefined)).toBe(false);
     expect(runtimeCacheKey('1.0.0', 'custom')).toBe('1.0.0@@custom');
     expect(namingDetailPath({
       namespaceId: 'tenant a',
@@ -587,5 +819,34 @@ describe('Agent Console editor model', () => {
       serviceName: 'service/name',
     })).toBe('/serviceDetail?serviceName=service%2Fname&groupName=AI_GROUP&namespace=tenant+a');
     expect(callInterfacesToText(CALL_INTERFACES)).toBe(JSON.stringify(CALL_INTERFACES, null, 2));
+  });
+});
+
+describe('Runtime Endpoint status', () => {
+  it.each([
+    [false, false, 'DISABLED'],
+    [false, true, 'DISABLED'],
+    [true, false, 'UNHEALTHY'],
+    [true, true, 'AVAILABLE'],
+    [undefined, undefined, 'AVAILABLE'],
+  ])('derives status from enabled=%s and healthy=%s', (enabled, healthy, expected) => {
+    expect(runtimeEndpointStatus({ enabled, healthy })).toBe(expected);
+  });
+});
+
+describe('Endpoint source preferences', () => {
+  it.each([null, [], ['DECLARED'], ['RUNTIME'], ['RUNTIME', 'RUNTIME'], ['OTHER', 'DECLARED']])(
+    'rejects an incomplete or invalid definition order %j', (order) => {
+      const definition = { ...CALL_INTERFACES[0], endpointSourceOrder: order };
+      expect(() => buildDraftCreateData('public', values({
+        callInterfaces: JSON.stringify([definition]),
+      }), true, 'direct')).toThrow('endpointSourceOrder');
+      expect(() => callInterfacesToProtocolEditors([definition as AgentCallInterface]))
+        .toThrow('endpointSourceOrder');
+      expect(endpointSourceOrderLabelKey(order as AgentCallInterface['endpointSourceOrder'])).toBeNull();
+    },
+  );
+  it('renders a missing detail order safely without assigning a preference', () => {
+    expect(endpointSourceOrderLabelKey(undefined)).toBeNull();
   });
 });

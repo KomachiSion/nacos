@@ -16,8 +16,8 @@
 
 package com.alibaba.nacos.airegistry.controller;
 
-import com.alibaba.nacos.ai.config.ConditionalOnArdEnabled;
 import com.alibaba.nacos.airegistry.annotation.ArdApi;
+import com.alibaba.nacos.airegistry.config.ConditionalOnArdEnabled;
 import com.alibaba.nacos.airegistry.constant.ArdProtocolConstants;
 import com.alibaba.nacos.airegistry.model.ard.ArdCatalog;
 import com.alibaba.nacos.airegistry.model.ard.ArdExploreRequest;
@@ -173,9 +173,11 @@ public class ArdSearchController {
         @RequestParam String resourceType,
         @RequestParam String resourceName,
         @RequestParam String version,
-        @RequestParam(required = false) String mcpName) throws NacosException {
+        @RequestParam(required = false) String mcpName,
+        @RequestParam(required = false) String contentDigest,
+        @RequestParam(required = false) String representation) throws NacosException {
         ArdArtifact artifact = ardArtifactService.get(namespaceId, resourceType, resourceName,
-            version, mcpName);
+            version, mcpName, contentDigest, representation);
         return ResponseEntity.ok().contentType(MediaType.parseMediaType(artifact.getMediaType()))
             .body(artifact.getBody());
     }

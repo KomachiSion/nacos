@@ -52,8 +52,7 @@ const runtime: ConsoleRuntimeEndpointView = {
     namespaceId: 'public',
     agentName: 'demo',
     version: '1.0.0',
-    protocol: 'A2A',
-    items: [],
+    callInterface: { protocol: 'A2A', endpointSets: [{ source: 'RUNTIME', endpoints: [], lastUpdatedTime: 1 }] },
   },
   namingServiceRef: {
     namespaceId: 'public',
@@ -189,6 +188,31 @@ describe('Agent Console store', () => {
       versionPage: null,
       detailLoading: false,
       error: 'missing',
+    });
+  });
+
+  it('clears stale Version state when the Agent no longer has any Version', async () => {
+    const emptyOverview: AgentOverview = {
+      ...overview,
+      versionPage: {
+        totalCount: 0,
+        pageNumber: 1,
+        pagesAvailable: 0,
+        pageItems: [],
+      },
+    };
+    useAgentStore.setState({
+      currentVersion: version,
+      runtimeCache: { stale: runtime },
+    });
+    mockAgentApi.getAgent.mockResolvedValueOnce({ data: emptyOverview });
+
+    await expect(useAgentStore.getState().fetchOverview('public', 'demo'))
+      .resolves.toEqual(emptyOverview);
+    expect(useAgentStore.getState()).toMatchObject({
+      currentOverview: emptyOverview,
+      currentVersion: null,
+      runtimeCache: {},
     });
   });
 

@@ -233,8 +233,9 @@ public class ClientWorker implements Closeable {
         String tenant = agent.getTenant();
         CacheData cache = addCacheDataIfAbsent(dataId, group, tenant);
         synchronized (cache) {
-            cache.setEncryptedDataKey(encryptedDataKey);
-            cache.setContent(content);
+            // Atomically set content/md5/encryptedDataKey as one consistent version
+            // to prevent mixed-version reads by concurrent getConfig calls.
+            cache.setConfigContentAndKey(content, encryptedDataKey);
             for (Listener listener : listeners) {
                 cache.addListener(listener);
             }
@@ -336,7 +337,7 @@ public class ClientWorker implements Closeable {
         
         if (enableClientMetrics) {
             try {
-                MetricsMonitor.getListenConfigCountMonitor().set(cacheMap.get().size());
+                MetricsMonitor.recordListenConfigCount(cacheMap.get().size());
             } catch (Throwable t) {
                 LOGGER.error("Failed to update metrics for listen config count", t);
             }
@@ -383,6 +384,51 @@ public class ClientWorker implements Closeable {
     }
     
     /**
+     * Publish config and return the full response with error details.
+     *
+     * @param dataId           dataId
+     * @param group            group
+     * @param tenant           tenant
+     * @param appName          appName
+     * @param tag              tag
+     * @param betaIps          betaIps
+     * @param content          content
+     * @param encryptedDataKey encryptedDataKey
+     * @param casMd5           casMd5
+     * @param type             type
+     * @return ConfigPublishResponse with success flag and error details
+     * @throws NacosException nacos exception
+     * @since 3.3.0
+     */
+    public ConfigPublishResponse publishConfigWithResponse(String dataId, String group,
+        String tenant, String appName,
+        String tag, String betaIps, String content, String encryptedDataKey, String casMd5,
+        String type)
+        throws NacosException {
+        return ((ConfigRpcTransportClient) agent).publishConfigWithResponse(dataId, group, tenant,
+            appName, tag, betaIps,
+            content, encryptedDataKey, casMd5, type);
+    }
+    
+    /**
+     * Remove config and return the full response with error details.
+     *
+     * @param dataId dataId
+     * @param group  group
+     * @param tenant tenant
+     * @param tag    tag
+     * @return ConfigRemoveResponse with success flag and error details
+     * @throws NacosException nacos exception
+     * @since 3.3.0
+     */
+    public ConfigRemoveResponse removeConfigWithResponse(String dataId, String group,
+        String tenant, String tag)
+        throws NacosException {
+        return ((ConfigRpcTransportClient) agent).removeConfigWithResponse(dataId, group, tenant,
+            tag);
+    }
+    
+    /**
      * Add cache data if absent.
      *
      * @param dataId data id if data
@@ -421,7 +467,7 @@ public class ClientWorker implements Closeable {
         
         if (enableClientMetrics) {
             try {
-                MetricsMonitor.getListenConfigCountMonitor().set(cacheMap.get().size());
+                MetricsMonitor.recordListenConfigCount(cacheMap.get().size());
             } catch (Throwable t) {
                 LOGGER.error("Failed to update metrics for listen config count", t);
             }
@@ -464,8 +510,9 @@ public class ClientWorker implements Closeable {
                 if (enableRemoteSyncConfig) {
                     ConfigResponse response =
                         getServerConfig(dataId, group, tenant, requestTimeout, false);
-                    cache.setEncryptedDataKey(response.getEncryptedDataKey());
-                    cache.setContent(response.getContent());
+                    // Atomically set content/md5/encryptedDataKey as one consistent version
+                    cache.setConfigContentAndKey(response.getContent(),
+                        response.getEncryptedDataKey());
                 }
             }
             
@@ -477,7 +524,7 @@ public class ClientWorker implements Closeable {
         
         if (enableClientMetrics) {
             try {
-                MetricsMonitor.getListenConfigCountMonitor().set(cacheMap.get().size());
+                MetricsMonitor.recordListenConfigCount(cacheMap.get().size());
             } catch (Throwable t) {
                 LOGGER.error("Failed to update metrics for listen config count", t);
             }
@@ -530,6 +577,46 @@ public class ClientWorker implements Closeable {
         return cacheMap.get().get(GroupKey.getKeyTenant(dataId, group, tenant));
     }
     
+    /**
+     * Holds a consistent local content/MD5/encryptedDataKey pair captured before sending
+     * a conditional GET request. On a 304 response, this retained content is reused directly
+     * instead of re-reading a potentially different snapshot/CacheData version.
+     */
+    public static final class LocalConfigContent {
+        
+        private final String content;
+        
+        private final String md5;
+        
+        private final String encryptedDataKey;
+        
+        private final boolean hasLocalRepresentation;
+        
+        public LocalConfigContent(String content, String md5, String encryptedDataKey,
+            boolean hasLocalRepresentation) {
+            this.content = content;
+            this.md5 = md5;
+            this.encryptedDataKey = encryptedDataKey;
+            this.hasLocalRepresentation = hasLocalRepresentation;
+        }
+        
+        public String getContent() {
+            return content;
+        }
+        
+        public String getMd5() {
+            return md5;
+        }
+        
+        public String getEncryptedDataKey() {
+            return encryptedDataKey;
+        }
+        
+        public boolean hasLocalRepresentation() {
+            return hasLocalRepresentation;
+        }
+    }
+    
     public ConfigResponse getServerConfig(String dataId, String group, String tenant,
         long readTimeout, boolean notify)
         throws NacosException {
@@ -537,6 +624,56 @@ public class ClientWorker implements Closeable {
             group = Constants.DEFAULT_GROUP;
         }
         return agent.queryConfig(dataId, group, tenant, readTimeout, notify);
+    }
+    
+    /**
+     * Get server config with local MD5 for 304 conditional GET.
+     *
+     * <p>When {@code localMd5} is provided and matches the server-side config MD5,
+     * the server returns 304 Not-Modified, and the client uses the locally cached
+     * content from the snapshot file.</p>
+     *
+     * @param dataId    dataId
+     * @param group     group
+     * @param tenant    tenant
+     * @param readTimeout read timeout in milliseconds
+     * @param notify    whether to notify
+     * @param localMd5  local cached MD5 for 304 conditional GET, may be null
+     * @return config response
+     * @throws NacosException nacos exception
+     * @since 3.3.0
+     */
+    public ConfigResponse getServerConfig(String dataId, String group, String tenant,
+        long readTimeout, boolean notify, String localMd5)
+        throws NacosException {
+        if (StringUtils.isBlank(group)) {
+            group = Constants.DEFAULT_GROUP;
+        }
+        return agent.queryConfig(dataId, group, tenant, readTimeout, notify, localMd5);
+    }
+    
+    /**
+     * Get server config with 304 conditional GET and consistent local content retention.
+     *
+     * @param dataId       dataId
+     * @param group        group
+     * @param tenant       tenant
+     * @param readTimeout  read timeout in milliseconds
+     * @param notify       whether to notify
+     * @param localMd5     local cached MD5 for 304 conditional GET, may be null
+     * @param localContent consistent local content/MD5 pair for 304 restoration
+     * @return config response
+     * @throws NacosException nacos exception
+     * @since 3.3.0
+     */
+    public ConfigResponse getServerConfig(String dataId, String group, String tenant,
+        long readTimeout, boolean notify, String localMd5, LocalConfigContent localContent)
+        throws NacosException {
+        if (StringUtils.isBlank(group)) {
+            group = Constants.DEFAULT_GROUP;
+        }
+        return agent.queryConfig(dataId, group, tenant, readTimeout, notify, localMd5,
+            localContent);
     }
     
     private String blank2defaultGroup(String group) {
@@ -1068,8 +1205,10 @@ public class ClientWorker implements Closeable {
                 ConfigResponse response =
                     this.queryConfigInner(rpcClient, cacheData.dataId, cacheData.group,
                         cacheData.tenant, requestTimeout, notify);
-                cacheData.setEncryptedDataKey(response.getEncryptedDataKey());
-                cacheData.setContent(response.getContent());
+                // Atomically set content/md5/encryptedDataKey as one consistent version
+                // to prevent mixed-version reads by concurrent getConfig calls.
+                cacheData.setConfigContentAndKey(response.getContent(),
+                    response.getEncryptedDataKey());
                 if (null != response.getConfigType()) {
                     cacheData.setType(response.getConfigType());
                 }
@@ -1300,6 +1439,25 @@ public class ClientWorker implements Closeable {
         public ConfigResponse queryConfig(String dataId, String group, String tenant,
             long readTimeouts, boolean notify)
             throws NacosException {
+            return queryConfig(dataId, group, tenant, readTimeouts, notify, null);
+        }
+        
+        /**
+         * Query config with local MD5 for 304 conditional GET.
+         *
+         * @param dataId      dataId
+         * @param group       group
+         * @param tenant      tenant
+         * @param readTimeouts read timeout in milliseconds
+         * @param notify      whether to notify
+         * @param localMd5    local cached MD5 for 304 conditional GET
+         * @return config response
+         * @throws NacosException nacos exception
+         * @since 3.3.0
+         */
+        public ConfigResponse queryConfig(String dataId, String group, String tenant,
+            long readTimeouts, boolean notify, String localMd5)
+            throws NacosException {
             RpcClient rpcClient = getOneRunningClient();
             if (notify) {
                 CacheData cacheData =
@@ -1309,15 +1467,72 @@ public class ClientWorker implements Closeable {
                 }
             }
             
-            return queryConfigInner(rpcClient, dataId, group, tenant, readTimeouts, notify);
+            return queryConfigInner(rpcClient, dataId, group, tenant, readTimeouts, notify,
+                localMd5);
             
+        }
+        
+        /**
+         * Query config with 304 conditional GET and consistent local content retention.
+         *
+         * @param dataId       dataId
+         * @param group        group
+         * @param tenant       tenant
+         * @param readTimeouts read timeout in milliseconds
+         * @param notify       whether to notify
+         * @param localMd5     local cached MD5 for 304 conditional GET
+         * @param localContent consistent local content/MD5 pair for 304 restoration
+         * @return config response
+         * @throws NacosException nacos exception
+         * @since 3.3.0
+         */
+        public ConfigResponse queryConfig(String dataId, String group, String tenant,
+            long readTimeouts, boolean notify, String localMd5, LocalConfigContent localContent)
+            throws NacosException {
+            RpcClient rpcClient = getOneRunningClient();
+            if (notify) {
+                CacheData cacheData =
+                    cacheMap.get().get(GroupKey.getKeyTenant(dataId, group, tenant));
+                if (cacheData != null) {
+                    rpcClient = ensureRpcClient(String.valueOf(cacheData.getTaskId()));
+                }
+            }
+            
+            return queryConfigInner(rpcClient, dataId, group, tenant, readTimeouts, notify,
+                localMd5, localContent);
         }
         
         ConfigResponse queryConfigInner(RpcClient rpcClient, String dataId, String group,
             String tenant,
             long readTimeouts, boolean notify) throws NacosException {
+            return queryConfigInner(rpcClient, dataId, group, tenant, readTimeouts, notify,
+                null);
+        }
+        
+        ConfigResponse queryConfigInner(RpcClient rpcClient, String dataId, String group,
+            String tenant,
+            long readTimeouts, boolean notify, String localMd5) throws NacosException {
+            return queryConfigInner(rpcClient, dataId, group, tenant, readTimeouts, notify,
+                localMd5, null);
+        }
+        
+        /**
+         * Query config inner with 304 conditional GET and consistent local content retention.
+         *
+         * <p>On a 304 response, the retained localContent is reused directly instead of
+         * re-reading a potentially different snapshot/CacheData version, ensuring the content
+         * and MD5 always match. The content is the original pre-decryption content and will
+         * pass through the response filter/decryption chain in the caller.</p>
+         */
+        ConfigResponse queryConfigInner(RpcClient rpcClient, String dataId, String group,
+            String tenant,
+            long readTimeouts, boolean notify, String localMd5,
+            LocalConfigContent localContent) throws NacosException {
             ConfigQueryRequest request = ConfigQueryRequest.build(dataId, group, tenant);
             request.putHeader(NOTIFY_HEADER, String.valueOf(notify));
+            if (StringUtils.isNotBlank(localMd5)) {
+                request.setLocalMd5(localMd5);
+            }
             
             ConfigQueryResponse response =
                 (ConfigQueryResponse) requestProxy(rpcClient, request, readTimeouts);
@@ -1337,10 +1552,49 @@ public class ClientWorker implements Closeable {
                 }
                 configResponse.setConfigType(configType);
                 String encryptedDataKey = response.getEncryptedDataKey();
-                LocalEncryptedDataKeyProcessor.saveEncryptDataKeySnapshot(agent.getName(), dataId,
+                LocalEncryptedDataKeyProcessor.saveEncryptDataKeySnapshot(agent.getName(),
+                    dataId,
                     group, tenant,
                     encryptedDataKey);
                 configResponse.setEncryptedDataKey(encryptedDataKey);
+                return configResponse;
+            } else if (response.getErrorCode() == ConfigQueryResponse.CONFIG_NOT_MODIFIED) {
+                // 304 Not-Modified: reuse the retained content captured before sending the request.
+                // This ensures the content and MD5 always match, even if the local cache is
+                // updated concurrently between sending the request and receiving the 304.
+                LOGGER.info(
+                    "[{}] [get-config] config not modified (304), reuse retained local content, dataId={}, group={}, tenant={}",
+                    this.getName(), dataId, group, tenant);
+                
+                String retainedContent =
+                    localContent != null ? localContent.getContent() : null;
+                String retainedEncryptedDataKey =
+                    localContent != null ? localContent.getEncryptedDataKey() : null;
+                
+                // If no retained content available, fall back to unconditional query
+                if (StringUtils.isBlank(retainedContent)) {
+                    LOGGER.warn(
+                        "[{}] [get-config] 304 but no retained content available, retrying unconditionally, dataId={}, group={}, tenant={}",
+                        this.getName(), dataId, group, tenant);
+                    return queryConfigInner(rpcClient, dataId, group, tenant, readTimeouts, notify,
+                        null);
+                }
+                
+                configResponse.setContent(retainedContent);
+                configResponse.setMd5(response.getMd5());
+                // Restore configType from 304 response metadata
+                String configType304;
+                if (StringUtils.isNotBlank(response.getContentType())) {
+                    configType304 = response.getContentType();
+                } else {
+                    configType304 = ConfigType.TEXT.getType();
+                }
+                configResponse.setConfigType(configType304);
+                // 304: use ONLY the retained encryptedDataKey captured before the request.
+                // Do NOT fall back to a freshly read snapshot key, which may belong to a
+                // different version written concurrently after the request was dispatched.
+                // The retained content+key pair is guaranteed consistent by the capture mechanism.
+                configResponse.setEncryptedDataKey(retainedEncryptedDataKey);
                 return configResponse;
             } else if (response.getErrorCode() == ConfigQueryResponse.CONFIG_NOT_FOUND) {
                 LocalConfigInfoProcessor.saveSnapshot(this.getName(), dataId, group, tenant, null);
@@ -1432,6 +1686,32 @@ public class ClientWorker implements Closeable {
             String tag,
             String betaIps, String content, String encryptedDataKey, String casMd5, String type)
             throws NacosException {
+            return publishConfigWithResponse(dataId, group, tenant, appName, tag, betaIps, content,
+                encryptedDataKey, casMd5, type).isSuccess();
+        }
+        
+        /**
+         * Publish config and return the full response with error details.
+         *
+         * @param dataId           dataId
+         * @param group            group
+         * @param tenant           tenant
+         * @param appName          appName
+         * @param tag              tag
+         * @param betaIps          betaIps
+         * @param content          content
+         * @param encryptedDataKey encryptedDataKey
+         * @param casMd5           casMd5
+         * @param type             type
+         * @return ConfigPublishResponse with success flag and error details
+         * @throws NacosException nacos exception
+         * @since 3.3.0
+         */
+        public ConfigPublishResponse publishConfigWithResponse(String dataId, String group,
+            String tenant, String appName,
+            String tag, String betaIps, String content, String encryptedDataKey, String casMd5,
+            String type)
+            throws NacosException {
             try {
                 ConfigPublishRequest request =
                     new ConfigPublishRequest(dataId, group, tenant, content);
@@ -1449,28 +1729,58 @@ public class ClientWorker implements Closeable {
                         "[{}] [publish-single] fail, dataId={}, group={}, tenant={}, code={}, msg={}",
                         this.getName(), dataId, group, tenant, response.getErrorCode(),
                         response.getMessage());
-                    return false;
                 } else {
                     LOGGER.info("[{}] [publish-single] ok, dataId={}, group={}, tenant={}",
                         getName(), dataId, group,
                         tenant);
-                    return true;
                 }
+                return response;
+            } catch (NacosException e) {
+                // RpcClient turns ErrorResponse into NacosException carrying the original
+                // error code. Preserve getErrCode()/message in the result instead of
+                // collapsing to -1, so callers can distinguish CAS conflicts, no-right, etc.
+                LOGGER.warn(
+                    "[{}] [publish-single] error, dataId={}, group={}, tenant={}, code={}, msg={}",
+                    this.getName(), dataId, group, tenant, e.getErrCode(), e.getMessage());
+                return ConfigPublishResponse.buildFailResponse(e.getErrCode(), e.getMessage());
             } catch (Exception e) {
                 LOGGER.warn(
                     "[{}] [publish-single] error, dataId={}, group={}, tenant={}, code={}, msg={}",
                     this.getName(), dataId, group, tenant, "unknown", e.getMessage());
-                return false;
+                return ConfigPublishResponse.buildFailResponse(-1, e.getMessage());
             }
         }
         
         @Override
         public boolean removeConfig(String dataId, String group, String tenant, String tag)
             throws NacosException {
+            return removeConfigWithResponse(dataId, group, tenant, tag).isSuccess();
+        }
+        
+        /**
+         * Remove config and return the full response with error details.
+         *
+         * @param dataId dataId
+         * @param group  group
+         * @param tenant tenant
+         * @param tag    tag
+         * @return ConfigRemoveResponse with success flag and error details
+         * @throws NacosException nacos exception
+         * @since 3.3.0
+         */
+        public ConfigRemoveResponse removeConfigWithResponse(String dataId, String group,
+            String tenant, String tag)
+            throws NacosException {
             ConfigRemoveRequest request = new ConfigRemoveRequest(dataId, group, tenant, tag);
             ConfigRemoveResponse response =
                 (ConfigRemoveResponse) requestProxy(getOneRunningClient(), request);
-            return response.isSuccess();
+            if (!response.isSuccess()) {
+                LOGGER.warn(
+                    "[{}] [remove-single] fail, dataId={}, group={}, tenant={}, code={}, msg={}",
+                    this.getName(), dataId, group, tenant, response.getErrorCode(),
+                    response.getMessage());
+            }
+            return response;
         }
         
         /**

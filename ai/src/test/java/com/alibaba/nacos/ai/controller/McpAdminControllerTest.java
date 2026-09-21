@@ -17,8 +17,11 @@
 package com.alibaba.nacos.ai.controller;
 
 import com.alibaba.nacos.ai.constant.Constants;
-import com.alibaba.nacos.ai.service.McpServerOperationService;
+import com.alibaba.nacos.ai.service.mcp.McpCompatibilityOperationService;
+import com.alibaba.nacos.ai.service.mcp.McpOperationService;
 import com.alibaba.nacos.api.ai.constant.AiConstants;
+import com.alibaba.nacos.api.ai.model.mcp.McpServerVersionDetail;
+import com.alibaba.nacos.api.ai.model.mcp.McpServerVersionSummary;
 import com.alibaba.nacos.api.ai.model.mcp.McpServerBasicInfo;
 import com.alibaba.nacos.api.ai.model.mcp.McpServerDetailInfo;
 import com.alibaba.nacos.api.exception.api.NacosApiException;
@@ -48,6 +51,7 @@ import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
 import java.util.UUID;
+import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
@@ -77,13 +81,17 @@ class McpAdminControllerTest {
     private ConfigurableEnvironment cachedEnvironment;
     
     @MockitoBean
-    private McpServerOperationService mcpServerOperationService;
+    private McpOperationService mcpServerOperationService;
+    
+    @MockitoBean
+    private McpCompatibilityOperationService lifecycleOperationService;
     
     @BeforeEach
     void setUp() {
         cachedEnvironment = EnvUtil.getEnvironment();
         EnvUtil.setEnvironment(new StandardEnvironment());
-        mcpAdminController = new McpAdminController(mcpServerOperationService);
+        mcpAdminController = new McpAdminController(mcpServerOperationService,
+            lifecycleOperationService);
         mockMvc = MockMvcBuilders.standaloneSetup(mcpAdminController).build();
     }
     
@@ -346,6 +354,126 @@ class McpAdminControllerTest {
         assertEquals(ErrorCode.SUCCESS.getCode(), result.getCode());
         assertEquals("ok", result.getData());
         verify(mcpServerOperationService).deleteMcpServer("testNs", null, id, "1.0.0");
+    }
+    
+    @Test
+    void standardLifecycleApisDelegateByNameAndExactVersion() throws Exception {
+        McpServerVersionDetail detail = new McpServerVersionDetail();
+        McpServerVersionSummary summary = new McpServerVersionSummary();
+        when(lifecycleOperationService.listMcpServerVersions(
+            AiConstants.Mcp.MCP_DEFAULT_NAMESPACE, "nacos-mcp-server", "draft", 1, 10))
+            .thenReturn(new Page<>());
+        when(lifecycleOperationService.getMcpServerVersion(
+            AiConstants.Mcp.MCP_DEFAULT_NAMESPACE, "nacos-mcp-server", "1.0.0"))
+            .thenReturn(detail);
+        when(lifecycleOperationService.createMcpServerDraft(
+            eq(AiConstants.Mcp.MCP_DEFAULT_NAMESPACE), any(McpServerBasicInfo.class), isNull(),
+            isNull(), isNull())).thenReturn(detail);
+        when(lifecycleOperationService.updateMcpServerDraft(
+            eq(AiConstants.Mcp.MCP_DEFAULT_NAMESPACE), any(McpServerBasicInfo.class), isNull(),
+            isNull(), isNull())).thenReturn(detail);
+        when(lifecycleOperationService.submitMcpServerVersion(
+            AiConstants.Mcp.MCP_DEFAULT_NAMESPACE, "nacos-mcp-server", "1.0.0"))
+            .thenReturn(summary);
+        when(lifecycleOperationService.publishMcpServerVersion(
+            AiConstants.Mcp.MCP_DEFAULT_NAMESPACE, "nacos-mcp-server", "1.0.0"))
+            .thenReturn(summary);
+        when(lifecycleOperationService.forcePublishMcpServerVersion(
+            AiConstants.Mcp.MCP_DEFAULT_NAMESPACE, "nacos-mcp-server", "1.0.0"))
+            .thenReturn(summary);
+        when(lifecycleOperationService.redraftMcpServerVersion(
+            AiConstants.Mcp.MCP_DEFAULT_NAMESPACE, "nacos-mcp-server", "1.0.0"))
+            .thenReturn(summary);
+        when(lifecycleOperationService.onlineMcpServerVersion(
+            AiConstants.Mcp.MCP_DEFAULT_NAMESPACE, "nacos-mcp-server", "1.0.0"))
+            .thenReturn(summary);
+        when(lifecycleOperationService.offlineMcpServerVersion(
+            AiConstants.Mcp.MCP_DEFAULT_NAMESPACE, "nacos-mcp-server", "1.0.0"))
+            .thenReturn(summary);
+        when(lifecycleOperationService.updateMcpServerLabels(
+            AiConstants.Mcp.MCP_DEFAULT_NAMESPACE, "nacos-mcp-server", Map.of()))
+            .thenReturn(Map.of());
+        
+        assertEquals(200, mockMvc.perform(MockMvcRequestBuilders.get(
+            Constants.MCP_ADMIN_PATH + "/versions").param("mcpName", "nacos-mcp-server")
+            .param("status", "draft").param("pageNo", "1").param("pageSize", "10"))
+            .andReturn().getResponse().getStatus());
+        assertEquals(200, lifecycleVersionRequest(MockMvcRequestBuilders.get(
+            Constants.MCP_ADMIN_PATH + "/version")).andReturn().getResponse().getStatus());
+        assertEquals(200, lifecycleDraftRequest(MockMvcRequestBuilders.post(
+            Constants.MCP_ADMIN_PATH + "/draft")).andReturn().getResponse().getStatus());
+        assertEquals(200, lifecycleDraftRequest(MockMvcRequestBuilders.put(
+            Constants.MCP_ADMIN_PATH + "/draft")).andReturn().getResponse().getStatus());
+        assertEquals(200, lifecycleVersionRequest(MockMvcRequestBuilders.delete(
+            Constants.MCP_ADMIN_PATH + "/draft")).andReturn().getResponse().getStatus());
+        assertEquals(200, lifecycleVersionRequest(MockMvcRequestBuilders.post(
+            Constants.MCP_ADMIN_PATH + "/submit")).andReturn().getResponse().getStatus());
+        assertEquals(200, lifecycleVersionRequest(MockMvcRequestBuilders.post(
+            Constants.MCP_ADMIN_PATH + "/publish")).andReturn().getResponse().getStatus());
+        assertEquals(200, lifecycleVersionRequest(MockMvcRequestBuilders.post(
+            Constants.MCP_ADMIN_PATH + "/force-publish")).andReturn().getResponse().getStatus());
+        assertEquals(200, lifecycleVersionRequest(MockMvcRequestBuilders.post(
+            Constants.MCP_ADMIN_PATH + "/redraft")).andReturn().getResponse().getStatus());
+        assertEquals(200, lifecycleVersionRequest(MockMvcRequestBuilders.post(
+            Constants.MCP_ADMIN_PATH + "/online")).andReturn().getResponse().getStatus());
+        assertEquals(200, lifecycleVersionRequest(MockMvcRequestBuilders.post(
+            Constants.MCP_ADMIN_PATH + "/offline")).andReturn().getResponse().getStatus());
+        assertEquals(200, mockMvc.perform(MockMvcRequestBuilders.put(
+            Constants.MCP_ADMIN_PATH + "/labels").param("mcpName", "nacos-mcp-server"))
+            .andReturn().getResponse().getStatus());
+        assertEquals(200, mockMvc.perform(MockMvcRequestBuilders.put(
+            Constants.MCP_ADMIN_PATH + "/status").param("mcpName", "nacos-mcp-server")
+            .param("enabled", "false")).andReturn().getResponse().getStatus());
+        assertEquals(200, mockMvc.perform(MockMvcRequestBuilders.put(
+            Constants.MCP_ADMIN_PATH + "/scope").param("mcpName", "nacos-mcp-server")
+            .param("scope", "private")).andReturn().getResponse().getStatus());
+        
+        verify(lifecycleOperationService).deleteMcpServerDraft(
+            AiConstants.Mcp.MCP_DEFAULT_NAMESPACE, "nacos-mcp-server", "1.0.0");
+        verify(lifecycleOperationService).updateMcpServerLabels(
+            AiConstants.Mcp.MCP_DEFAULT_NAMESPACE, "nacos-mcp-server", Map.of());
+        verify(lifecycleOperationService).updateMcpServerStatus(
+            AiConstants.Mcp.MCP_DEFAULT_NAMESPACE, "nacos-mcp-server", false);
+        verify(lifecycleOperationService).updateMcpServerScope(
+            AiConstants.Mcp.MCP_DEFAULT_NAMESPACE, "nacos-mcp-server", "private");
+    }
+    
+    @Test
+    void resourceUpdatesValidateRequiredValues() throws Throwable {
+        MockHttpServletRequestBuilder missingEnabled = MockMvcRequestBuilders.put(
+            Constants.MCP_ADMIN_PATH + "/status").param("mcpName", "nacos-mcp-server");
+        assertServletException(NacosApiException.class,
+            () -> mockMvc.perform(missingEnabled).andReturn(),
+            "ErrCode:400, ErrMsg:Required parameter 'enabled' type Boolean is not present");
+        
+        MockHttpServletRequestBuilder invalidScope = MockMvcRequestBuilders.put(
+            Constants.MCP_ADMIN_PATH + "/scope").param("mcpName", "nacos-mcp-server")
+            .param("scope", "team");
+        assertServletException(NacosApiException.class,
+            () -> mockMvc.perform(invalidScope).andReturn(),
+            "ErrCode:400, ErrMsg:Parameter 'scope' must be PUBLIC or PRIVATE");
+    }
+    
+    @Test
+    void standardLifecycleApiDoesNotAcceptCompatibilityIdAsIdentity() throws Throwable {
+        MockHttpServletRequestBuilder request = MockMvcRequestBuilders.get(
+            Constants.MCP_ADMIN_PATH + "/version").param("mcpId", UUID.randomUUID().toString())
+            .param("version", "1.0.0");
+        
+        assertServletException(NacosApiException.class,
+            () -> mockMvc.perform(request).andReturn(),
+            "ErrCode:400, ErrMsg:Required parameter 'mcpName' type String is not present");
+    }
+    
+    private org.springframework.test.web.servlet.ResultActions lifecycleVersionRequest(
+        MockHttpServletRequestBuilder request) throws Exception {
+        return mockMvc.perform(request.param("mcpName", "nacos-mcp-server")
+            .param("version", "1.0.0"));
+    }
+    
+    private org.springframework.test.web.servlet.ResultActions lifecycleDraftRequest(
+        MockHttpServletRequestBuilder request) throws Exception {
+        return lifecycleVersionRequest(request.param("serverSpecification", MCP_SERVER_SPEC));
     }
     
     private static <T extends Throwable> void assertServletException(Class<T> expectedCause,

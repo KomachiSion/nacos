@@ -16,28 +16,41 @@
 
 package com.alibaba.nacos.ai.storage;
 
+import com.alibaba.nacos.ai.constant.AiResourceConstants;
+import com.alibaba.nacos.ai.constant.Constants;
+import com.alibaba.nacos.ai.service.SyncEffectService;
+import com.alibaba.nacos.ai.service.agent.identity.RadAsciiAgentIdCodec;
+import com.alibaba.nacos.ai.service.agent.storage.AgentVersionStorageKeyComposer;
 import com.alibaba.nacos.api.ai.model.NacosAiConfigKeyCodec;
 import com.alibaba.nacos.api.ai.model.agentspecs.AgentSpecUtils;
 import com.alibaba.nacos.api.ai.model.prompt.PromptUtils;
 import com.alibaba.nacos.api.ai.model.skills.SkillUtils;
 import com.alibaba.nacos.api.config.ConfigType;
 import com.alibaba.nacos.api.exception.NacosException;
-import com.alibaba.nacos.ai.service.SyncEffectService;
-import com.alibaba.nacos.ai.service.agent.identity.RadAsciiAgentIdCodec;
-import com.alibaba.nacos.ai.service.agent.storage.AgentVersionStorageKeyComposer;
+import com.alibaba.nacos.common.notify.NotifyCenter;
+import com.alibaba.nacos.common.notify.listener.Subscriber;
 import com.alibaba.nacos.config.server.exception.ConfigAlreadyExistsException;
 import com.alibaba.nacos.config.server.model.ConfigRequestInfo;
+import com.alibaba.nacos.config.server.model.event.LocalDataChangeEvent;
 import com.alibaba.nacos.config.server.model.form.ConfigForm;
 import com.alibaba.nacos.config.server.service.ConfigOperationService;
 import com.alibaba.nacos.config.server.service.query.ConfigQueryChainService;
 import com.alibaba.nacos.config.server.service.query.model.ConfigQueryChainRequest;
 import com.alibaba.nacos.config.server.service.query.model.ConfigQueryChainResponse;
+import com.alibaba.nacos.config.server.utils.GroupKey2;
+import com.alibaba.nacos.plugin.ai.storage.model.AiResourceStorageChangeEvent;
+import com.alibaba.nacos.plugin.ai.storage.model.AiResourceStorageConsistencyMode;
 import com.alibaba.nacos.plugin.ai.storage.model.StorageKey;
+import com.alibaba.nacos.plugin.ai.storage.spi.AiResourceStorageChangeListener;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
+import org.mockito.MockedStatic;
+import org.mockito.Mockito;
+import org.springframework.test.util.ReflectionTestUtils;
 
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
@@ -54,6 +67,7 @@ import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.ArgumentMatchers.same;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -108,6 +122,81 @@ class NacosConfigAiResourceStorageTest {
         assertEquals("ns1", parts.namespaceId());
         assertEquals("agent-version", parts.group());
         assertEquals("agent__enc-Nacos-032Agent__1.0.0-RC1.json", parts.dataId());
+    }
+    
+    @Test
+    void testParseAllowlistedMcpKeysPreservesExistingCoordinates() {
+        List<String[]> coordinates = Arrays.asList(
+            new String[] {"mcp-server", "id-version:build-mcp-server.json"},
+            new String[] {"mcp-tools", "id-version:build-mcp-tools.json"},
+            new String[] {"mcp-resources", "id-version:build-mcp-resources.json"});
+        for (String[] coordinate : coordinates) {
+            StorageKey key = new StorageKey(NacosConfigAiResourceStorage.TYPE,
+                "public:" + coordinate[0] + ':' + coordinate[1]);
+            NacosConfigAiResourceStorage.KeyParts parts =
+                NacosConfigAiResourceStorage.parse(key);
+            assertEquals("public", parts.namespaceId());
+            assertEquals(coordinate[0], parts.group());
+            assertEquals(coordinate[1], parts.dataId());
+        }
+    }
+    
+    @Test
+    void testMcpStorageOperationsDoNotEncodePhysicalCoordinate() throws Exception {
+        NacosConfigAiResourceStorage storageWithoutSync =
+            new NacosConfigAiResourceStorage(configQueryChainService, configOperationService, null);
+        String dataId = "id-version:build-mcp-server.json";
+        StorageKey key = new StorageKey(NacosConfigAiResourceStorage.TYPE,
+            "public:mcp-server:" + dataId);
+        ConfigQueryChainResponse response = new ConfigQueryChainResponse();
+        response.setStatus(ConfigQueryChainResponse.ConfigQueryStatus.CONFIG_FOUND_FORMAL);
+        response.setContent("content");
+        when(configQueryChainService.handle(any(ConfigQueryChainRequest.class)))
+            .thenReturn(response);
+        
+        storageWithoutSync.save(key, "content".getBytes(StandardCharsets.UTF_8));
+        assertArrayEquals("content".getBytes(StandardCharsets.UTF_8), storageWithoutSync.get(key));
+        storageWithoutSync.delete(key);
+        
+        ArgumentCaptor<ConfigForm> formCaptor = ArgumentCaptor.forClass(ConfigForm.class);
+        verify(configOperationService).publishConfig(formCaptor.capture(), any(), isNull());
+        assertEquals(dataId, formCaptor.getValue().getDataId());
+        assertEquals("mcp-server", formCaptor.getValue().getGroup());
+        ArgumentCaptor<ConfigQueryChainRequest> requestCaptor =
+            ArgumentCaptor.forClass(ConfigQueryChainRequest.class);
+        verify(configQueryChainService).handle(requestCaptor.capture());
+        assertEquals(dataId, requestCaptor.getValue().getDataId());
+        assertEquals("mcp-server", requestCaptor.getValue().getGroup());
+        verify(configOperationService).deleteConfig(dataId, "mcp-server", "public", null, null,
+            "nacos", null);
+    }
+    
+    @Test
+    void testRejectMcpLikeKeysOutsideAllowlistOrSuffixContract() {
+        assertThrows(IllegalArgumentException.class,
+            () -> NacosConfigAiResourceStorage.parse(new StorageKey(
+                NacosConfigAiResourceStorage.TYPE, "public:user-group:file.json")));
+        assertThrows(IllegalArgumentException.class,
+            () -> NacosConfigAiResourceStorage.parse(new StorageKey(
+                NacosConfigAiResourceStorage.TYPE, "public:mcp-server:wrong.json")));
+        assertThrows(IllegalArgumentException.class,
+            () -> NacosConfigAiResourceStorage.parse(new StorageKey(
+                NacosConfigAiResourceStorage.TYPE, ":mcp-tools:id-mcp-tools.json")));
+        assertThrows(IllegalArgumentException.class,
+            () -> NacosConfigAiResourceStorage.parse(new StorageKey(
+                NacosConfigAiResourceStorage.TYPE, "public:mcp-resources:")));
+    }
+    
+    @Test
+    void testMcpGroupTokensDoNotBreakLegacySkillNames() {
+        for (String skillName : Arrays.asList("mcp-server", "mcp-tools", "mcp-resources")) {
+            StorageKey key = NacosConfigAiResourceStorage.buildStorageKey(
+                NacosConfigAiResourceStorage.TYPE, "public", skillName, "1.0.0", "skill.json");
+            NacosConfigAiResourceStorage.KeyParts parts =
+                NacosConfigAiResourceStorage.parse(key);
+            assertEquals(SkillUtils.buildSkillVersionGroup(skillName, "1.0.0"), parts.group());
+            assertEquals("skill.json", parts.dataId());
+        }
     }
     
     @Test
@@ -293,6 +382,9 @@ class NacosConfigAiResourceStorageTest {
     
     @Test
     void testParseInvalidFormatThrows() {
+        StorageKey singlePartKey = new StorageKey(NacosConfigAiResourceStorage.TYPE, "single");
+        assertThrows(IllegalArgumentException.class,
+            () -> NacosConfigAiResourceStorage.parse(singlePartKey));
         StorageKey key = new StorageKey(NacosConfigAiResourceStorage.TYPE, "only:two");
         assertThrows(IllegalArgumentException.class, () -> NacosConfigAiResourceStorage.parse(key));
     }
@@ -542,6 +634,135 @@ class NacosConfigAiResourceStorageTest {
     }
     
     @Test
+    void testStorageChangeListenerLifecycleAndConsistencyMode() {
+        AiResourceStorageChangeListener first = event -> {
+        };
+        AiResourceStorageChangeListener second = event -> {
+        };
+        try (MockedStatic<NotifyCenter> notifyCenter = mockStatic(NotifyCenter.class)) {
+            assertEquals(AiResourceStorageConsistencyMode.EVENTUAL_WITH_NOTIFICATION,
+                storage.consistencyMode());
+            
+            storage.addChangeListener(null);
+            storage.addChangeListener(first);
+            storage.addChangeListener(first);
+            storage.addChangeListener(second);
+            notifyCenter.verify(
+                () -> NotifyCenter.registerSubscriber(Mockito.any(Subscriber.class)), times(1));
+            
+            storage.removeChangeListener(null);
+            storage.removeChangeListener(first);
+            storage.removeChangeListener(first);
+            notifyCenter.verify(
+                () -> NotifyCenter.deregisterSubscriber(Mockito.any(Subscriber.class)), times(0));
+            storage.removeChangeListener(second);
+            notifyCenter.verify(
+                () -> NotifyCenter.deregisterSubscriber(Mockito.any(Subscriber.class)), times(1));
+        }
+    }
+    
+    @Test
+    void testStorageChangeListenerRegistrationAndRemovalFailuresRemainRetryable() {
+        AiResourceStorageChangeListener listener = event -> {
+        };
+        try (MockedStatic<NotifyCenter> notifyCenter = mockStatic(NotifyCenter.class)) {
+            notifyCenter.when(
+                () -> NotifyCenter.registerSubscriber(Mockito.any(Subscriber.class)))
+                .thenThrow(new IllegalStateException("register"));
+            assertThrows(IllegalStateException.class, () -> storage.addChangeListener(listener));
+            
+            notifyCenter.reset();
+            storage.addChangeListener(listener);
+            notifyCenter.when(
+                () -> NotifyCenter.deregisterSubscriber(Mockito.any(Subscriber.class)))
+                .thenThrow(new IllegalStateException("deregister"));
+            assertThrows(IllegalStateException.class,
+                () -> storage.removeChangeListener(listener));
+            
+            notifyCenter.reset();
+            storage.removeChangeListener(listener);
+            notifyCenter.verify(
+                () -> NotifyCenter.deregisterSubscriber(Mockito.any(Subscriber.class)), times(1));
+        }
+    }
+    
+    @Test
+    void testLocalConfigChangesAreFilteredAndMappedToAiResourceTypes() {
+        List<AiResourceStorageChangeEvent> events = new ArrayList<>();
+        AiResourceStorageChangeListener listener = events::add;
+        try (MockedStatic<NotifyCenter> ignored = mockStatic(NotifyCenter.class)) {
+            storage.addChangeListener(listener);
+            storage.onLocalDataChange(new LocalDataChangeEvent(
+                GroupKey2.getKey("agent__Agent__1.0.0.json", "agent-version", "public")));
+            storage.onLocalDataChange(new LocalDataChangeEvent(
+                GroupKey2.getKey("manifest.json", "agentspec__worker__1.0.0", "public")));
+            storage.onLocalDataChange(new LocalDataChangeEvent(
+                GroupKey2.getKey("skill.json", "skill_my-skill__1.0.0", "public")));
+            storage.onLocalDataChange(new LocalDataChangeEvent(
+                GroupKey2.getKey("prompt.json", "prompt__my-prompt__1.0.0", "public")));
+            storage.onLocalDataChange(new LocalDataChangeEvent(
+                GroupKey2.getKey("id-mcp-server.json", Constants.MCP_SERVER_GROUP, "public")));
+            storage.onLocalDataChange(new LocalDataChangeEvent(
+                GroupKey2.getKey("id-mcp-tools.json", Constants.MCP_SERVER_TOOL_GROUP,
+                    "public")));
+            storage.onLocalDataChange(new LocalDataChangeEvent(
+                GroupKey2.getKey("id-mcp-resources.json", Constants.MCP_SERVER_RESOURCE_GROUP,
+                    "public")));
+            
+            storage.onLocalDataChange(null);
+            storage.onLocalDataChange(new LocalDataChangeEvent(""));
+            storage.onLocalDataChange(new LocalDataChangeEvent("broken%"));
+            storage.onLocalDataChange(new LocalDataChangeEvent(
+                GroupKey2.getKey("ordinary", "DEFAULT_GROUP", "public")));
+            storage.onLocalDataChange(new LocalDataChangeEvent(
+                GroupKey2.getKey("versions", Constants.MCP_SERVER_VERSIONS_GROUP, "public")));
+        }
+        
+        assertEquals(7, events.size());
+        assertStorageChange(events.get(0), Constants.Agent.RESOURCE_TYPE_AGENT);
+        assertStorageChange(events.get(1), Constants.AgentSpecs.RESOURCE_TYPE_AGENTSPEC);
+        assertStorageChange(events.get(2), AiResourceConstants.RESOURCE_TYPE_SKILL);
+        assertStorageChange(events.get(3), AiResourceConstants.RESOURCE_TYPE_PROMPT);
+        assertStorageChange(events.get(4), AiResourceConstants.RESOURCE_TYPE_MCP);
+        assertStorageChange(events.get(5), AiResourceConstants.RESOURCE_TYPE_MCP);
+        assertStorageChange(events.get(6), AiResourceConstants.RESOURCE_TYPE_MCP);
+    }
+    
+    @Test
+    void testLocalDataSubscriberDelegatesStorageVisibilityChanges() {
+        List<AiResourceStorageChangeEvent> events = new ArrayList<>();
+        try (MockedStatic<NotifyCenter> ignored = mockStatic(NotifyCenter.class)) {
+            storage.addChangeListener(events::add);
+            @SuppressWarnings("unchecked")
+            Subscriber<LocalDataChangeEvent> subscriber =
+                (Subscriber<LocalDataChangeEvent>) ReflectionTestUtils.getField(storage,
+                    "localDataChangeSubscriber");
+            assertEquals(LocalDataChangeEvent.class, subscriber.subscribeType());
+            subscriber.onEvent(new LocalDataChangeEvent(
+                GroupKey2.getKey("agent.json", "agent-version", "public")));
+        }
+        
+        assertEquals(1, events.size());
+        assertStorageChange(events.get(0), Constants.Agent.RESOURCE_TYPE_AGENT);
+    }
+    
+    @Test
+    void testStorageChangeListenerFailureDoesNotBlockOtherListeners() {
+        List<AiResourceStorageChangeEvent> events = new ArrayList<>();
+        try (MockedStatic<NotifyCenter> ignored = mockStatic(NotifyCenter.class)) {
+            storage.addChangeListener(event -> {
+                throw new IllegalStateException("listener");
+            });
+            storage.addChangeListener(events::add);
+            storage.onLocalDataChange(new LocalDataChangeEvent(
+                GroupKey2.getKey("agent.json", "agent-version", "public")));
+        }
+        
+        assertEquals(1, events.size());
+        assertStorageChange(events.get(0), Constants.Agent.RESOURCE_TYPE_AGENT);
+    }
+    
+    @Test
     void testSavePublishesConfigAndWaitsForSync() throws Exception {
         StorageKey key = NacosConfigAiResourceStorage.buildStorageKey(
             NacosConfigAiResourceStorage.TYPE, "ns1",
@@ -603,6 +824,8 @@ class NacosConfigAiResourceStorageTest {
         for (int i = 0; i < expectedTypes.size(); i++) {
             assertEquals(expectedTypes.get(i), formCaptor.getAllValues().get(i).getType());
         }
+        assertEquals(ConfigType.TEXT.getType(), ReflectionTestUtils.invokeMethod(
+            NacosConfigAiResourceStorage.class, "guessConfigType", ""));
     }
     
     @Test
@@ -708,6 +931,12 @@ class NacosConfigAiResourceStorageTest {
         assertEquals(expectedGroup, queryCaptor.getValue().getGroup());
         assertEquals(expectedDataId, deleteDataIdCaptor.getValue());
         assertEquals(expectedGroup, deleteGroupCaptor.getValue());
+    }
+    
+    private void assertStorageChange(AiResourceStorageChangeEvent event, String resourceType) {
+        assertEquals(NacosConfigAiResourceStorage.TYPE, event.getProvider());
+        assertEquals(resourceType, event.getResourceType());
+        assertNotNull(event.getNotificationKey());
     }
     
     private void assertAgentVersionStorageOperations(String agentName, String version,

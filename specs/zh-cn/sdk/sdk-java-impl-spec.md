@@ -155,42 +155,88 @@ context，而不是修改请求 payload 或让无关 SDK 调用失败。默认 N
 
 `getServicesOfServer` 的 selector overload 已废弃，仅作为兼容面保留。
 
-### 5.3 AiService、AgentDiscoveryService 和 A2aService
+### 5.3 AiService 资源子接口
 
-本节的 Agent/RAD 契约是目标契约，不是当前已经实现的 Java 方法清单。只有新的
-Agent/RAD 能力完成实现并经过协商后才生效；在此之前，现有 `AiService` 和
-`A2aService` 方法仍是生效的兼容面。
-
-目标继承关系为：
+`AiService` 提供 namespace-bound 的 `mcp()`、`agent()`、`skill()`、`agentSpec()` 和
+`prompt()`。getter 返回复用的子服务，与 facade 共享连接、缓存、监听及 `shutdown()` 生命周期。
 
 ```text
-AiService extends AgentDiscoveryService, A2aService
+AiService extends McpService, A2aService, SkillService, AgentSpecService, PromptService
+AgentService extends A2aService, AgentDiscoveryService
 ```
 
-增加该父接口时，不能让已经编译的第三方 `AiService` 实现立即发生 linkage failure。新增的
-继承方法使用兼容 default bridge，在实现未 override 时报告不支持；Nacos 官方实现 override
-完整目标接口面。
+已发布的扁平方法保留并标记 Deprecated，核心方法通过对应 getter 委托。便利 default 重载
+继续调用本对象核心 override。新增 getter 的 default 报告不支持，第三方旧实现无需实现新 getter
+即可保持原调用；官方实现覆盖所有 getter。MCP createDraft default 保留 false 分派到旧四参
+方法、未实现 true 时受控拒绝的行为；官方五参方法是到 mcp() 的纯桥接。
 
-`AiService` 直接提供 namespace-bound 的
-`publishAgent(AgentPublishRequest)`，返回 `AgentVersionDetail`。该新增方法使用同样的兼容
-default bridge；它不放入 `AgentDiscoveryService`，因为定义发布不是发现操作。官方实现复制
-Request、注入 SDK namespace，并按 `autoSubmit` 创建 draft 或执行普通 submit Pipeline，且不
-修改调用方对象。等价重试、冲突和状态收敛遵循 [Agent API 规范](../ai/agent-api-spec.md)。
+3.3 尚未发布的新 Agent 操作只通过 `agent()` 使用。`AgentService.publishAgent` 返回
+`AgentVersionDetail`，保留兼容 default；官方实现仍复制请求、注入 SDK namespace，并按
+`autoSubmit` 创建 draft 或普通 submit，不修改输入对象。参见 [Agent API 规范](../ai/agent-api-spec.md)。
+旧 A2A 方法始终保留现有 gRPC 路径，不因本次接口拆分切换为 RAD。
+
+`AgentTransportMode` 是 API 模块中的 Java 8 兼容枚举，公开 `GRPC`、`HTTP`、`AUTO`，并可通过
+`getValue()` 写入 `nacosAiTransportMode`。模式在 `AiService` 创建时冻结；非法值在 Factory
+创建阶段失败。Transport 生命周期、AUTO 探测与操作 fallback 的具体规则由
+[Agent API 规范](../ai/agent-api-spec.md)定义。
+
+资源键 `nacosAiMcpTransportMode`、`nacosAiAgentTransportMode`、`nacosAiSkillTransportMode`、
+`nacosAiAgentSpecTransportMode`、`nacosAiPromptTransportMode` 继承 `nacosAiTransportMode`
+（默认 grpc）。创建生命周期对象前验证全部显式值，包括最终走 HTTP 的 Skill/AgentSpec 和已被
+全部覆盖的全局值；构造后冻结。Skill/AgentSpec 注入原 HTTP proxy；Prompt 查询与轮询使用同一
+薄路由，AUTO 按连接状态选路，不新增能力位。Agent 配置仅控制新 RAD，旧 A2A 固定原 gRPC。
+
+MCP、Agent、Prompt 分别记录 AUTO 的使用和 HTTP 成功。任一有效 GRPC 或旧 A2A 需求阻止暂停
+共享重连；仅所有已使用 AUTO 资源 HTTP 成功、初始失败达既有阈值时可暂停。未使用资源首次调用
+恢复完整初始探测预算，不改变已稳定资源；曾连接后的 UNHEALTHY 恢复不变。安全读回退必须有
+CLIENT_DISCONNECT、UN_REGISTER 或通用 transport 异常中的 gRPC UNAVAILABLE 证据；不能仅凭
+同时断连覆盖业务、授权、容量或未找到错误。写入结果不明和既有 publication owner 不跨 transport 重放。
+
+原能力检查的断连 runtime exception 保留公开类型、错误码和文案，仅补充 CLIENT_DISCONNECT cause 供安全读路由识别。
 
 `AgentDiscoveryService` 提供以下 namespace-bound 方法：
 
 | 能力 | 方法 | 契约 |
 | --- | --- | --- |
-| Search | `searchAgents` | 接受 `AgentSearchRequest`，返回 `Page<AgentCatalogEntry>`。 |
+| Search | `searchAgents` | 接受 `AgentSearchRequest`，返回 `Page<AgentSummary>`。 |
 | Discover | `discoverAgent` 重载 | 接受 `AgentReference` 和可选 `AgentDiscoveryFilter`，返回一个完整 `AgentDiscoveryResult`。 |
 | Watch | `subscribeAgent` 重载 | 接受相同 Reference、可选 Filter 和 Listener；返回当前完整结果，后续传递完整替换结果。 |
 | 取消 Watch | `unsubscribeAgent` 重载 | 按相同 Reference、Filter 和 Listener identity 移除 Watch。 |
 | 注册 Endpoint | `registerAgentEndpoints` | 注册一个 `AgentEndpointRegistrationBatch`，并保留为 redo 意图。 |
-| 注销 Endpoint | `deregisterAgentEndpoints` | 注销该 SDK Publisher 拥有的一个 `AgentEndpointDeregistrationBatch`。 |
+| 注销 Endpoint | `deregisterAgentEndpoints` | 注销该 SDK Publisher 拥有的一个 `agentName, protocol, List<Endpoint>`。 |
 
-这些公开方法不接受 `namespaceId`。Proxy 复制调用方的 Request 或 Batch，把 SDK
-namespace 注入传输对象，并且不修改调用方对象。如果共享输入模型已经携带与 SDK namespace
-不同的非空值，Proxy 在本地拒绝。目标 Watch、Cache 和 Redo 行为遵循
+Watch 不增加另一组公开 Subscribe 方法，并保持现有源码和二进制兼容。
+`NacosAgentDiscoveryEvent` 增加 Event Type 与 Unavailable Error Getter，现有 Result
+构造器继续创建 `SNAPSHOT`。官方实现可以通过 Factory 或附加构造器创建 `UNAVAILABLE`，
+但不能改变 Listener 方法签名。
+
+实现分层为：
+
+```text
+AgentDiscoveryService Feature Facade
+  -> Agent Watch Manager（Identity、Capacity、Cache、Fingerprint、Listener）
+    -> Wire Watch Transport（gRPC、HTTP Batch Long Poll 或轮询回退）
+      -> AgentClientProxy Discover 执行权威刷新
+```
+
+Transport Code 只拥有 Wire Lifecycle 和 Signal，不复制 Feature Cache 或 Listener State。
+Canonicalization 与 Fingerprinting 位于 Client/Server 共用的 Java 8 兼容 Agent Utility。
+Listener Callback 在 Connection/HTTP I/O 外执行；有 Listener Executor 时优先使用，否则
+使用有界共享 Executor，并隔离异常。该 Agent-only 分层不改变 Prompt、Skill、MCP、
+AgentSpec 或旧 A2A 的 Transport Ownership。
+
+Agent/RAD 具体模型与抽象基类组织遵循
+[Agent API Java 模型绑定](../ai/agent-api-spec.md#java-模型绑定)。
+SDK 签名使用具体业务模型或参数；namespace 由实例提供。
+
+Search 和完整注册分别使用根包 `AgentSearchRequest`、`AgentEndpointRegistrationBatch`，
+只包含业务字段，不含 namespace 字段或访问器。局部注销使用
+`deregisterAgentEndpoints(String agentName, String protocol, List<Endpoint> endpoints)`，
+不再定义注销 Java Request/Batch。SDK 对调用方内容做防御性复制，从实例取得 namespace，
+通过 HTTP 参数或 RPC 信封显式传入查询/注册服务；PublicationKey 和 redo 数据独立保留 namespace。
+局部注销仍计算剩余完整 Batch，非空则重新注册，为空则整份注销，不修改调用方对象或集合。
+HTTP 参数、鉴权、完整替换和错误语义保持不变；Search/Register 的 RPC namespace 位于信封，
+不再嵌套于业务请求。3.3 BETA Java 类型不保留兼容包装，历史 A2A 公开契约保持不变。
 [客户端本地缓存与 Redo 规范](../client/client-local-cache-redo-spec.md)和
 [运行时推送与重连规范](../client/runtime-push-reconnect-spec.md)。
 
@@ -209,7 +255,7 @@ Agent 定义发布，且不得隐式创建定义。
 | 能力 | 方法 | 契约 |
 | --- | --- | --- |
 | MCP 查询 | `getMcpServer` | 按名称和可选版本查询 MCP Server 详情。 |
-| MCP 发布 | `releaseMcpServer` | 创建 MCP Server 或发布新版本。同版本已存在时保持幂等。 |
+| MCP 发布 | `releaseMcpServer` | 创建 MCP Server 或发布新版本。现有 Overload 保持 Direct-online；`createDraft=true` 只创建生命周期 Draft。 |
 | MCP endpoint | `registerMcpServerEndpoint`, `deregisterMcpServerEndpoint` | 注册或移除当前客户端拥有的 endpoint。 |
 | MCP 订阅 | `subscribeMcpServer`, `unsubscribeMcpServer` | 订阅 MCP 详情变化。 |
 | A2A AgentCard 查询 | `getAgentCard` | 按名称、可选版本和 registration type 查询 AgentCard。 |
@@ -222,6 +268,17 @@ Agent 定义发布，且不得隐式创建定义。
 
 当前 Java 实现在 interface 背后可以混合使用 gRPC、HTTP 和 config 组装。公开
 interface 契约应独立于具体传输方式保持稳定。
+
+MCP 与 Agent 的协议无关操作使用同一个 `grpc`、`http` 或 `auto` Transport 配置。MCP Read
+只有在选中的 gRPC 出现 Connection-class Failure 时才能 Fallback。持久 Release 一旦发送就不得
+跨 Transport。Runtime Endpoint Publication 选择 Sticky Owner Transport，并在替换、注销、
+Heartbeat 和 Redo 中保持该 Owner。MCP 轮询 Cache 依赖协议无关 Query Router，不再直接依赖
+gRPC Client。
+
+HTTP 实现为每个 `NacosAiService` 维护一个稳定 Client Id 和一个共享 Publication Coordinator。
+Agent 与 MCP Publication Manager 作为独立 Desired-state Participant。Coordinator 只发送一个
+Heartbeat；收到 `HTTP_CLIENT_NOT_FOUND` 后，必须先标记所有 Participant，再逐个重放。该顺序
+避免一个领域先重建共享 Client 后掩盖另一个领域已经丢失的 Publication。
 
 ### 5.4 LockService
 
@@ -299,7 +356,7 @@ Maintainer SDK 中暴露存储 ID 选择器的方法，例如批量删除中的 
 
 `AiMaintainerService` 暴露类型化 delegate：
 
-- `mcp()`：MCP Server 列表、搜索、详情、创建、更新和删除；
+- `mcp()`：MCP Server 兼容操作和类型化 Version 生命周期管理；
 - `a2a()`：AgentCard 注册、查询、更新、删除、版本、搜索和列表；
 - `prompt()`：Prompt 管理；
 - `skill()`：Skill 管理；
@@ -312,6 +369,20 @@ namespace `public` 的便利重载。Agent Request 和 Command 对象不包含 `
 显式重载将其作为独立方法参数。Agent 定义统一通过 `createDraft` 创建：首个 draft
 在 metadata 不存在时创建 Agent，后续 draft 复用已有 metadata。`a2a()` 在兼容窗口内
 继续保留。
+
+MCP 管理委托为 `mcp()`，返回 `McpMaintainerService`。历史方法保持二进制兼容；旧 Detail 和
+Direct-online Create/Update 方法自 3.3.0 起废弃，计划在 4.0.0 删除，其 Javadoc 指向精确
+Version 读取和类型化 Draft-Submit-Publish 流程。历史跨 Resource List/Search，以及 Published
+Version 或完整 Resource Delete 在提供语义等价的类型化替代前暂不废弃。新增类型化 Version 管理
+方法与 MCP Admin Form/Query Route 一一映射：Version 列表/详情、Draft 创建/更新/删除、Submit、
+Publish、Force-publish、Redraft、Online、Offline 和 Label 替换。
+Draft 创建/更新通过 `createMcpServer(McpServerDraftRequest)` 和
+`updateMcpServer(McpServerDraftRequest)` 重载复用既有方法名；其余方法使用面向用户的 Version
+和操作名称，不暴露内部 Lifecycle 托管机制。
+显式方法独立接收 `namespaceId`，便利重载使用默认 Namespace。`McpServerDraftRequest`、
+`McpServerVersionCommand` 和 `McpServerLabelsUpdateRequest` 不新增顶层 Namespace、
+兼容 `mcpId` 选择器，也不暴露 JSON Library 类型。复用 `McpServerBasicInfo` 内容内的历史
+身份字段不参与 Lifecycle Target 解析。
 
 运行时 AI 注册和订阅可以继续保留在 `AiService`；大范围 AI 资源管理属于
 `AiMaintainerService`。

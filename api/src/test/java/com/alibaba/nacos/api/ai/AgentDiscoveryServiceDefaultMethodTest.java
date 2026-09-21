@@ -18,18 +18,24 @@ package com.alibaba.nacos.api.ai;
 
 import com.alibaba.nacos.api.ai.listener.AbstractNacosAgentDiscoveryListener;
 import com.alibaba.nacos.api.ai.listener.NacosAgentDiscoveryEvent;
-import com.alibaba.nacos.api.ai.model.rad.AgentDiscoveryFilter;
-import com.alibaba.nacos.api.ai.model.rad.AgentDiscoveryResult;
-import com.alibaba.nacos.api.ai.model.rad.AgentEndpointDeregistrationBatch;
-import com.alibaba.nacos.api.ai.model.rad.AgentEndpointRegistrationBatch;
-import com.alibaba.nacos.api.ai.model.rad.AgentReference;
-import com.alibaba.nacos.api.ai.model.rad.AgentSearchRequest;
+import com.alibaba.nacos.api.ai.model.agent.AgentDiscoveryFilter;
+import com.alibaba.nacos.api.ai.model.agent.AgentDiscoveryResult;
+import java.util.Collections;
+import java.util.List;
+import com.alibaba.nacos.api.model.Page;
+import com.alibaba.nacos.api.ai.model.agent.AgentEndpointRegistrationBatch;
+import com.alibaba.nacos.api.ai.model.agent.AgentReference;
+import com.alibaba.nacos.api.ai.model.agent.AgentSearchRequest;
+import com.alibaba.nacos.api.ai.model.agent.client.AgentPublishRequest;
 import com.alibaba.nacos.api.exception.NacosException;
 import org.junit.jupiter.api.Test;
 
+import java.beans.Introspector;
+import java.beans.PropertyDescriptor;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -50,7 +56,7 @@ class AgentDiscoveryServiceDefaultMethodTest {
         assertNotImplemented(() -> service.registerAgentEndpoints(
             new AgentEndpointRegistrationBatch()));
         assertNotImplemented(() -> service.deregisterAgentEndpoints(
-            new AgentEndpointDeregistrationBatch()));
+            "demo", "a2a", Collections.emptyList()));
     }
     
     @Test
@@ -96,6 +102,27 @@ class AgentDiscoveryServiceDefaultMethodTest {
         service.unsubscribeAgent(reference, listener);
         
         assertEquals(3, invocationCount.get());
+    }
+    
+    @Test
+    void publicAgentInputsDoNotExposeNamespace() throws Exception {
+        Class<?>[] inputs =
+            {AgentSearchRequest.class, AgentEndpointRegistrationBatch.class,
+                AgentReference.class,
+                AgentDiscoveryFilter.class,
+                AgentPublishRequest.class};
+        for (Class<?> input : inputs) {
+            for (PropertyDescriptor property : Introspector.getBeanInfo(input)
+                .getPropertyDescriptors()) {
+                assertNotEquals("namespaceId", property.getName(), input.getName());
+            }
+        }
+        assertEquals(Page.class, AgentDiscoveryService.class.getMethod(
+            "searchAgents", AgentSearchRequest.class).getReturnType());
+        assertEquals(Void.TYPE, AgentDiscoveryService.class.getMethod(
+            "registerAgentEndpoints", AgentEndpointRegistrationBatch.class).getReturnType());
+        assertEquals(Void.TYPE, AgentDiscoveryService.class.getMethod(
+            "deregisterAgentEndpoints", String.class, String.class, List.class).getReturnType());
     }
     
     private void assertNotImplemented(ThrowingOperation operation) {

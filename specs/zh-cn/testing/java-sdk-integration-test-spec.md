@@ -24,8 +24,9 @@ Java SDK IT 的目标是 SDK 场景覆盖，不是行覆盖率或分支覆盖率
 
 ## 1. 范围
 
-Java SDK IT 的主要位置是 `test/java-sdk-test`。该模块假设单机 Nacos 服务已经
-启动，并以外部应用身份创建真实 Java SDK 客户端。
+公开 Client SDK IT 位于 `test/java-sdk-test`，Maintainer SDK IT 位于
+`test/maintainer-sdk-test`。两个模块都假设单机 Nacos 服务已经启动，并创建真实外部客户端，但保留
+独立的 Maven profile、报告和失败边界。
 
 本规范适用于以下变更：
 
@@ -88,6 +89,15 @@ address 和 namespace 默认值，并能通过公开 shutdown 方法释放资源
 对于 listener API，应验证适用场景下的初始查询行为、可观测变更触发回调、
 unsubscribe/remove 行为和清理逻辑。等待必须有边界，并提供清晰断言信息。
 
+### 3.6 认证与授权
+
+在 Nacos 3.3 默认鉴权基线下，验证使用符合 API 受众的身份完成远程功能，并覆盖缺失和错误凭据、
+已认证但无权限、SDK 同时暴露读写动作时的读写边界，以及可观测时的精确资源边界。认证或权限失败必须
+保持为受控 SDK 异常或文档化结果，不能被误判为超时、不存在、空数据或本地缓存成功。
+
+Listener、subscription、Watch、retry、reconnect、token refresh、redo 和 shutdown 路径必须保持
+同一身份边界。测试不得通过新建替代客户端掩盖重新认证或重连缺陷。
+
 ## 4. 测试组织
 
 Java SDK IT 应放在：
@@ -96,7 +106,9 @@ Java SDK IT 应放在：
 - `com.alibaba.nacos.test.sdk.naming`
 - `com.alibaba.nacos.test.sdk.ai`
 - `com.alibaba.nacos.test.sdk.lock`
-- 新增 maintainer SDK IT 时使用 `com.alibaba.nacos.test.sdk.maintainer.<domain>`
+
+Maintainer SDK IT 使用 `test/maintainer-sdk-test/src/test/java/com/alibaba/nacos/test/maintainer`
+下对应的领域 package。
 
 建议一个公开 SDK interface 或一组强关联 API family 对应一个测试类。共享的客户端
 构造、清理、有界等待、随机资源名和 shutdown 逻辑应抽象到基础类。
@@ -114,11 +126,19 @@ Java SDK IT 必须：
 - 即使断言失败，也要关闭每个 SDK 实例；
 - 对异步服务端效果使用有界重试。
 
+Nacos 3.3 标准单机 SDK IT 基线使用发行包默认值开启 Client、Admin 和 Console 鉴权。工作流只配置
+部署环境独立的 token secret、server identity、测试身份和功能 fixture，不强制修改鉴权范围或权限缓存。
+
+公开 Client SDK 功能测试使用具备场景所需最小读写权限的非管理员身份。Maintainer SDK 功能测试使用
+全局管理员；需要验证权限差异时可以使用显式限定的管理身份。两个模块通过聚焦用例覆盖无凭据、错误凭据、
+无权限和只读场景，不要求把每个业务工作流与每种身份做笛卡尔积。默认 adapter 与 Jackson 3 adapter
+必须使用相同鉴权预期。
+
 ## 6. 场景文档
 
-每个 SDK IT 类都必须包含简洁的 `Scenario coverage` Javadoc；当矩阵较大时，
-应更新 `test/java-sdk-test/JAVA_SDK_IT_COVERAGE.md`。文档必须说明验证了什么，
-以及为什么有分支被有意跳过。
+每个 SDK IT 类都必须包含简洁的 `Scenario coverage` Javadoc；当矩阵较大时，应更新对应的
+`JAVA_SDK_IT_COVERAGE.md` 或 `MAINTAINER_SDK_IT_COVERAGE.md`。文档必须说明验证了什么，以及为什么
+有分支被有意跳过。
 
 ## 7. 验证
 
@@ -127,6 +147,11 @@ Java SDK IT 变更需要运行：
 - `mvn -pl test/java-sdk-test spotless:check`
 - `mvn -pl test/java-sdk-test -DskipTests test-compile`
 
+Maintainer SDK IT 变更需要运行：
+
+- `mvn -pl test/maintainer-sdk-test spotless:check`
+- `mvn -pl test/maintainer-sdk-test -DskipTests test-compile`
+
 当单机 Nacos 服务可用时，应运行相关 Failsafe 选择，或执行
 `mvn -pl test/java-sdk-test -Pjava-sdk-integration-test -DskipTests=false
 verify`。
@@ -134,3 +159,96 @@ verify`。
 Java SDK IT 必须使用独立的 `java-sdk-integration-test` Maven profile。通用
 `integration-test` profile 保留给 HTTP API IT 工作流，不能意外运行依赖 SDK
 gRPC 连接就绪状态或可选服务端能力的 SDK 测试。
+
+Maintainer SDK IT 使用独立的 `maintainer-sdk-integration-test` profile。Client 与 Maintainer
+模块可以共享一个运行中的服务端和同一个 CI Job，但任一 profile 都不得隐式执行另一个模块。
+
+## 8. AI Resource Search 与 Agent 场景
+
+公共 AI SDK Search 或 Agent 行为变更时，Java SDK IT 至少覆盖：
+
+- 真实 SDK Client 对 Agent 单条件、组合 predicate、numbered page 和默认 namespace 的结果；
+- HTTP 与 gRPC Agent Search 在相同事实和传输选择下返回等价目录；
+- Agent publish/online/offline/latest 切换后的有界收敛，且 Endpoint 操作只改变 Discover；
+- 通用单类型 Search 与 Agent、AgentSpec、Skill、Prompt、MCP 资源专用 Search 的候选资格一致；
+- Client transport `AUTO/HTTP/GRPC` 可用时保持同一 Search 契约，协商不支持时返回受控异常；
+- SDK shutdown、重连和 redo 不重复写目录索引，也不把 Runtime Endpoint 带入 Search 结果。
+
+涉及 ARD Artifact 的协议一致性继续由 OpenAPI/适配器 IT 覆盖；Java SDK IT 只通过公开 SDK
+合同验证其可观察目录与 Discover 行为。
+
+## 9. Agent Watch 与 Push 场景
+
+Agent Watch、Listener Event 或 Transport Routing 发生变化时，Java SDK IT 使用真实外部
+Client 和单机 Server，至少覆盖：
+
+- 分别使用 `GRPC` 和 `HTTP`：初始存在与初始缺失目标，Definition/Metadata/Latest/Label
+  变化，Runtime Register/Replace/Deregister/Health/Expiry，Filter 空结果，Duplicate 与
+  A-B-A 合并，Unsubscribe/Resubscribe，多 Listener 和 Shutdown；
+- Listener 投递完整替换 `SNAPSHOT`、Fingerprint 相同抑制、缺失周期一次 Unavailable
+  Transition、恢复 Snapshot、Listener Executor 选择、Slow/Throwing Listener 与隔离；
+- 参数校验、鉴权、冲突、本地/Server 容量、超大 Watch、Discover 瞬时失败、Push/Long-poll
+  Timeout、Executor Reject 和拒绝状态清理，且不无限重试；
+- gRPC Disconnect/Reconnect、Server Restart、新 Connection Wire Key、Hint 丢失或重复、
+  旧 Key 迟到通知、Subscribe/ACK Failure、Ability 缺失和有界轮询回退；
+- HTTP 完整 List Generation 变化、多 Agent 只使用一个 Long Poll、迟到旧 Generation
+  Response、重复 Timeout、Server Switch 或 LB Node 变化和 Restart Recovery；
+- `AUTO` 初始 gRPC 成功、从未连接的 gRPC 稳定回退 HTTP、gRPC Watch Ability 缺失、
+  Connection-class Migration，且业务错误不触发 Fallback；
+- 所有 Agent Transport Mode 下 Prompt、Skill、MCP、AgentSpec 和旧 A2A 操作保持隔离。
+
+所有异步断言使用明确的有界 Deadline 和可观察 SDK/API 状态。固定 Sleep 可以控制 Retry
+节奏，但不能作为成功条件。
+
+## 10. MCP 兼容与 Runtime Endpoint 场景
+
+MCP Storage 路由或生命周期托管发生变化时，Java SDK IT 至少覆盖：
+
+- 真实 `AiService` 发布新的 MCP Resource/Version，保留历史 ID 响应，按精确 Version
+  和 Latest 查询，并观察到与之前相同的 Enable 和 Published Serving 内容；
+- 历史精确 Version Conflict/Overwrite 行为只存在于兼容 Facade，不影响标准生命周期写入；
+- `subscribeMcpServer` 初始投递、完整结果变化回调、Unsubscribe、重新 Subscribe 和
+  Shutdown 清理，且不建立直接 Naming Subscription；
+- 当前按 Version 划分的 Runtime Endpoint Register/Deregister、Service/Cluster/Metadata
+  兼容性，以及断连、重连和 Redo 恢复同一份防御性 Publication Snapshot，不重复 Instance，
+  也不丢失其他 MCP Publication；
+- Java Client 继续使用 `mcpName`，不填充 Dormant 顶层 gRPC `mcpId`，同时 Active
+  Model、Event 和 Response ID 字段保持当前值；
+- 生命周期对账和管理切换不新增 Runtime Publication、Naming Layout、能力协商或公开
+  `AiService` Interface 行为；
+- 默认 JSON Adapter 与 Jackson 3 Adapter 使用当前 Request Fixture 和 Response Model 时行为等价。
+
+无 Version Runtime Service、显式 Transport List、MCP Version Range、Client HTTP 对齐和
+心跳续约在独立设计批准前不属于该矩阵。
+
+历史对账和切流行为由显式 Phase Gate 的 SDK 测试类在独立迁移工作流中运行。稳定 Client 与
+Maintainer SDK 功能测试类从单一终态 Server 开始，不能把切流前 Conflict 作为成功结果的另一种
+分支。Adapter 等价性仍属于稳定功能套件；除非 Adapter 行为本身发生变化，否则无需为同一次
+Server 侧迁移转换重复执行。
+
+## 11. 历史 A2A 升级与集群场景
+
+历史 A2A 迁移变化时，Java SDK IT 使用真实 `A2aService`、`AiService`、Naming、gRPC/HTTP RAD、
+Watch、Reconnect 和 Redo Client 补充 OpenAPI `M-ST-01..10` 矩阵。特别是 `M-ST-06`、
+`M-ST-09` 和 `M-ST-10` 必须验证可观察客户端行为，不能只断言内部 Publisher。
+
+定向三 Member 测试覆盖以下集群矩阵：
+
+| ID | 必须验证的集群行为 |
+| --- | --- |
+| `M-CL-01` | 0/3、1/3、2/3、3/3 Member 具备能力时，在全部 Ability 和门禁满足前始终保持历史权威。 |
+| `M-CL-02` | A 上的历史写由 Lease Owner B 对账，C 能读取标准内容。 |
+| `M-CL-03` | 分别重启 Lease Owner、非 Owner、Config Leader 或 Naming Responsibility Member，保持进度和可用性。 |
+| `M-CL-04` | Quiescing 期间 Member 加入/离开、ACK 丢失和 Marker 延迟时，安全回到 Syncing 或在无事实分裂下收敛。 |
+| `M-CL-05` | A 修改历史 Config、B 对账、A/B/C 读取历史/标准视图后最终一致。 |
+| `M-CL-06` | Endpoint 在 A 发布、Naming Responsibility 在 B 时，历史与标准 Service 均收敛。 |
+| `M-CL-07` | 终态 Marker 传播期间通过 LB 轮询 A/B/C，定义和 Runtime Snapshot 等价。 |
+| `M-CL-08` | Shadow 关闭和开启的两套完整滚动升级分别满足文档化 Gateway 行为。 |
+| `M-CL-09` | 切流前可以回到历史权威；切流后只接受理解标准数据的二进制回退。 |
+| `M-CL-10` | 普通 Agent、Skill、Prompt、AgentSpec、MCP 和 Naming 注册/订阅完全隔离。 |
+
+每个测试使用明确有界 Deadline 和公开或稳定 Wire 行为，不假设 LB Sticky、固定 Config Leader、
+固定 Naming Responsibility Member 或固定 Task 执行顺序。
+
+历史 A2A Restart 与滚动切流 Client 遵守相同的独立迁移工作流边界，不在同一个 Job 中追加到普通
+SDK 功能套件之后执行。

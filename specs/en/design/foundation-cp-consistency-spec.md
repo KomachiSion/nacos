@@ -120,6 +120,78 @@ Implementation timeouts are operational defaults, not public API guarantees.
 Domain specs must not expose JRaft timeout values as user-visible correctness
 contracts unless a domain API explicitly defines them.
 
+### Raft Log Request Encoding
+
+Raft task data uses a two-byte request type prefix followed by the serialized
+Protobuf request. The first byte is `0x38` (field 7, varint); the second byte is
+`1` for `ReadRequest` or `2` for `WriteRequest`. Follower apply and log recovery
+must use this prefix to distinguish reads from writes. Missing or truncated
+prefixes, unknown request types, and malformed Protobuf data must fail with
+`ConsistencyException`; unknown types must not be treated as writes. Protobuf
+parse failures retain their cause, and debug diagnostics must not include the
+request payload.
+
+In Nacos 3.3, the untagged `GetRequest` / `Log` fallback and its conversion
+helpers are removed. The tagged format introduced in Nacos 2.1.0 remains
+supported. This is an internal Raft log contract, not a public Java SDK or
+HTTP API change.
+
+An existing data directory can still contain untagged entries from older
+releases, including Nacos 2.0.x, even after an intermediate upgrade. Before
+upgrading to a release without the fallback, operators must finish recovery
+and snapshot/log migration using a release that can read those entries.
+Changing the running version alone does not convert persisted logs. Direct
+replay of untagged entries is no longer supported and must fail explicitly.
+
+### JRaft Transport Authentication
+
+Nacos uses the JRaft gRPC transport without the optional Bolt transport or SOFA
+Hessian dependency. The Nacos RPC factory must construct both clients and servers
+on that classpath, sharing registered Protobuf parsers and response marshallers.
+Server creation preserves JRaft 1.4.1 endpoint binding: a non-blank endpoint IP
+selects the listen address, while a blank IP uses a wildcard address. The existing
+`jraft.grpc.max_inbound_message_size.bytes` property and configuration helper
+remain effective before server startup.
+
+JRaft native gRPC is an inner server-to-server transport. New JRaft clients
+always attach the configured Nacos server identity through gRPC
+`CallCredentials`, and the server always validates it in a
+`ServerInterceptor` before dispatching to a JRaft processor.
+
+Rolling upgrade uses a temporary two-state transition:
+
+```text
+COMPATIBLE -> ENFORCED
+```
+
+In `COMPATIBLE`, missing or invalid credentials are rate-limited and logged but
+the request continues, because an old member cannot attach credentials. Each
+new member publishes the temporary `supportJraftAuth=true` capability. After
+every member in the complete membership view reports the capability, the local
+server automatically and irreversibly enters `ENFORCED`. In `ENFORCED`, a
+missing or invalid credential is rejected with gRPC `UNAUTHENTICATED` before
+processor execution.
+
+The transition is monotonic. Member additions, removals, or metadata updates
+must not return an enforced process to compatibility. Runtime enforcement is
+latched before writing `{nacos.home}/data/jraft-auth-enforced.state`; a marker
+write failure must not delay enforcement and must be retried by later scheduled
+checks. A server that finds the state file on restart enforces authentication
+immediately. The state file contains no server identity or member data and is
+not an operator rollback switch.
+
+Capability discovery, compatible admission, transition, and state-file handling
+belong to one isolated compatibility component. That component is deprecated
+from its introduction, documents removal in Nacos 4.0.0, and must not own the
+permanent credential parser or validator. Nacos 4.0.0 removes the component and
+always enforces JRaft server identity.
+
+After enforcement, a mixed-version rolling downgrade to members without JRaft
+credentials is not lossless or guaranteed available. Old clients cannot call
+new enforced servers, so leader election, replication, ReadIndex, leader
+forwarding, snapshots, and CLI operations may fail depending on group leader
+and quorum placement.
+
 ## 6. Current CP Consumers
 
 | Group | Owner | Purpose |
@@ -176,6 +248,12 @@ Snapshot rules:
 - snapshot format and compatibility are owned by the domain processor;
 - snapshot save/load must preserve enough data to rebuild serving state after
   restart;
+- an archive entry used during snapshot recovery must resolve within the
+  snapshot reader destination; absolute, directory-control, and escaping paths
+  must be rejected before creating directories or writing files;
+- snapshot archives must emit `/` separators, and recovery must treat both `/`
+  and `\\` as entry separators when applying absolute-path, directory-control,
+  and containment checks;
 - groups without snapshot operations rely on log replay or separate persistence;
 - domain specs must define how snapshot recovery interacts with local cache and
   derived indexes.

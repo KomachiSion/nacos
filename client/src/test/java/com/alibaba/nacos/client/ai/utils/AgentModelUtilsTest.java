@@ -16,21 +16,19 @@
 
 package com.alibaba.nacos.client.ai.utils;
 
+import java.util.List;
 import com.alibaba.nacos.api.ai.model.agent.AgentCallInterface;
-import com.alibaba.nacos.api.ai.model.agent.AgentPublishRequest;
+import com.alibaba.nacos.api.ai.model.agent.client.AgentPublishRequest;
 import com.alibaba.nacos.api.ai.model.agent.Endpoint;
 import com.alibaba.nacos.api.ai.model.agent.EndpointSource;
 import com.alibaba.nacos.api.ai.model.agent.RuntimeVersionBinding;
-import com.alibaba.nacos.api.ai.model.rad.AgentDiscoveryCallInterface;
-import com.alibaba.nacos.api.ai.model.rad.AgentDiscoveryEndpoint;
-import com.alibaba.nacos.api.ai.model.rad.AgentDiscoveryFilter;
-import com.alibaba.nacos.api.ai.model.rad.AgentDiscoveryRequest;
-import com.alibaba.nacos.api.ai.model.rad.AgentDiscoveryResult;
-import com.alibaba.nacos.api.ai.model.rad.AgentEndpointDeregistrationBatch;
-import com.alibaba.nacos.api.ai.model.rad.AgentEndpointRegistrationBatch;
-import com.alibaba.nacos.api.ai.model.rad.AgentReference;
-import com.alibaba.nacos.api.ai.model.rad.AgentSearchRequest;
-import com.alibaba.nacos.api.ai.model.rad.EndpointSet;
+import com.alibaba.nacos.api.ai.model.agent.AgentDiscoveryFilter;
+import com.alibaba.nacos.api.ai.model.agent.AgentDiscoveryRequest;
+import com.alibaba.nacos.api.ai.model.agent.AgentDiscoveryResult;
+import com.alibaba.nacos.api.ai.model.agent.AgentEndpointRegistrationBatch;
+import com.alibaba.nacos.api.ai.model.agent.AgentReference;
+import com.alibaba.nacos.api.ai.model.agent.AgentSearchRequest;
+import com.alibaba.nacos.api.ai.model.agent.EndpointSet;
 import com.alibaba.nacos.api.exception.NacosException;
 import com.alibaba.nacos.api.utils.json.JsonUtils;
 import org.junit.jupiter.api.Test;
@@ -50,6 +48,37 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 class AgentModelUtilsTest {
+    
+    @Test
+    void registrationCopiesBindingsHealthAndEnabledWithoutChangingCallerObject()
+        throws NacosException {
+        Endpoint endpoint = new Endpoint();
+        endpoint.setUri("https://example.com/a2a");
+        endpoint.setTransport("JSONRPC");
+        endpoint.setHealthy(false);
+        endpoint.setEnabled(false);
+        RuntimeVersionBinding forged = new RuntimeVersionBinding();
+        forged.setRuntimeVersion("9.0.0");
+        forged.setVersionRange(null);
+        endpoint.setBindings(Collections.singletonList(forged));
+        AgentEndpointRegistrationBatch request =
+            new AgentEndpointRegistrationBatch();
+        request.setAgentName("demo");
+        request.setProtocol("a2a");
+        request.setRuntimeVersion("1.0.0");
+        request.setEndpoints(Collections.singletonList(endpoint));
+        AgentEndpointRegistrationBatch result =
+            AgentModelUtils.copyRegistrationBatch(request, "public");
+        Endpoint copy = result.getEndpoints().get(0);
+        assertEquals(Boolean.FALSE, copy.getHealthy());
+        assertEquals("9.0.0", copy.getBindings().get(0).getRuntimeVersion());
+        assertEquals("[9.0.0]", copy.getBindings().get(0).getVersionRange());
+        assertNotSame(forged, copy.getBindings().get(0));
+        assertEquals(false, copy.getEnabled());
+        assertEquals("9.0.0", endpoint.getBindings().get(0).getRuntimeVersion());
+        assertEquals(Boolean.FALSE, endpoint.getEnabled());
+        assertEquals("https://example.com/a2a", endpoint.getUri());
+    }
     
     @Test
     void privateConstructor() throws Exception {
@@ -96,7 +125,7 @@ class AgentModelUtilsTest {
     }
     
     @Test
-    void copySearchRequestBindsNamespaceAndCopiesCollections() throws NacosException {
+    void copySearchRequestValidatesNamespaceAndCopiesCollections() throws NacosException {
         AgentSearchRequest source = new AgentSearchRequest();
         source.setTagsAll(new ArrayList<String>(Arrays.asList("one", "two")));
         source.setProtocolsAny(new ArrayList<String>(Collections.singletonList("a2a")));
@@ -106,29 +135,24 @@ class AgentModelUtilsTest {
         
         AgentSearchRequest result = AgentModelUtils.copySearchRequest(source, "public");
         
-        assertEquals("public", result.getNamespaceId());
         assertEquals(source.getTagsAll(), result.getTagsAll());
         assertNotSame(source.getTagsAll(), result.getTagsAll());
         assertNotSame(source.getProtocolsAny(), result.getProtocolsAny());
-        assertNull(source.getNamespaceId());
+        assertEquals(source.getTagsAll(),
+            AgentModelUtils.copySearchRequest(source, "tenant-b").getTagsAll());
         source.getTagsAll().clear();
         assertEquals(2, result.getTagsAll().size());
     }
     
     @Test
-    void copySearchRequestAcceptsSameNamespaceAndRejectsInvalidInput() throws NacosException {
+    void copySearchRequestValidatesNamespaceAndRejectsInvalidInput() throws NacosException {
         AgentSearchRequest source = new AgentSearchRequest();
-        source.setNamespaceId("tenant");
-        assertEquals("tenant",
-            AgentModelUtils.copySearchRequest(source, "tenant").getNamespaceId());
-        
-        source.setNamespaceId("other");
         assertThrows(NacosException.class,
-            () -> AgentModelUtils.copySearchRequest(source, "tenant"));
+            () -> AgentModelUtils.copySearchRequest(source, ""));
+        
         assertThrows(NacosException.class,
             () -> AgentModelUtils.copySearchRequest(null, "tenant"));
         
-        source.setNamespaceId("tenant");
         source.setPageNo(0);
         assertThrows(NacosException.class,
             () -> AgentModelUtils.copySearchRequest(source, "tenant"));
@@ -191,12 +215,17 @@ class AgentModelUtilsTest {
         AgentEndpointRegistrationBatch result =
             AgentModelUtils.copyRegistrationBatch(source, "public");
         
+        assertEquals(result.getAgentName(),
+            AgentModelUtils.copyRegistrationBatch(source, "tenant-b").getAgentName());
+        assertEquals("HTTP://LOCALHOST/path", source.getEndpoints().get(0).getUri());
         assertEquals("http://localhost:80/path", result.getEndpoints().get(0).getUri());
         assertEquals(Integer.valueOf(0), result.getEndpoints().get(0).getPriority());
         assertEquals(Double.valueOf(1D), result.getEndpoints().get(0).getWeight());
         assertNotSame(source.getEndpoints(), result.getEndpoints());
         assertNotSame(metadata, result.getEndpoints().get(0).getMetadata());
-        assertNull(source.getNamespaceId());
+        assertEquals("[1.0.0]",
+            result.getEndpoints().get(0).getBindings().get(0).getVersionRange());
+        assertNull(endpoint.getBindings());
         
         endpoint.setUri("http://other:80");
         metadata.clear();
@@ -214,11 +243,6 @@ class AgentModelUtilsTest {
             () -> AgentModelUtils.copyRegistrationBatch(null, "public"));
         
         AgentEndpointRegistrationBatch source = registration();
-        source.setNamespaceId("other");
-        assertThrows(NacosException.class,
-            () -> AgentModelUtils.copyRegistrationBatch(source, "public"));
-        
-        source.setNamespaceId("public");
         source.setEndpoints(null);
         assertThrows(NacosException.class,
             () -> AgentModelUtils.copyRegistrationBatch(source, "public"));
@@ -233,34 +257,37 @@ class AgentModelUtilsTest {
     }
     
     @Test
-    void copyDeregistrationBatchCopiesAndValidatesEndpoints() throws NacosException {
-        AgentEndpointDeregistrationBatch source = deregistration();
-        AgentEndpointDeregistrationBatch result =
-            AgentModelUtils.copyDeregistrationBatch(source, "public");
-        
-        assertEquals("public", result.getNamespaceId());
-        assertNotSame(source.getEndpoints(), result.getEndpoints());
-        assertNotSame(source.getEndpoints().get(0), result.getEndpoints().get(0));
-        source.getEndpoints().get(0).setUri("http://other:80");
-        assertEquals("http://localhost:80/path", result.getEndpoints().get(0).getUri());
-        
-        source.getEndpoints().get(0).setPriority(1);
-        assertThrows(NacosException.class,
-            () -> AgentModelUtils.copyDeregistrationBatch(source, "public"));
-        assertThrows(NacosException.class,
-            () -> AgentModelUtils.copyDeregistrationBatch(null, "public"));
+    void copyDeregistrationEndpointsCopiesAndValidatesEndpoints() throws NacosException {
+        List<Endpoint> source = new ArrayList<Endpoint>(
+            Collections.singletonList(endpoint("http://localhost:80/path", "http")));
+        List<Endpoint> result = AgentModelUtils.copyDeregistrationEndpoints(
+            "public", "agent-a", "a2a", source);
+        assertNotSame(source, result);
+        assertNotSame(source.get(0), result.get(0));
+        source.get(0).setUri("http://other:80");
+        assertEquals("http://localhost:80/path", result.get(0).getUri());
+        source.get(0).setPriority(1);
+        source.get(0).setHealthy(false);
+        List<Endpoint> populated = AgentModelUtils.copyDeregistrationEndpoints(
+            "public", "agent-a", "a2a", source);
+        assertEquals("http://other:80", populated.get(0).getUri());
+        assertEquals(1, source.get(0).getPriority());
+        assertEquals(false, source.get(0).getHealthy());
     }
     
     @Test
-    void copyDeregistrationBatchHandlesNullCollectionsAndItems() {
-        AgentEndpointDeregistrationBatch source = deregistration();
-        source.setEndpoints(null);
-        assertThrows(NacosException.class,
-            () -> AgentModelUtils.copyDeregistrationBatch(source, "public"));
-        
-        source.setEndpoints(Collections.singletonList(null));
-        assertThrows(NacosException.class,
-            () -> AgentModelUtils.copyDeregistrationBatch(source, "public"));
+    void copyDeregistrationEndpointsRejectsInvalidKeysAndCollections() {
+        List<Endpoint> valid = Collections.singletonList(endpoint("http://host:80", "http"));
+        assertThrows(NacosException.class, () -> AgentModelUtils.copyDeregistrationEndpoints(
+            "public", "agent-a", "a2a", null));
+        assertThrows(NacosException.class, () -> AgentModelUtils.copyDeregistrationEndpoints(
+            "public", "agent-a", "a2a", Collections.singletonList(null)));
+        assertThrows(NacosException.class, () -> AgentModelUtils.copyDeregistrationEndpoints(
+            "public", "", "a2a", valid));
+        assertThrows(NacosException.class, () -> AgentModelUtils.copyDeregistrationEndpoints(
+            "public", "agent-a", "", valid));
+        assertThrows(NacosException.class, () -> AgentModelUtils.copyDeregistrationEndpoints(
+            "", "agent-a", "a2a", valid));
     }
     
     @Test
@@ -275,7 +302,7 @@ class AgentModelUtilsTest {
         RuntimeVersionBinding binding = new RuntimeVersionBinding();
         binding.setRuntimeVersion("1.0.0");
         binding.setVersionRange("[1.0.0]");
-        AgentDiscoveryEndpoint endpoint = new AgentDiscoveryEndpoint();
+        Endpoint endpoint = new Endpoint();
         endpoint.setUri("http://localhost:80/agent");
         endpoint.setTransport("http");
         endpoint.setHealthy(true);
@@ -285,9 +312,9 @@ class AgentModelUtilsTest {
         endpointSet.setSource(EndpointSource.RUNTIME);
         endpointSet.setSourceRevision(
             "murmur3-x64-128-v1:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa");
-        endpointSet.setEndpoints(new ArrayList<AgentDiscoveryEndpoint>(
+        endpointSet.setEndpoints(new ArrayList<Endpoint>(
             Collections.singletonList(endpoint)));
-        AgentDiscoveryCallInterface callInterface = new AgentDiscoveryCallInterface();
+        AgentCallInterface callInterface = new AgentCallInterface();
         callInterface.setProtocol("a2a");
         callInterface.setEndpointSets(Collections.singletonList(endpointSet));
         source.setCallInterfaces(Collections.singletonList(callInterface));
@@ -296,7 +323,7 @@ class AgentModelUtilsTest {
         
         assertNotSame(source, result);
         assertEquals("agent-a", result.getAgentName());
-        AgentDiscoveryEndpoint copiedEndpoint = result.getCallInterfaces().get(0)
+        Endpoint copiedEndpoint = result.getCallInterfaces().get(0)
             .getEndpointSets().get(0).getEndpoints().get(0);
         assertNotSame(endpoint, copiedEndpoint);
         assertNotSame(endpoint.getBindings(), copiedEndpoint.getBindings());
@@ -311,18 +338,10 @@ class AgentModelUtilsTest {
     }
     
     private AgentEndpointRegistrationBatch registration() {
-        AgentEndpointRegistrationBatch result = new AgentEndpointRegistrationBatch();
+        AgentEndpointRegistrationBatch result =
+            new AgentEndpointRegistrationBatch();
         result.setAgentName("agent-a");
         result.setRuntimeVersion("1.0.0");
-        result.setProtocol("a2a");
-        result.setEndpoints(new ArrayList<Endpoint>(
-            Collections.singletonList(endpoint("http://localhost:80/path", "http"))));
-        return result;
-    }
-    
-    private AgentEndpointDeregistrationBatch deregistration() {
-        AgentEndpointDeregistrationBatch result = new AgentEndpointDeregistrationBatch();
-        result.setAgentName("agent-a");
         result.setProtocol("a2a");
         result.setEndpoints(new ArrayList<Endpoint>(
             Collections.singletonList(endpoint("http://localhost:80/path", "http"))));

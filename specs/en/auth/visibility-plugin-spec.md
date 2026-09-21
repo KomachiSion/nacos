@@ -106,24 +106,46 @@ The API or storage adapter that lists resources must combine both parts without
 leaking private resources.
 
 The default domain integration converts `QueryAdvisor` to repository `QueryCondition`
-before count and page queries run. The base predicate maps as follows:
+before count and page queries run. Let `F` be the caller-supplied business filters already
+present on the incoming `QueryCondition` (for example an explicit `scope` or `owner` filter
+from the request), `B` be the resolved `BaseVisibilityPredicate`, and `G` be
+`name IN AuthorizedResources`. The converter must produce:
 
-| Predicate | Query behavior |
+```text
+final query = F AND (B OR G)
+```
+
+`B` is resolved on its own, independently of `G`, into one of: always satisfied, never
+satisfied, or a set of OR branches. The base predicate resolves as follows:
+
+| Predicate | `B` resolution |
 |-----------|----------------|
-| `ALL` | Add no visibility condition. |
-| `PUBLIC` | Restrict to `scope=PUBLIC`, or empty result if the caller requested a conflicting scope. |
-| `OWNER` | Restrict to `owner=identity`, or empty result if identity is absent or conflicts. |
-| `PUBLIC_AND_OWNER` | Restrict to `scope=PUBLIC OR owner=identity`; anonymous callers degrade to public-only. |
+| `ALL` | Always satisfied; adds no visibility condition. |
+| `PUBLIC` | Satisfied when `scope=PUBLIC`; never satisfied when the caller's business filter conflicts with a public scope. |
+| `OWNER` | Satisfied when `owner=identity`; never satisfied when identity is absent, or when the caller's business filter conflicts with the identity as owner. |
+| `PUBLIC_AND_OWNER` | Satisfied when `scope=PUBLIC OR owner=identity`; anonymous callers degrade to the `PUBLIC` resolution. Never satisfied only when the caller's business filter fixes both scope and owner to values that conflict with both branches. |
 
-Caller-supplied business filters such as owner and scope must be present in the
-base `QueryCondition` before `QueryAdvisor` is applied. The converter produces
-their intersection or an empty result; resource-type implementations must not
-reset those fields after conversion and overwrite plugin visibility constraints.
+Only after `B` is resolved is it unioned with `G`: an always-satisfied `B` makes `G`
+irrelevant (`B OR G` is still always satisfied), a never-satisfied `B` collapses `B OR G`
+down to `G` alone, and OR-branch resolutions add `G` as one more OR branch alongside them.
+This union must happen before any simplification into a concrete `QueryCondition` shape (a
+hard field, an OR group, or `alwaysEmpty`): resolving `B` into the condition first, before
+`G` is known, can silently turn a union into an intersection, or mark the whole query
+`alwaysEmpty` even though `F AND G` could still match.
 
-If `AuthorizedResources` is populated, it is added as an OR branch with the base
-predicate. The default visibility implementation populates this list from
-plugin-owned explicit grants stored by the selected auth plugin. Stored write
-grants imply read visibility, while read grants only affect read/list queries.
+Caller-supplied business filters such as owner and scope must be present in the base
+`QueryCondition` before `QueryAdvisor` is applied: they are used both to compute `F` and to
+prune branches of `B` that are already satisfied or already impossible, before the converter
+decides whether to emit an OR group or fall back to `alwaysEmpty`. Resource-type
+implementations must not reset those fields after conversion and overwrite plugin visibility
+constraints.
+
+If `AuthorizedResources` is populated, `G` is added as an OR branch alongside `B` (or in
+place of `B` when `B` alone is never satisfied), per the union above -- it is never dropped
+merely because `B` could not independently be satisfied. The default visibility
+implementation populates this list from plugin-owned explicit grants stored by the selected
+auth plugin. Stored write grants imply read visibility, while read grants only affect
+read/list queries.
 
 ## Plugin State And Configuration
 
@@ -173,7 +195,12 @@ source, metadata, masking, and update semantics.
 
 If the selected plugin is disabled or unavailable, the current AI domain skips
 visibility filtering and single-resource visibility validation; creation falls
-back to `PRIVATE` scope. This preserves the historical disabled behavior and
+back to `PRIVATE` for every resource type. The same fallback applies when a
+plugin returns a blank default. Type-specific defaults belong to
+`VisibilityService.resolveDefaultScopeForCreate`; the domain helper must not
+duplicate them. A nonblank plugin default, including `PRIVATE`, takes precedence.
+Existing stored scopes are never rewritten by default resolution. The skipped
+visibility checks preserve the historical disabled behavior and
 must not be confused with auth being enabled or disabled. The built-in plugin
 also treats disabled auth as allowing visibility.
 
@@ -208,6 +235,19 @@ DELETE /v3/auth/visibility
 These endpoints are plugin-owned auth APIs and must use `ApiType.ADMIN_API`.
 The default implementation does not expose a management-side grant-list
 endpoint.
+
+### Explicit Identity During Asynchronous Checks
+
+The `identity` supplied to `validateVisibility` is the server-authenticated caller captured
+at the authorized entry point, not an identity accepted directly from an arbitrary request
+parameter. Asynchronous checks must use that identity rather than a thread-local request.
+The default implementation selects auth by the supplied API scope. For the built-in Nacos
+and derived auth implementations, it creates a credential-free user identity and evaluates
+current roles and permissions; it does not copy another request's user or cached admin flag.
+Existing role-cache and token revocation guarantees remain unchanged.
+For an unrelated auth implementation whose identity cannot be reconstructed, delegation
+requires its matching authenticated request context; absence or mismatch fails closed.
+This rule does not add authentication bypasses or persist credentials in Watch state.
 
 ## API Requirements
 

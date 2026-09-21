@@ -52,6 +52,7 @@ public abstract class AgentSpecOpenApiBaseITCase extends AiOpenApiBaseITCase {
         form.put("version", version);
         JsonNode published = postFormOk(AGENT_SPEC_ADMIN_PATH + "/force-publish", form);
         assertEquals("ok", published.get("data").asText(), published.toString());
+        grantClientReadVisibility("agentspec", name);
     }
     
     protected void updateAgentSpecLabels(String name, String labels) throws Exception {
@@ -59,6 +60,14 @@ public abstract class AgentSpecOpenApiBaseITCase extends AiOpenApiBaseITCase {
         form.put("agentSpecName", name);
         form.put("labels", labels);
         JsonNode root = putFormOk(AGENT_SPEC_ADMIN_PATH + "/labels", form);
+        assertEquals("ok", root.get("data").asText(), root.toString());
+    }
+
+    protected void updateAgentSpecBizTags(String name, String bizTags) throws Exception {
+        Map<String, String> form = new LinkedHashMap<>();
+        form.put("agentSpecName", name);
+        form.put("bizTags", bizTags);
+        JsonNode root = putFormOk(AGENT_SPEC_ADMIN_PATH + "/biz-tags", form);
         assertEquals("ok", root.get("data").asText(), root.toString());
     }
     

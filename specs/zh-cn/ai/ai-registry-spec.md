@@ -77,7 +77,7 @@ JSON。
 
 | Type | 标准身份 | 当前或已批准目标持久化形态 | 规范 |
 | --- | --- | --- | --- |
-| `mcp` | `namespaceId -> mcp -> mcpName` | 当前通过 Config 记录 MCP 元数据、版本、tool、resource 数据，通过 Naming service 表达 endpoint。 | [MCP Server 规范](mcp-server-spec.md) |
+| `mcp` | `namespaceId -> mcp -> mcpName` | 已批准目标由 `ai_resource` 和 `ai_resource_version` 托管管理生命周期，Descriptor 指向不变的 Config 内容；历史 Manifest 以及现有 Direct、Service Ref、frontend/backend 和 Runtime Naming 布局继续作为 Serving 平面。 | [MCP Server 规范](mcp-server-spec.md) |
 | `agent` | `namespaceId -> agent -> agentName` | 已批准目标为 `ai_resource`、`ai_resource_version`、AI 存储和 Naming 承载的 Runtime Endpoint publication；迁移完成前，历史 A2A 存储仍是兼容来源。 | [Agent 管理规范](agent-management-spec.md) |
 | `prompt` | `namespaceId -> prompt -> promptKey` | 使用 `ai_resource`、`ai_resource_version` 和 AI 存储；旧 Prompt 数据可迁移。 | [Prompt 规范](prompt-spec.md) |
 | `skill` | `namespaceId -> skill -> name` | 使用 `ai_resource`、`ai_resource_version`、AI 存储和轻量 discovery manifest。 | [Skill 规范](skill-spec.md) |
@@ -117,10 +117,12 @@ AI Registry 通过多个接口面暴露：
 - Trace 和审计事件应使用 [Trace 插件规范](../plugin/trace-plugin-spec.md)和共享
   可观测规则。
 
-## 7. 待迁移问题
+## 7. 迁移与演进事项
 
-- MCP Server 应将持久元数据和版本模型从 Config 形态记录迁移到标准的
-  `ai_resource` 和 `ai_resource_version` 模型，同时保留现有数据兼容。
+- MCP 迁移遵循 MCP Server 规范中的异步、单向管理状态
+  `SYNCING -> LIFECYCLE_MANAGED`：只创建 Resource/Version 指针，不修改 Config 字节或
+  Naming；等待零差异对账和全节点管理能力门禁；切换后继续维护历史 Manifest 和当前 Endpoint
+  Serving 布局。该契约完成实现和验证前，Production 行为仍未落地。
 - 历史 A2A AgentCard 和 Naming endpoint 数据必须通过滚动升级方案迁移到 Agent 模型；
   旧 API 只是投影视图，不再拥有独立资源存储。
 - Prompt 已有从旧 Config 形态 Prompt 数据迁移到标准 AI 资源模型的路径。旧映射
@@ -129,3 +131,35 @@ AI Registry 通过多个接口面暴露：
   不改变 Registry snapshot。
 - 随着 MCP、A2A 和 Agent 包生态演进，AI 资源 schema 和协议 payload 可能需要
   大幅调整。
+
+## AI Client HTTP 能力查询
+
+`GET /v3/client/ai/capabilities` 返回标准 `Result`，其中
+`data.schemaVersion=1`，`data.capabilities` 含 Boolean 键 `radV1`、`mcp`、
+`skill`、`prompt`、`agentSpec`。只声明响应节点 Client HTTP binding 的实现能力，
+不代表 gRPC 可达、全群集能力、资源权限或迁移就绪。RAD 已包含 HTTP Watch，
+不另设公开 Watch/A2A 兼容位，已有 gRPC 能力键保持原义。
+
+接口采用标准 Client 鉴权流程，元组为 `OPEN_API + AI + READ + ONLY_IDENTITY`，
+使用显式无资源 parser。有效零资源权限身份可以查询；需要 Client 鉴权时，无效或
+缺少身份仍拒绝，即使启用 AI 匿名访问。Client auth-off、插件及内部身份的标准
+跳过分支保持；Admin/Console 开关独立。额外资源参数及 Client-id 忽略，不读取资源，
+不创建或续租 Client/Publisher。
+
+SDK 对每个能力保留支持、不支持、未知三态；只有合法 schemaVersion=1 响应中的
+Boolean 才是确定证据。缺失/错误类型键为未知，忽略扩展键；未知版本、空/错误内容、
+能力路径 404/405 均不能证明没有 RAD。鉴权与连接异常保留分类。缓存有界、短 TTL、
+合并同目标并发请求，按目标 URL（含 context path/HTTP scheme）和身份摘要隔离，
+不以明文凭据作为缓存键。
+
+能力证据与实例 A2A 模式独立。可靠选择旧模式后，刷新及重连均保留到实例关闭；
+RAD 未知但旧 A2A binding 可靠可用时，可以选择旧链路，而不声称原生 RAD 不支持。
+只有未知证据不能固定旧模式。原生 RAD 使用真实业务目标证据，正常成功请求可提供
+支持证据，不能额外发探测写。C06 准备组件，旧 facade 待所有适配路径齐备后统一接通。
+
+### 能力接口的方法边界
+
+能力控制器只声明 GET，执行标准身份校验。Spring MVC 按标准提供 HEAD（同一鉴权入口，
+不返回响应体）和 OPTIONS（仅列出允许的方法，不返回能力数据）。POST、PUT、DELETE、
+PATCH 没有业务处理方法，由框架返回普通 HTTP 405。前置方法解析将方法不匹配交回 MVC，
+不再转换为基础设施错误；其他解析异常仍报错。

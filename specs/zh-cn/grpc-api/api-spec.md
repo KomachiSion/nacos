@@ -177,7 +177,7 @@ inner 请求的详细规则由
 
 | Request type | Response type | 动作 | 主要字段 | 契约 |
 | --- | --- | --- | --- | --- |
-| `ConfigQueryRequest` | `ConfigQueryResponse` | read | `dataId`, `group`, `tenant`, `tag` | 查询配置内容、md5、类型、加密 key、beta/tag 元数据。 |
+| `ConfigQueryRequest` | `ConfigQueryResponse` | read | `dataId`, `group`, `tenant`, `tag`, `localMd5` | 查询配置内容、md5、类型、加密 key、beta/tag 元数据。从 Nacos 3.3 开始支持 `localMd5` 条件查询：当客户端提供的 `localMd5` 与服务端配置 md5 一致时，服务端返回 `errorCode=304`（Not-Modified），响应中不含 `content`，但包含 `md5`、`contentType`、`lastModified` 等元数据；客户端应从本地缓存恢复内容。混合版本场景下，旧版本客户端不发送 `localMd5`，服务端按原逻辑返回完整内容。 |
 | `ConfigPublishRequest` | `ConfigPublishResponse` | write | `dataId`, `group`, `tenant`, `content`, `casMd5`, `additionMap` | 发布配置或 CAS 发布配置。 |
 | `ConfigRemoveRequest` | `ConfigRemoveResponse` | write | `dataId`, `group`, `tenant`, `tag` | 删除配置。 |
 | `ConfigBatchListenRequest` | `ConfigChangeBatchListenResponse` | read | `listen`, `ConfigListenContext[]` | 添加或移除配置监听，并返回发生变化的配置。 |
@@ -211,7 +211,7 @@ AI payload 语义由 [AI Registry 规范](../ai/ai-registry-spec.md)和各资源
 | Request type | Response type | 动作 | 主要字段 | 契约 |
 | --- | --- | --- | --- | --- |
 | `QueryMcpServerRequest` | `QueryMcpServerResponse` | read | `namespace`, `mcpName`, `version` | 查询 MCP Server 详情。 |
-| `ReleaseMcpServerRequest` | `ReleaseMcpServerResponse` | write | `serverSpecification`, `toolSpecification`, `resourceSpecification`, `endpointSpecification` | 发布 MCP Server 或新版本。 |
+| `ReleaseMcpServerRequest` | `ReleaseMcpServerResponse` | write | `serverSpecification`, `toolSpecification`, `resourceSpecification`, `endpointSpecification`, `createDraft` | 发布 MCP Server 或创建生命周期 Draft。 |
 | `McpServerEndpointRequest` | `McpServerEndpointResponse` | write | `mcpName`, `address`, `port`, `version`, `type` | 注册或注销 MCP endpoint。 |
 | `QueryAgentCardRequest` | `QueryAgentCardResponse` | read | `namespace`, `agentName`, `version`, `registrationType` | 查询 A2A AgentCard 详情。 |
 | `ReleaseAgentCardRequest` | `ReleaseAgentCardResponse` | write | `agentCard`, `registrationType`, `setAsLatest` | 发布 AgentCard 或新版本。 |
@@ -219,27 +219,52 @@ AI payload 语义由 [AI Registry 规范](../ai/ai-registry-spec.md)和各资源
 | `BatchAgentEndpointRequest` | `AgentEndpointResponse` | write | `agentName`, `endpoints` | 替换当前客户端为某个 Agent 注册的 endpoints。 |
 | `QueryPromptRequest` | `QueryPromptResponse` | read | `namespace`, `promptKey`, `version`, `label`, `md5` | 按版本、标签、latest 或 md5 查询 Prompt。 |
 
+MCP 管理迁移到通用 AI Resource 生命周期期间，现有三个 MCP Payload 继续作为兼容 Binding：
+
+- `ReleaseMcpServerRequest` 增加 Primitive Boolean `createDraft`；字段缺失或为 `false`
+  时保持 Direct-Online 行为。新的精确 Version 立即 Online；同 Version Conflict/Overwrite
+  行为只存在于该兼容 Facade。`true` 只创建标准生命周期 Draft，不写 Serving Manifest。
+  托管后的实现通过 MCP Storage 写入坐标不变的物理 Config。
+- `QueryMcpServerRequest` 保持 Wire Shape 和现有 Serving 投影。生命周期托管不修改
+  Manifest、Config、Naming、Latest Version、frontend/backend 或 Endpoint 解析行为。
+- `McpServerEndpointRequest` 保持当前字段、按 Version 划分的 Naming 布局、Metadata、
+  Register/Deregister、Reconnect 和 Redo 行为。`address` 为 IPv4 或 IPv6 字面地址，
+  `port` 范围为 `1..65535`；校验发生在 Naming 状态修改之前。首期生命周期托管不增加
+  `supportedTransports`、`versionRange`、无 Version Service 或新的能力协商。
+
+MCP Request 继承的顶层 `AbstractMcpRequest.mcpId` 是 Ignored 且 Deprecated 的 Wire 字段。
+保留其 Field Number；Query 和 Endpoint Handler 保持当前 `mcpName` 必填规则；Release
+继续使用嵌套 Server Specification。任何 Handler 都不为顶层字段增加 ID 查询。当前 Client
+或响应契约实际使用的嵌套 `McpServerBasicInfo.id` 和
+`ReleaseMcpServerResponse.mcpId` 继续作为 Active Compatibility 字段。
+
+`createDraft=true` 必须由 Wire Key 为 `mcpDraftRelease` 的
+`SERVER_MCP_DRAFT_RELEASE` 控制。`NOT_SUPPORTED` 和 `UNKNOWN` 都在请求发送前失败，避免旧的
+JSON 包装 Payload Handler 忽略新 Boolean 后误执行 Direct-online Release。该 Ability 只表示
+选中节点理解字段；Handler 仍需检查动态 `LIFECYCLE_MANAGED` Cutover 状态。
+
 下列 Agent/RAD Payload 是 [Agent API 规范](../ai/agent-api-spec.md)确定的实验性目标。
 在 Runtime 中具备对应类、Handler、SPI 注册和协商能力位之前，它们不属于当前已实现
 Payload 清单。
 
 | 目标 Request type | 目标 Response type | 方向 | 契约 |
 | --- | --- | --- | --- |
-| `AgentSearchRpcRequest` | `AgentSearchResponse` | read | 搜索 Agent 目录并返回一页 `AgentCatalogEntry`。 |
+| `AgentSearchRpcRequest` | `AgentSearchResponse` | read | 搜索 Agent 目录并返回一页 `AgentSummary`。 |
 | `AgentDiscoveryRpcRequest` | `AgentDiscoveryResponse` | read | 发现一个 Agent 并返回完整的 `AgentDiscoveryResult`。 |
 | `AgentPublishRpcRequest` | `AgentPublishRpcResponse` | write | 代码式创建 Agent draft，并按 `autoSubmit` 可选执行普通 submit。 |
-| `AgentSubscribeRequest` | `AgentSubscribeResponse` | read | 订阅或取消订阅 Agent Reference 和可选 Filter；订阅时返回不透明 `watchKey` 和当前完整结果。 |
-| `AgentDiscoveryNotifyRequest` | `AgentDiscoveryNotifyResponse` | server push | 为一个 `watchKey` 推送 `SNAPSHOT` 或 `TERMINATED` 事件并接收 ACK。 |
+| `AgentSubscribeRpcRequest` | `AgentSubscribeRpcResponse` | read | 安装一个已鉴权且归属当前 Connection 的 Watch，返回不透明 `watchKey`、已观测 fingerprint 和刷新决策，绝不返回 Discover Snapshot。 |
+| `AgentUnsubscribeRpcRequest` | `AgentUnsubscribeRpcResponse` | read | 幂等删除一个归属当前 Connection 的 Watch。 |
+| `AgentDiscoveryNotifyRequest` | `AgentDiscoveryNotifyResponse` | server push | 为一个 `watchKey` 推送 `INVALIDATE`、`REVALIDATE` 或 `TERMINATED` Hint 并接收 ACK。 |
 | `AgentEndpointRegisterRpcRequest` | `AgentEndpointOperationResponse` | write | 完整替换当前 Connection 对一个 Agent 和 Protocol 的 Runtime Endpoint Batch。 |
 | `AgentEndpointDeregisterRpcRequest` | `AgentEndpointOperationResponse` | write | 幂等移除当前 Connection 对一个 Agent 和 Protocol 的整份 Runtime Endpoint Publication。 |
 
-在该目标 Binding 中，`AgentDiscoveryNotifyRequest` 包含 `watchKey` 和
-`eventType`。`SNAPSHOT` 必须携带完整 `AgentDiscoveryResult` 且不携带错误；
-`TERMINATED` 不携带 Result，并固定要求 `errorCode=NOT_FOUND`。Client 对两种事件都
-发送 ACK。终止事件只结束共享 Payload Connection 上由该 `watchKey` 标识的 Watch，
-不结束 Connection 或其他 Watch。`AgentSubscribeResponse` 是 Connection 维度不透明
-`watchKey` 的来源，Reconnect 后也由新 Response 提供。这些 Wrapper 仍属于 gRPC
-Binding 对象，不扩展 RAD 的六个根消息。
+在该 Binding 中，`AgentDiscoveryNotifyRequest` 包含 `watchKey` 和
+`eventType`。只有 `INVALIDATE` 可以携带已观测 fingerprint；`REVALIDATE`
+既不携带 fingerprint 也不携带业务内容，`TERMINATED` 必须携带错误码。任何
+Watch Payload 都不携带 `AgentDiscoveryResult`。Client 只在把对应本地 Intent 记录为
+Dirty 后确认该不透明 Key；未知 Key 返回失败 ACK，不影响其他 Watch。完整内容
+始终通过标准的已鉴权 Discover 操作物化。终止 Hint 只结束对应 Watch，不结束共享
+Payload Connection。
 
 Skill ZIP 下载和 AgentSpec 组装属于 Java SDK interface 能力，但当前 Java 客户端
 实现使用 HTTP/config 组合，不对应专用 gRPC payload。
@@ -268,3 +293,11 @@ Lock 领域语义由[分布式锁规范](../lock/lock-spec.md)定义。当前 gR
 9. 对于服务端间 payload，还应同步更新
    [内部 RPC 与集群请求规范](../design/foundation-internal-rpc-spec.md)，或拥有该集群请求语义的
    领域规范。
+
+
+### Agent Search/Register namespace 绑定
+
+`AgentSearchRpcRequest` 和 `AgentEndpointRegisterRpcRequest` 的 `namespaceId` 位于信封顶层；
+`searchRequest`/`registrationBatch` 不含 namespace。参数提取、namespace 校验、鉴权和业务服务
+使用同一信封值，缺省值按现有规则归一到 public。RPC 类型名不变；这是 3.3 发布前的布局调整，
+Client 与 Server 必须同步更新。Discover/Watch/Publish 及历史 A2A 信封结构保持不变。

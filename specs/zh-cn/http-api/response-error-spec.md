@@ -42,6 +42,8 @@ V3 JSON 响应默认使用 `com.alibaba.nacos.api.model.v2.Result<T>`：
 - Copilot 流式端点返回 Server-Sent Events。
 - 健康检查 readiness 在未就绪时可以返回 HTTP 500，并携带
   `Result<String>` 响应体。
+- 默认鉴权 v1 和 v3 登录成功时返回遗留的平铺 token 对象，凭据错误时返回 HTTP 403
+  和通用纯文本响应体。
 - 部分遗留或运维端点可以返回纯文本。只有在确认属于兼容行为后，才应保留。
 
 ## 3. 错误处理
@@ -59,6 +61,15 @@ v3 错误：
 | `AccessException` | 403 | `ACCESS_DENIED` |
 | 数据访问、Servlet 或 IO 失败 | 500 | `DATA_ACCESS_ERROR` |
 | 未处理异常 | 500 | 通用失败 |
+
+接入共享兼容门禁的废弃 v3 API 在 `nacos.core.api.compatibility.enabled=false` 时返回
+HTTP `410 Gone` 和 `API_DEPRECATED`。
+
+远程 Admin API 的非成功 HTTP 响应以标准 `Result<String>` 返回错误时，Maintainer SDK 必须分别保留
+HTTP 状态、业务 `code`、摘要 `message` 和详情 `data`，包括 SDK 本地枚举尚未识别的
+业务码。独立 Console 通过 `NacosApiExceptionHandler` 透传该类型化异常，使错误契约
+与合并部署一致。纯文本、空响应和非标准错误响应继续使用普通 `NacosException`
+回退。本要求不改变重试、重新登录或节点切换策略。
 
 ## 4. ExceptionHandler 收敛
 

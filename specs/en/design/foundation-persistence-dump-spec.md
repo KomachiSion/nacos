@@ -176,6 +176,13 @@ Reads use the CP read path when distributed embedded storage is active. Startup
 dump may set a blocking read context so the node waits until readable data
 exists before rebuilding serving cache.
 
+Distributed embedded read requests must validate their declared result target
+before JDBC execution. Mapper-based queries may use only row mapper class names
+registered with the persistence row mapper registry. Scalar queries may use only
+explicitly allowlisted basic result types, resolved from fixed class constants
+instead of request-driven class loading. A missing, unknown, or target
+incompatible with the query type must fail the read request.
+
 Snapshot rules are defined by the
 [CP Consistency Spec](foundation-cp-consistency-spec.md). Embedded storage must
 provide enough snapshot data to rebuild local Derby state after restart or
@@ -243,6 +250,10 @@ Rules:
   directories, separated by namespace-aware and no-namespace paths;
 - dump storage keys must be derived from validated and encoded Config identity
   fields;
+- an unsafe derived identity must fail closed with a bounded, control-character-
+  safe diagnostic. Processing one rejected identity must not prevent unrelated
+  dump identities from running, and existing task retry or startup-failure
+  semantics must remain unchanged;
 - changing the local dump backend must not change Config resource identity,
   md5 semantics, authorization, or the durable persistence source.
 

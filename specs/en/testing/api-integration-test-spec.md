@@ -127,9 +127,42 @@ API ITs must keep data isolated and repeatable:
   the test restores the previous state;
 - use bounded retries only for asynchronous server effects.
 
-The standalone test environment normally disables auth. Auth-enabled scenarios
-must add token handling deliberately and isolate assumptions from auth-disabled
-API contract tests.
+### 5.1 Default-Auth Runtime Baseline
+
+For the Nacos 3.3 line, the standard required standalone API IT runs with
+Client, Admin, and Console auth enabled by the packaged defaults. The workflow
+must not rewrite those scope switches or disable the default authorization
+cache. It may configure deployment-specific token secret and server identity
+values before startup.
+
+The standard identities are:
+
+- a non-admin Client identity with the read/write permissions needed by Client
+  API functional scenarios;
+- a read-only Client identity for action-boundary scenarios;
+- an authenticated identity without authority;
+- a global administrator for Admin, Console, Auth API, and test-fixture setup;
+- explicit anonymous and invalid-credential request modes.
+
+Functional API scenarios use an identity appropriate for their audience and
+still assert their complete business result, boundary behavior, and controlled
+errors. Authorization checks are an additional layer and must not replace the
+functional assertions. Public, bootstrap-only, and deliberately anonymous
+endpoints use an explicit anonymous request mode rather than inheriting an
+empty-header default. A request sent to an external adaptor port must not
+inherit Nacos credentials.
+
+Every protected controller operation must be present in an auditable inventory
+and classified as directly authorization-tested, covered by a reviewed
+equivalent authorization tuple/parser group, or explicitly public/excluded by
+spec. Default-auth user, role, permission, and visibility APIs, custom resource
+parsers, anonymous behavior, multipart/raw requests, and security-regression
+paths require direct operation-level coverage. Permission updates are observed
+with bounded retries while the default authorization cache remains enabled.
+
+HTTP functional, Auth API, and URI-security cases belong to
+`test/openapi-test`. A separate auth-only Maven module or workflow may exist
+during migration, but it is not part of the final standard test topology.
 
 ## 6. API Deletion And Deprecation
 
@@ -160,3 +193,132 @@ or the full surface selection.
 
 Minimum validation for documentation-only IT registry changes is license and
 format checks for the affected module.
+
+## 9. AI Resource Search And Agent Scenarios
+
+When shared Search Core, Agent projection, or ARD Agent representation changes,
+the OpenAPI IT scenario matrix covers at least:
+
+- RAD and resource-specific Search still use the base index when ARD is disabled
+  and `nacos.ai.resource.search.enabled=true`;
+- Agent-name literal contains, tag ALL, protocol ANY, combined AND, case rules,
+  literal `%`, `_`, and `\\`, first/middle/last/out-of-range pages, and correct
+  totals;
+- bounded convergence after create, metadata update, Version
+  publish/online/offline/delete, and latest/label changes;
+- Endpoint register/deregister/heartbeat changes Discover only and does not
+  change the catalog Search document;
+- successful current snapshots without mixing before `AUTO` or `INDEX`
+  readiness, convergence to complete results, and the compatibility path for
+  `SCAN`;
+- generic Search restricted to Agent, AgentSpec, Skill, Prompt, or MCP matches
+  the corresponding resource-specific Search eligibility, visibility, and
+  currentness; and
+- ARD pure-A2A, multi-protocol, and A2A-only-on-an-older-online-Version type
+  filtering, primary representation, stable identifier,
+  representation-specific artifact URL, offline/digest invalidation, and
+  Runtime-state exclusion.
+
+Tests of asynchronous indexing use only bounded polling of public API results;
+they do not depend on a fixed sleep, internal database rows, or task execution
+order.
+
+## 10. Agent HTTP Watch Scenarios
+
+When the Agent HTTP batch-long-poll Watch binding changes, OpenAPI IT covers at
+least:
+
+- one request carrying multiple Agent Watch items and returning only the
+  changed caller item ids after definition, latest/label, runtime Endpoint,
+  liveness, and visibility changes;
+- timeout returning `changed=false`, followed by immediate reuse with the next
+  generation and complete list;
+- add/remove generation changes, a late prior response, duplicate item ids,
+  mixed namespaces, empty/oversized batches, malformed fingerprints, timeout
+  bounds, form-size bounds, and the configured soft Watch capacity;
+- missing or invalid `X-Nacos-Client-Id` and `Request-Module`, request-level AI
+  read denial, and no descriptor/Endpoint/per-item authorization data in a
+  successful response;
+- changed ids being re-readable only through ordinary authorized Discover,
+  including invisible and missing resources returning the standard controlled
+  result; and
+- server restart and repeated long polls converging through bounded public API
+  polling without depending on socket-cancel timing, one fixed server node, or
+  internal waiter state.
+
+## 11. MCP Migration And Lifecycle Scenarios
+
+When MCP lifecycle hosting is implemented, the OpenAPI IT matrix must cover at
+least:
+
+- existing Admin and Console create/update/query/list/delete request and
+  response shapes during `SYNCING` and after `LIFECYCLE_MANAGED`, including
+  the compatibility-only same-Version overwrite and latest flag;
+- name-only, name-plus-ID, and historical ID-only management inputs, including
+  protocol authentication followed by exact canonical re-authorization for
+  ID-only input and controlled missing, duplicate, or conflicting Resource aliases;
+- new Version list/detail and draft, submit, reviewed/publish, force-publish,
+  redraft, online/offline, custom-label, and invalid-state paths, with equivalent
+  Admin and Console semantics;
+- an enabled Resource exposing only online Versions through the unchanged
+  historical serving projection, and draft/reviewing/reviewed/offline Versions
+  only through new management reads;
+- legacy fixtures remaining wholly visible during `SYNCING`, idempotent
+  asynchronous reconciliation, all-member management gating, zero-difference
+  automatic cutover, and restart persistence;
+- unchanged Manifest/Server/Tools/Resources Config coordinates and bytes, with
+  no Naming Service, instance, frontend/backend, or Runtime metadata mutation
+  caused by reconciliation;
+- Manifest-last publish, offline removal from the serving view while content
+  and Direct Service remain available, and old Config/Naming consumers never
+  observing incomplete Version content;
+- Version and full Resource deletion, Manifest-first stop-serving behavior,
+  Resource/Version row preservation after Direct or content cleanup failure,
+  retry by deprecated ID after Manifest removal, and no accidental delete of an
+  ordinary referenced Service or client Runtime state;
+- missing content, invalid Manifest, conflicting row, and partial storage
+  deletion returning controlled behavior while preventing managed cutover; and
+- generic and MCP-specific Search using canonical `mcpName`, durable
+  asynchronous convergence and historical ID-keyed cleanup, plus unified Import
+  and Registry-adaptor compatibility across the management transition.
+
+Migration tests assert only public behavior and durable restart outcomes. They
+may seed documented legacy fixtures through test setup, but must not use direct
+database-row assertions as the success contract. Every asynchronous condition
+uses bounded polling rather than a fixed sleep.
+
+Migration-state and cutover scenarios must use explicitly phase-gated test
+classes and a dedicated migration workflow. Stable functional API classes run
+against one terminal state and must not accept either a pre-cutover conflict or
+a post-cutover success according to background-task timing. A migration
+workflow may rerun a stable cross-resource isolation control, but it does not
+own the ordinary functional suite or its authentication matrix.
+
+## 12. Historical A2A Upgrade Migration Scenarios
+
+When the historical A2A upgrade state machine, reconciliation, or Runtime
+dual-materialization behavior changes, OpenAPI IT freezes and records these
+standalone scenarios from the
+[Historical A2A Upgrade Migration Spec](../ai/a2a-upgrade-migration-spec.md):
+
+| ID | Public scenario |
+| --- | --- |
+| `M-ST-01` | Multiple Namespaces, Agents, Versions, and URL/SERVICE definitions migrate completely and retain identity, latest, descriptor, declared Endpoints, and enabled state. |
+| `M-ST-02` | Historical create, update, set-latest, and delete during `SYNCING` converge without changing the already returned historical result. |
+| `M-ST-03` | Malformed JSON, missing Version, invalid name/Version, and a conflicting independent canonical Agent block cutover while historical reads remain available. |
+| `M-ST-04` | Restart after Storage, Version-row, and Resource-row boundaries recovers idempotently and never exposes a partial Agent. |
+| `M-ST-05` | Historical A2A, Admin, Console, ARD/Search, RAD Discover, and Watch agree before and after cutover. |
+| `M-ST-06` | Historical gRPC single/batch Endpoint publication is visible in both historical and canonical Runtime layouts during migration. |
+| `M-ST-07` | With shadow disabled, canonical RAD remains available after cutover and the old Gateway is no longer promised visibility. |
+| `M-ST-08` | With shadow enabled, canonical exact-Version RAD and the old Gateway expose equivalent normalized Runtime snapshots after cutover. |
+| `M-ST-09` | Mirror failure/retry, client disconnect/reconnect/redo, and server restart converge without duplicate logical capacity or lost retained publication. |
+| `M-ST-10` | Quiescing returns the retryable migration error for definition mutations while queries, Discover, Watch, and Endpoint operations continue. |
+
+`test/openapi-test/A2A_MIGRATION_API_TEST_SCENARIOS.md` assigns the executable
+HTTP portions and records scenarios that require the Java SDK or a directed
+cluster fixture. Tests may seed documented historical Config through setup, but
+success is asserted through public APIs, durable restart behavior, and bounded
+polling rather than direct row inspection or fixed sleep.
+
+These historical A2A scenarios follow the same dedicated-workflow boundary as
+MCP migration and must not be appended to the stable functional API job.

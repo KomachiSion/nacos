@@ -94,7 +94,7 @@ Detailed field and lifecycle rules are defined by the
 
 | Type | Standard identity | Current or approved target persistence shape | Spec |
 | --- | --- | --- | --- |
-| `mcp` | `namespaceId -> mcp -> mcpName` | Currently uses Config records for MCP metadata/version/tool/resource data and Naming services for endpoints. | [MCP Server Spec](mcp-server-spec.md) |
+| `mcp` | `namespaceId -> mcp -> mcpName` | Approved target: `ai_resource` and `ai_resource_version` host management lifecycle; descriptors point to unchanged Config content. The historical Manifest and existing Direct, Service Ref, frontend/backend, and Runtime Naming layouts remain the serving plane. | [MCP Server Spec](mcp-server-spec.md) |
 | `agent` | `namespaceId -> agent -> agentName` | Approved target: `ai_resource`, `ai_resource_version`, AI storage, and Naming-backed runtime endpoint publications. Historical A2A storage remains a compatibility source until migration. | [Agent Management Spec](agent-management-spec.md) |
 | `prompt` | `namespaceId -> prompt -> promptKey` | Uses `ai_resource`, `ai_resource_version`, and AI storage; legacy Prompt data may be migrated. | [Prompt Spec](prompt-spec.md) |
 | `skill` | `namespaceId -> skill -> name` | Uses `ai_resource`, `ai_resource_version`, AI storage, and a lightweight manifest for discovery. | [Skill Spec](skill-spec.md) |
@@ -139,11 +139,15 @@ AI Registry is exposed through multiple surfaces:
 - Trace and audit events should use the [Trace Plugin Spec](../plugin/trace-plugin-spec.md)
   and the shared observability rules.
 
-## 7. Pending Migration Issues
+## 7. Migration And Evolution Items
 
-- MCP Server should migrate its durable metadata and version model from
-  Config-shaped records to the standard `ai_resource` and `ai_resource_version`
-  model while preserving existing data compatibility.
+- MCP migration follows the asynchronous, one-way management transition
+  `SYNCING -> LIFECYCLE_MANAGED` in the MCP Server Spec. It creates
+  Resource/Version pointers without changing Config bytes or Naming, waits for
+  zero-difference reconciliation and every-member management capability, and
+  continues maintaining the historical Manifest and current endpoint serving
+  layout after cutover. Production behavior remains pending until that contract
+  is implemented and verified.
 - Historical A2A AgentCard and Naming endpoint data must migrate to the Agent
   model through the rolling-upgrade plan; the legacy APIs remain projections,
   not an independent resource store.
@@ -155,3 +159,47 @@ AI Registry is exposed through multiple surfaces:
   Registry snapshot.
 - AI resource schemas and protocol-specific payloads may require major revision
   as upstream MCP, A2A, and agent package ecosystems evolve.
+
+## AI Client HTTP capabilities
+
+`GET /v3/client/ai/capabilities` returns `Result` with
+`data.schemaVersion=1` and Boolean `data.capabilities` keys `radV1`, `mcp`,
+`skill`, `prompt`, and `agentSpec`. These describe the responding Client HTTP
+binding only, not gRPC reachability, cluster-wide support, resource permission,
+or migration readiness. RAD includes HTTP Watch; no separate public Watch or
+A2A compatibility flag is added. Existing gRPC ability keys keep their meaning.
+
+The standard Client auth flow uses `OPEN_API + AI + READ + ONLY_IDENTITY` and
+an explicit resource-less parser. A valid identity with no resource grants may
+query it; missing/invalid credentials are rejected when Client auth applies,
+even when AI anonymous access is enabled. Client auth-off and normal plugin or
+internal-identity bypasses retain existing behavior. Admin/Console auth toggles
+are independent. Extra resource parameters and Client-id headers are ignored;
+this read neither accesses resources nor creates or renews a Client/Publisher.
+
+The SDK preserves per-feature `SUPPORTED`, `NOT_SUPPORTED`, and `UNKNOWN`.
+Only a Boolean in a valid schema-version-1 response provides evidence. Missing
+or wrongly typed keys remain unknown; unknown keys are ignored. Unknown schema,
+empty/malformed responses and capability-route 404/405 do not prove RAD absent.
+Authentication and connectivity failures retain their error classification.
+Cache entries are bounded, short-lived, coalesce concurrent requests, and are
+isolated by target URL (including context path/HTTP scheme) and a digest of the
+identity context; credentials are not retained as plaintext cache keys.
+
+Capability evidence is separate from the SDK instance's A2A routing choice.
+A reliably selected legacy mode remains legacy through reconnect and refresh,
+until shutdown/reinstantiation. Unknown RAD plus a reliable legacy A2A binding
+can choose that binding without claiming native RAD is unsupported. Unknown
+alone never fixes legacy mode. Native RAD still uses actual target evidence;
+an ordinary successful RAD call can provide positive evidence without an
+additional probe write. C06 prepares these components; the legacy facade is
+connected to them only when all adaptation paths are enabled together.
+
+### Capability method boundary
+
+The capability controller declares only GET and uses standard identity checks.
+Spring MVC supplies HEAD (the same secured handler, without a response body) and
+OPTIONS (method discovery without capability data). POST, PUT, DELETE and PATCH
+have no business handler and return the normal framework HTTP 405 response.
+Pre-dispatch method resolution defers a method mismatch to MVC rather than
+turning it into an infrastructure failure; other resolution failures remain errors.

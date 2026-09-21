@@ -40,6 +40,7 @@ only own content bytes for an opaque storage key.
 | Opaque key | Provider-specific key that upper layers should not parse. |
 | Content | Binary or text payload associated with an AI resource version. |
 | Metadata | AI resource record stored by the AI persistence layer. |
+| Local visibility callback | Best-effort hint emitted after a provider observes a content change in its local read path. |
 
 ## SPI
 
@@ -48,7 +49,7 @@ Storage implementations are created by `AiResourceStorageBuilder`.
 | Builder method | Requirement |
 |----------------|-------------|
 | `type()` | Stable storage provider type. |
-| `build()` | Build an `AiResourceStorage`. |
+| `build()` | Build an `AiResourceStorage`, or return null when an optional provider is not statically configured for discovery. |
 
 The storage service implements:
 
@@ -58,6 +59,24 @@ The storage service implements:
 | `save(storageKey, content)` | Store content for the key. |
 | `get(storageKey)` | Read content for the key, or return null when absent. |
 | `delete(storageKey)` | Delete content for the key. |
+| `consistencyMode()` | Declare the provider's read-after-write and local-notification model. The compatibility default is `EVENTUAL_WITHOUT_NOTIFICATION`. |
+| `addChangeListener(listener)` | Register a local-visibility listener. The compatibility default is a no-op. |
+| `removeChangeListener(listener)` | Remove a local-visibility listener. The compatibility default is a no-op. |
+
+The consistency modes are:
+
+| Mode | Contract |
+|------|----------|
+| `STRONG` | A committed operation is visible through the provider's read path before it returns. A callback is not required for correctness. |
+| `EVENTUAL_WITH_NOTIFICATION` | A committed operation may become visible later on another node. The provider emits a best-effort local-visibility callback when its local read path may observe new content. |
+| `EVENTUAL_WITHOUT_NOTIFICATION` | A committed operation may become visible later and the provider offers no local callback contract. This is the default for existing third-party implementations. |
+
+A storage callback is an invalidation hint, not content, an authorization grant,
+or proof that every related metadata row is visible. It may be duplicated,
+coarse-grained, delayed, or delivered before the corresponding AI resource
+change hint. Its provider-specific notification key remains opaque. A provider
+may include a resource-type hint when it can infer one without reversing an
+opaque or hashed key; consumers must tolerate an absent hint.
 
 The plugin is exposed to the core plugin manager as type `ai-storage`.
 
@@ -74,6 +93,9 @@ and must not receive content operations.
 
 The default provider is `nacos_config`, which stores AI resource content through
 Nacos config storage.
+It declares `EVENTUAL_WITH_NOTIFICATION` and adapts local Config cache-change
+events for AI-owned coordinates into storage local-visibility callbacks. It
+must not emit callbacks for ordinary user Config coordinates.
 When the `nacos_config` provider maps an opaque key to a Nacos config coordinate,
 it must use stable physical mappings for the logical `dataId` and canonical
 resource group:
@@ -143,24 +165,33 @@ built-in `ai-storage:nacos_config` provider is the default backend and a
 critical plugin required by server AI capabilities, so it cannot be disabled
 through plugin management while the server depends on it.
 
-The following properties select a provider for an AI resource domain:
+The following property selects the provider for new writes across all AI
+resource domains:
 
 ```properties
-nacos.ai.prompt.storage.provider=nacos_config
-nacos.ai.skill.storage.provider=nacos_config
-nacos.ai.agentspec.storage.provider=nacos_config
-nacos.ai.agent.storage.provider=nacos_config
+nacos.ai.storage.provider=nacos_config
 ```
 
-They are domain routing policy, not private configuration definitions owned by
+For compatibility, the following existing domain properties remain supported:
+
+```properties
+nacos.ai.prompt.storage.provider=
+nacos.ai.skill.storage.provider=
+nacos.ai.agentspec.storage.provider=
+nacos.ai.agent.storage.provider=
+```
+
+A non-blank domain property overrides the global property for that domain. If
+neither is configured, the domain uses `nacos_config`. These properties are
+domain routing policy, not private configuration definitions owned by
 `ai-storage:nacos_config`.
 
-When the AI module is active, all providers selected independently for Prompt, Skill, AgentSpec,
-and Agent are required implementations of this critical routed type. The same provider may satisfy
-multiple domains. Before startup succeeds, every distinct selected provider must be discovered and
-enabled; a different available provider is not a valid fallback. When the AI module is disabled by
-function mode or `nacos.extension.ai.enabled=false`, AI storage is inactive and does not impose a
-startup requirement.
+When the AI module is active, every effective provider selected after applying the precedence above
+is a required implementation of this critical routed type. Before startup succeeds, every distinct
+selected provider must be discovered and enabled; a different available provider is not a valid
+fallback. When the AI module is disabled by function mode or
+`nacos.extension.ai.enabled=false`, AI storage is inactive and does not impose a startup
+requirement.
 
 AI storage implementations are built from Spring-managed services during context refresh, so this
 type does not participate in pre-refresh critical validation. The unified plugin manager performs
@@ -186,6 +217,14 @@ Storage plugins must preserve byte content exactly. They must not change
 resource metadata, version state, [visibility](../auth/visibility-plugin-spec.md),
 or authorization. Missing storage providers must fail explicitly. Publish-time
 review remains owned by the [AI pipeline](ai-pipeline-plugin-spec.md).
+
+The AI resource layer owns cross-node resource-change notification. Storage
+callbacks and resource-change hints may both enqueue the same node-local,
+delay-merged projection refresh. Such refresh work is transient process state:
+it must not be persisted to `ai_resource_task` or another durable task table.
+Durable search-index and lifecycle tasks remain independent from Watch
+projection refresh. Providers must not publish resource bytes through the
+callback contract.
 
 Implementations must document:
 

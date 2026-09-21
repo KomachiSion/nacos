@@ -44,7 +44,7 @@ import com.alibaba.nacos.common.remote.client.grpc.GrpcClientConfig;
 import com.alibaba.nacos.common.utils.JacksonUtils;
 import com.alibaba.nacos.common.utils.MD5Utils;
 import com.fasterxml.jackson.databind.JsonNode;
-import io.prometheus.client.Gauge;
+
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -60,10 +60,13 @@ import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executor;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -76,15 +79,14 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doReturn;
-import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
-import static org.mockito.Mockito.verify;
 
 @ExtendWith(MockitoExtension.class)
 class ClientWorkerTest {
@@ -318,6 +320,229 @@ class ClientWorkerTest {
             type);
         assertFalse(b);
         
+    }
+    
+    @Test
+    void testPublishConfigWithResponsePreservesErrorCodeFromRpcException() throws NacosException {
+        // Test the real ConfigRpcTransportClient.publishConfigWithResponse() layer:
+        // when requestProxy/RPC throws NacosException carrying an error code (e.g., NO_RIGHT,
+        // CAS conflict), the returned ConfigPublishResponse must preserve that error code
+        // instead of collapsing to -1. This tests the actual RPC-to-result mapping, not a
+        // mocked ClientWorker.publishConfigWithResponse().
+        Properties prop = new Properties();
+        ConfigFilterChainManager filter = new ConfigFilterChainManager(new Properties());
+        ConfigServerListManager agent = Mockito.mock(ConfigServerListManager.class);
+        
+        final NacosClientProperties nacosClientProperties =
+            NacosClientProperties.PROTOTYPE.derive(prop);
+        ClientWorker clientWorker = new ClientWorker(filter, agent, nacosClientProperties);
+        
+        String dataId = "a";
+        String group = "b";
+        String tenant = "c";
+        String content = "d";
+        String appName = "app";
+        String tag = "tag";
+        String betaIps = "1.1.1.1";
+        String casMd5 = "1111";
+        String type = "properties";
+        
+        // RPC layer throws NacosException with NO_RIGHT error code (simulating server rejection)
+        Mockito.when(rpcClient.request(any(ConfigPublishRequest.class)))
+            .thenThrow(new NacosException(NacosException.NO_RIGHT, "no right for publish"));
+        
+        ConfigPublishResponse response = clientWorker.publishConfigWithResponse(dataId, group,
+            tenant, appName, tag, betaIps, content, null, casMd5, type);
+        
+        // Error code and message must be preserved from the NacosException
+        assertFalse(response.isSuccess());
+        assertEquals(NacosException.NO_RIGHT, response.getErrorCode());
+        assertEquals("no right for publish", response.getMessage());
+    }
+    
+    @Test
+    void testPublishConfigWithResponsePreservesCasConflictErrorCode() throws NacosException {
+        // Verify CAS conflict error code (409) is preserved through the RPC layer
+        Properties prop = new Properties();
+        ConfigFilterChainManager filter = new ConfigFilterChainManager(new Properties());
+        ConfigServerListManager agent = Mockito.mock(ConfigServerListManager.class);
+        
+        final NacosClientProperties nacosClientProperties =
+            NacosClientProperties.PROTOTYPE.derive(prop);
+        ClientWorker clientWorker = new ClientWorker(filter, agent, nacosClientProperties);
+        
+        Mockito.when(rpcClient.request(any(ConfigPublishRequest.class)))
+            .thenThrow(new NacosException(409, "cas md5 conflict"));
+        
+        ConfigPublishResponse response = clientWorker.publishConfigWithResponse("a", "b", "c",
+            "app", "tag", "1.1.1.1", "content", null, "old-md5", "properties");
+        
+        assertFalse(response.isSuccess());
+        assertEquals(409, response.getErrorCode());
+        assertEquals("cas md5 conflict", response.getMessage());
+    }
+    
+    @Test
+    void testAddTenantListenersWithContentUsesAtomicUpdate() throws Exception {
+        // Test the real ClientWorker.addTenantListenersWithContent() production path on an
+        // existing cache. Verify that the method uses atomic setConfigContentAndKey() (which
+        // sets verifiedPair=true) rather than two separate setters. This test would fail if
+        // the production path reverted to separate setEncryptedDataKey() + setContent() calls.
+        Properties prop = new Properties();
+        ConfigFilterChainManager filter = new ConfigFilterChainManager(new Properties());
+        ConfigServerListManager agent = Mockito.mock(ConfigServerListManager.class);
+        
+        final NacosClientProperties nacosClientProperties =
+            NacosClientProperties.PROTOTYPE.derive(prop);
+        ClientWorker clientWorker = new ClientWorker(filter, agent, nacosClientProperties);
+        
+        String dataId = "test-data";
+        String group = "test-group";
+        String content = "listener-content-v1";
+        String encryptedDataKey = "listener-key-v1";
+        
+        // First register the cache (existing cache scenario)
+        CacheData cacheData = clientWorker.addCacheDataIfAbsent(dataId, group);
+        assertNotNull(cacheData);
+        
+        // Pre-populate with an initial verified pair
+        cacheData.setConfigContentAndKey("initial-content", "initial-key");
+        
+        // Call the real production method with an empty listener list
+        clientWorker.addTenantListenersWithContent(dataId, group, content, encryptedDataKey,
+            new ArrayList<>());
+        
+        // Verify the cache data was updated atomically
+        CacheData updatedCache = clientWorker.getCache(dataId, group);
+        assertNotNull(updatedCache);
+        assertEquals(content, updatedCache.getContent());
+        assertEquals(encryptedDataKey, updatedCache.getEncryptedDataKey());
+        
+        // Verify verifiedPair is true (proves setConfigContentAndKey was used, not separate setters)
+        Field verifiedPairField = CacheData.class.getDeclaredField("verifiedPair");
+        verifiedPairField.setAccessible(true);
+        boolean verifiedPair = (boolean) verifiedPairField.get(updatedCache);
+        assertTrue(verifiedPair,
+            "addTenantListenersWithContent must use atomic setConfigContentAndKey (verifiedPair=true)");
+        
+        // Verify getConsistentSnapshot returns the consistent pair
+        CacheData.ConfigSnapshot snapshot = updatedCache.getConsistentSnapshot();
+        assertNotNull(snapshot);
+        assertEquals(content, snapshot.getContent());
+        assertEquals(encryptedDataKey, snapshot.getEncryptedDataKey());
+    }
+    
+    @Test
+    void testAddTenantListenersWithContentAtomicUnderLatchInterleaving() throws Exception {
+        // Deterministic regression test through the real ClientWorker.addTenantListenersWithContent()
+        // production path. Verifies that the worker uses atomic setConfigContentAndKey() and
+        // NEVER calls individual setEncryptedDataKey() or setContent() for this update path.
+        // This test FAILS if production regresses to the old two-setter implementation.
+        // A latch is also used to cover the concurrency contract: if separate setters were used,
+        // a concurrent reader between them must never see a mismatched content/key pair.
+        Properties prop = new Properties();
+        ConfigFilterChainManager filter = new ConfigFilterChainManager(new Properties());
+        ConfigServerListManager agent = Mockito.mock(ConfigServerListManager.class);
+        Mockito.lenient().when(agent.getTenant()).thenReturn("");
+        Mockito.lenient().when(agent.getName()).thenReturn("test-agent");
+        
+        final NacosClientProperties nacosClientProperties =
+            NacosClientProperties.PROTOTYPE.derive(prop);
+        ClientWorker clientWorker = new ClientWorker(filter, agent, nacosClientProperties);
+        
+        String dataId = "test-data-latch";
+        String group = "test-group";
+        String tenant = "";
+        String oldContent = "old-content-v1";
+        String oldKey = "old-key-v1";
+        String newContent = "new-content-v2";
+        String newKey = "new-key-v2";
+        
+        // Create and pre-populate the cache with an initial verified pair (before spy creation)
+        CacheData cacheData = clientWorker.addCacheDataIfAbsent(dataId, group, tenant);
+        cacheData.setConfigContentAndKey(oldContent, oldKey);
+        
+        // Create a spy that inserts a latch after setEncryptedDataKey() to force interleaving.
+        // If production uses atomic setConfigContentAndKey(), this method is never called.
+        CacheData spyCache = Mockito.spy(cacheData);
+        CountDownLatch writerMidLatch = new CountDownLatch(1);
+        CountDownLatch readerDoneLatch = new CountDownLatch(1);
+        AtomicReference<CacheData.ConfigSnapshot> capturedSnapshot = new AtomicReference<>();
+        
+        // Use lenient stubbing because atomic setConfigContentAndKey() never calls
+        // setEncryptedDataKey(); the stub only triggers if production regresses to separate setters.
+        Mockito.lenient().doAnswer(invocation -> {
+            // Call the real method first (sets encryptedDataKey and verifiedPair=false)
+            Object result = invocation.callRealMethod();
+            // Signal that we're between the two setters
+            writerMidLatch.countDown();
+            // Wait for reader to finish capturing
+            readerDoneLatch.await(5, TimeUnit.SECONDS);
+            return result;
+        }).when(spyCache).setEncryptedDataKey(anyString());
+        
+        // Replace the cache in cacheMap with the spy via reflection
+        Field cacheMapField = ClientWorker.class.getDeclaredField("cacheMap");
+        cacheMapField.setAccessible(true);
+        AtomicReference<Map<String, CacheData>> cacheMapRef =
+            (AtomicReference<Map<String, CacheData>>) cacheMapField.get(clientWorker);
+        Map<String, CacheData> newMap = new HashMap<>(cacheMapRef.get());
+        newMap.put(GroupKey.getKeyTenant(dataId, group, tenant), spyCache);
+        cacheMapRef.set(newMap);
+        
+        // Start writer thread calling the real production method
+        Thread writerThread = new Thread(() -> {
+            try {
+                clientWorker.addTenantListenersWithContent(dataId, group, newContent, newKey,
+                    new ArrayList<>());
+            } catch (NacosException e) {
+                throw new RuntimeException(e);
+            }
+        });
+        writerThread.start();
+        
+        // Wait for writer to reach mid-point (between setters), or timeout if atomic path
+        boolean interleavingOccurred = writerMidLatch.await(2, TimeUnit.SECONDS);
+        
+        if (interleavingOccurred) {
+            // Writer is between two setters - capture snapshot now (configLock is released
+            // between individual setters, so getConsistentSnapshot() can proceed)
+            capturedSnapshot.set(spyCache.getConsistentSnapshot());
+            // Allow writer to continue
+            readerDoneLatch.countDown();
+        } else {
+            // Atomic path - setConfigContentAndKey() never calls setEncryptedDataKey(),
+            // so writer already completed. Release latch to unblock (no-op if already done).
+            readerDoneLatch.countDown();
+        }
+        
+        writerThread.join(5000);
+        
+        // Verify final state is correct
+        CacheData finalCache = clientWorker.getCache(dataId, group, tenant);
+        assertEquals(newContent, finalCache.getContent());
+        assertEquals(newKey, finalCache.getEncryptedDataKey());
+        
+        // === CORE ASSERTION: verify the worker used the atomic update API ===
+        // This is what makes the test fail against the two-setter regression.
+        // Use qualified Mockito.verify() to avoid static import loss in merge refs.
+        Mockito.verify(spyCache, times(1)).setConfigContentAndKey(newContent, newKey);
+        Mockito.verify(spyCache, never()).setEncryptedDataKey(anyString());
+        Mockito.verify(spyCache, never()).setContent(anyString());
+        
+        // Concurrency contract: if interleaving occurred (separate setters), the captured
+        // snapshot must be null (verifiedPair invalidated) or a complete consistent pair.
+        if (interleavingOccurred && capturedSnapshot.get() != null) {
+            CacheData.ConfigSnapshot snap = capturedSnapshot.get();
+            boolean isOldPair = oldContent.equals(snap.getContent())
+                && oldKey.equals(snap.getEncryptedDataKey());
+            boolean isNewPair = newContent.equals(snap.getContent())
+                && newKey.equals(snap.getEncryptedDataKey());
+            assertTrue(isOldPair || isNewPair,
+                "Captured snapshot between setters must be a consistent pair (old or new), "
+                    + "not mismatched: content=" + snap.getContent()
+                    + ", key=" + snap.getEncryptedDataKey());
+        }
     }
     
     @Test
@@ -969,15 +1194,12 @@ class ClientWorkerTest {
             NacosClientProperties.PROTOTYPE.derive(prop);
         final ClientWorker clientWorker = new ClientWorker(filter, agent, nacosClientProperties);
         
-        Gauge.Child mockGaugeChild = mock(Gauge.Child.class);
         try (MockedStatic<MetricsMonitor> mockedMetricsMonitor =
             Mockito.mockStatic(MetricsMonitor.class)) {
-            mockedMetricsMonitor.when(MetricsMonitor::getListenConfigCountMonitor)
-                .thenReturn(mockGaugeChild);
             
             clientWorker.removeCache(dataId, group, tenant);
             
-            verify(mockGaugeChild, times(1)).set(0);
+            mockedMetricsMonitor.verify(() -> MetricsMonitor.recordListenConfigCount(0), times(1));
         }
     }
     
@@ -997,15 +1219,12 @@ class ClientWorkerTest {
         final ClientWorker clientWorker = new ClientWorker(filter, agent, nacosClientProperties);
         clientWorkerSpy = Mockito.spy(clientWorker);
         
-        Gauge.Child mockGaugeChild = mock(Gauge.Child.class);
         try (MockedStatic<MetricsMonitor> mockedMetricsMonitor =
             Mockito.mockStatic(MetricsMonitor.class)) {
-            mockedMetricsMonitor.when(MetricsMonitor::getListenConfigCountMonitor)
-                .thenReturn(mockGaugeChild);
             
             clientWorker.removeCache(dataId, group, tenant);
             
-            verify(mockGaugeChild, times(0)).set(0);
+            mockedMetricsMonitor.verify(() -> MetricsMonitor.recordListenConfigCount(0), times(0));
         }
     }
     
@@ -1023,15 +1242,12 @@ class ClientWorkerTest {
             NacosClientProperties.PROTOTYPE.derive(prop);
         final ClientWorker clientWorker = new ClientWorker(filter, agent, nacosClientProperties);
         
-        Gauge.Child mockGaugeChild = mock(Gauge.Child.class);
         try (MockedStatic<MetricsMonitor> mockedMetricsMonitor =
             Mockito.mockStatic(MetricsMonitor.class)) {
-            mockedMetricsMonitor.when(MetricsMonitor::getListenConfigCountMonitor)
-                .thenReturn(mockGaugeChild);
             
             clientWorker.removeCache(dataId, group, tenant);
             
-            verify(mockGaugeChild, times(1)).set(0);
+            mockedMetricsMonitor.verify(() -> MetricsMonitor.recordListenConfigCount(0), times(1));
         }
     }
     
@@ -1051,14 +1267,12 @@ class ClientWorkerTest {
         final ClientWorker clientWorker = new ClientWorker(filter, agent, nacosClientProperties);
         clientWorkerSpy = Mockito.spy(clientWorker);
         
-        Gauge.Child mockGaugeChild = mock(Gauge.Child.class);
         try (MockedStatic<MetricsMonitor> mockedMetricsMonitor =
             Mockito.mockStatic(MetricsMonitor.class)) {
-            mockedMetricsMonitor.when(MetricsMonitor::getListenConfigCountMonitor)
-                .thenReturn(mockGaugeChild);
             
             RuntimeException exception = new RuntimeException("Mocked exception");
-            doThrow(exception).when(mockGaugeChild).set(0);
+            mockedMetricsMonitor.when(() -> MetricsMonitor.recordListenConfigCount(0))
+                .thenThrow(exception);
             
             assertDoesNotThrow(() -> clientWorker.removeCache(dataId, group, tenant));
         }
@@ -1078,15 +1292,12 @@ class ClientWorkerTest {
         NacosClientProperties nacosClientProperties = NacosClientProperties.PROTOTYPE.derive(prop);
         ClientWorker clientWorker = new ClientWorker(filter, agent, nacosClientProperties);
         
-        Gauge.Child mockGaugeChild = mock(Gauge.Child.class);
         try (MockedStatic<MetricsMonitor> mockedMetricsMonitor =
             Mockito.mockStatic(MetricsMonitor.class)) {
-            mockedMetricsMonitor.when(MetricsMonitor::getListenConfigCountMonitor)
-                .thenReturn(mockGaugeChild);
             
             clientWorker.addCacheDataIfAbsent(dataId, group, tenant);
             
-            verify(mockGaugeChild, times(1)).set(1);
+            mockedMetricsMonitor.verify(() -> MetricsMonitor.recordListenConfigCount(1), times(1));
         }
     }
     
@@ -1109,7 +1320,8 @@ class ClientWorkerTest {
             Mockito.mockStatic(MetricsMonitor.class)) {
             clientWorker.addCacheDataIfAbsent(dataId, group, tenant);
             
-            mockedMetricsMonitor.verify(MetricsMonitor::getListenConfigCountMonitor, never());
+            mockedMetricsMonitor.verify(() -> MetricsMonitor.recordListenConfigCount(anyInt()),
+                never());
         }
     }
     
@@ -1126,15 +1338,12 @@ class ClientWorkerTest {
         NacosClientProperties nacosClientProperties = NacosClientProperties.PROTOTYPE.derive(prop);
         ClientWorker clientWorker = new ClientWorker(filter, agent, nacosClientProperties);
         
-        Gauge.Child mockGaugeChild = mock(Gauge.Child.class);
         try (MockedStatic<MetricsMonitor> mockedMetricsMonitor =
             Mockito.mockStatic(MetricsMonitor.class)) {
-            mockedMetricsMonitor.when(MetricsMonitor::getListenConfigCountMonitor)
-                .thenReturn(mockGaugeChild);
             
             clientWorker.addCacheDataIfAbsent(dataId, group, tenant);
             
-            verify(mockGaugeChild, times(1)).set(1);
+            mockedMetricsMonitor.verify(() -> MetricsMonitor.recordListenConfigCount(1), times(1));
         }
     }
 }

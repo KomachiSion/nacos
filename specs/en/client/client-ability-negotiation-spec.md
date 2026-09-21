@@ -53,6 +53,7 @@ The current server declares support for:
 | `SERVER_FUZZY_WATCH` | Config or Naming fuzzy watch is supported. |
 | `SERVER_DISTRIBUTED_LOCK` | Distributed Lock is supported. |
 | `SERVER_MCP_REGISTRY` | MCP registry operations are supported. |
+| `SERVER_MCP_DRAFT_RELEASE` | MCP release understands the `createDraft` field. |
 | `SERVER_AGENT_REGISTRY` | Legacy A2A Agent and AgentCard registry operations are supported. |
 | `SERVER_AGENT_CARD_V1` | A2A AgentCard 1.0 protocol fields are supported. |
 
@@ -67,14 +68,30 @@ their handlers and Java SDK form a complete implementation.
 
 | Mode | Constant | Wire key | Meaning |
 |---|---|---|---|
-| `SERVER` | `SERVER_AGENT_DISCOVERY_V1` | `agentDiscoveryV1` | Server accepts RAD Search and Discover payloads. |
-| `SERVER` | `SERVER_AGENT_ENDPOINT_V1` | `agentEndpointV1` | Server accepts RAD runtime Endpoint publication payloads. |
+| `SERVER` | `SERVER_RAD_V1` | `radV1` | Server accepts the complete Nacos 3.3 RAD v1 base contract. |
+| `SERVER` | `SERVER_RAD_WATCH_V1` | `radWatchV1` | Server accepts Subscribe, Unsubscribe, and fingerprint Hint binding payloads. |
+| `SDK_CLIENT` | `SDK_RAD_WATCH_V1` | `radWatchV1` | Client accepts and acknowledges fingerprint Hint push payloads. |
 
-The first `subscribeAgent` polls Discover locally and defines no SDK-client
-ability. A future server Watch/Push design must separately review its client
-ability, payload, and acknowledgement contract. Legacy `SERVER_AGENT_REGISTRY`,
-`SERVER_AGENT_CARD_V1`, and `SDK_AGENT_REGISTRY` continue to gate only the old
-A2A contract. They are not a fallback for any RAD operation.
+Base RAD and Watch are independent deployment units. gRPC server-aware Watch
+is enabled only when the current connection reports both Watch abilities. If
+either is absent or unknown, the client must not send Watch payloads and uses
+the documented HTTP Watch or local Discover-polling fallback. Legacy
+`SERVER_AGENT_REGISTRY`, `SERVER_AGENT_CARD_V1`, and `SDK_AGENT_REGISTRY`
+continue to gate only the old A2A contract. They are not a fallback for any RAD
+operation.
+
+### 2.2 MCP Draft Release Ability
+
+| Mode | Constant | Wire key | Meaning |
+|---|---|---|---|
+| `SERVER` | `SERVER_MCP_DRAFT_RELEASE` | `mcpDraftRelease` | The selected server understands `ReleaseMcpServerRequest.createDraft` and will not reinterpret it as historical direct-online release. |
+
+The ability does not assert that cluster migration has reached
+`LIFECYCLE_MANAGED`; that remains a dynamic server-side precondition. A client
+sending `createDraft=true` requires `SUPPORTED` strictly. `NOT_SUPPORTED` and
+`UNKNOWN` both produce `SERVER_NOT_IMPLEMENTED` before send, with no fallback
+or replay. Historical release with the field absent or `false` continues to
+require only `SERVER_MCP_REGISTRY`.
 
 ## 3. gRPC Negotiation Flow
 
@@ -126,14 +143,16 @@ features:
 - Distributed Lock must require `SERVER_DISTRIBUTED_LOCK` because the feature is
   experimental and not universally available.
 - AI MCP registry operations must require `SERVER_MCP_REGISTRY`.
+- MCP draft release must additionally require `SERVER_MCP_DRAFT_RELEASE`.
 - Legacy A2A Agent and AgentCard operations must require
   `SERVER_AGENT_REGISTRY`.
 - A2A AgentCard 1.0 fields should require `SERVER_AGENT_CARD_V1` or use an
   explicitly documented compatibility conversion.
-- RAD Search and Discover requests must require `SERVER_AGENT_DISCOVERY_V1`;
-  local polling subscriptions reuse the same Discover check.
-- RAD runtime Endpoint registration and deregistration must require
-  `SERVER_AGENT_ENDPOINT_V1`.
+- RAD definition publication, Search and Discover, and runtime Endpoint
+  publication must require `SERVER_RAD_V1`.
+- gRPC RAD Watch must require both `SERVER_RAD_WATCH_V1` and
+  `SDK_RAD_WATCH_V1`; local polling fallback requires only the base Discover
+  ability.
 
 Feature code should not cache a positive ability result beyond the current
 connection. It should query the runtime connection ability when the operation is
@@ -141,8 +160,9 @@ about to execute or when a cached value is known to belong to the current
 connection.
 
 After reconnect, the client must negotiate abilities again before restoring
-Endpoint publications. A local polling subscription stores no
-connection-scoped Watch state; its next Discover uses the new connection.
+Endpoint publications or gRPC Wire Watches. Canonical local Watch intent
+survives the connection, but every old wire key is discarded. When Watch is no
+longer negotiated, recovery uses the documented transport or polling fallback.
 
 ## 6. Compatibility Rules
 
@@ -159,3 +179,38 @@ removed only according to the
 
 - The public list of ability keys should be generated from source to avoid
   documentation drift.
+
+## AI Client HTTP capabilities
+
+`GET /v3/client/ai/capabilities` returns `Result` with
+`data.schemaVersion=1` and Boolean `data.capabilities` keys `radV1`, `mcp`,
+`skill`, `prompt`, and `agentSpec`. These describe the responding Client HTTP
+binding only, not gRPC reachability, cluster-wide support, resource permission,
+or migration readiness. RAD includes HTTP Watch; no separate public Watch or
+A2A compatibility flag is added. Existing gRPC ability keys keep their meaning.
+
+The standard Client auth flow uses `OPEN_API + AI + READ + ONLY_IDENTITY` and
+an explicit resource-less parser. A valid identity with no resource grants may
+query it; missing/invalid credentials are rejected when Client auth applies,
+even when AI anonymous access is enabled. Client auth-off and normal plugin or
+internal-identity bypasses retain existing behavior. Admin/Console auth toggles
+are independent. Extra resource parameters and Client-id headers are ignored;
+this read neither accesses resources nor creates or renews a Client/Publisher.
+
+The SDK preserves per-feature `SUPPORTED`, `NOT_SUPPORTED`, and `UNKNOWN`.
+Only a Boolean in a valid schema-version-1 response provides evidence. Missing
+or wrongly typed keys remain unknown; unknown keys are ignored. Unknown schema,
+empty/malformed responses and capability-route 404/405 do not prove RAD absent.
+Authentication and connectivity failures retain their error classification.
+Cache entries are bounded, short-lived, coalesce concurrent requests, and are
+isolated by target URL (including context path/HTTP scheme) and a digest of the
+identity context; credentials are not retained as plaintext cache keys.
+
+Capability evidence is separate from the SDK instance's A2A routing choice.
+A reliably selected legacy mode remains legacy through reconnect and refresh,
+until shutdown/reinstantiation. Unknown RAD plus a reliable legacy A2A binding
+can choose that binding without claiming native RAD is unsupported. Unknown
+alone never fixes legacy mode. Native RAD still uses actual target evidence;
+an ordinary successful RAD call can provide positive evidence without an
+additional probe write. C06 prepares these components; the legacy facade is
+connected to them only when all adaptation paths are enabled together.

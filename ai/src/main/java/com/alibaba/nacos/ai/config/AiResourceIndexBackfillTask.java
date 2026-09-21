@@ -16,24 +16,25 @@
 
 package com.alibaba.nacos.ai.config;
 
-import com.alibaba.nacos.ai.constant.AiResourceConstants;
-import com.alibaba.nacos.ai.constant.Constants;
-import com.alibaba.nacos.ai.model.AiResource;
-import com.alibaba.nacos.ai.model.AiResourceVersion;
 import com.alibaba.nacos.ai.model.search.AiResourceSearchDocument;
-import com.alibaba.nacos.ai.service.McpServerOperationService;
+import com.alibaba.nacos.ai.service.mcp.McpLifecycleOperationService;
 import com.alibaba.nacos.ai.service.search.AiResourceEmbeddingService;
-import com.alibaba.nacos.ai.service.search.AiResourceSearchDocumentBuilder;
-import com.alibaba.nacos.ai.service.search.AiResourceSearchConstants;
+import com.alibaba.nacos.ai.service.search.AiResourceIndexContentLoader;
 import com.alibaba.nacos.ai.service.search.AiResourceIndexMaintenanceService;
+import com.alibaba.nacos.ai.service.search.AiResourceIndexProjection;
+import com.alibaba.nacos.ai.service.search.AiResourceIndexSource;
+import com.alibaba.nacos.ai.service.search.AiResourceIndexSourcePage;
+import com.alibaba.nacos.ai.service.search.AiResourceSearchTypeHandler;
+import com.alibaba.nacos.ai.service.search.AiResourceSearchTypeHandlerRegistry;
+import com.alibaba.nacos.ai.service.search.AiResourceSearchConstants;
 import com.alibaba.nacos.ai.service.search.AiResourceSearchRepository;
+import com.alibaba.nacos.ai.service.search.AiResourceSearchReadinessService;
+import com.alibaba.nacos.ai.service.search.McpAiResourceSearchTypeHandler;
+import com.alibaba.nacos.ai.service.search.StoredAiResourceSearchTypeHandler;
 import com.alibaba.nacos.ai.service.resource.AiResourceManager;
-import com.alibaba.nacos.ai.storage.NacosConfigAiResourceStorage;
-import com.alibaba.nacos.api.ai.constant.AiConstants;
-import com.alibaba.nacos.api.ai.model.mcp.McpServerBasicInfo;
-import com.alibaba.nacos.api.model.Page;
 import com.alibaba.nacos.api.model.response.Namespace;
 import com.alibaba.nacos.common.executor.ExecutorFactory;
+import com.alibaba.nacos.common.utils.MD5Utils;
 import com.alibaba.nacos.common.utils.StringUtils;
 import com.alibaba.nacos.common.utils.ThreadFactoryBuilder;
 import com.alibaba.nacos.config.server.exception.ConfigAlreadyExistsException;
@@ -48,17 +49,20 @@ import com.alibaba.nacos.plugin.ai.vector.spi.AiResourceVectorIndex;
 import com.alibaba.nacos.sys.env.EnvUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.DisposableBean;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.ApplicationListener;
 import org.springframework.stereotype.Component;
 
 import java.util.Collections;
-import java.util.LinkedHashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
-import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -85,22 +89,28 @@ public class AiResourceIndexBackfillTask
     
     private static final long BACKFILL_MARKER_STALE_MILLIS = 10 * 60 * 1000L;
     
+    private static final long BACKFILL_MARKER_RENEW_MILLIS =
+        BACKFILL_MARKER_STALE_MILLIS / 3;
+    
     private static final int SCAN_PAGE_SIZE = 100;
     
     private static final long DEFAULT_RECONCILE_INTERVAL_SECONDS = 300L;
-    
-    private static final String RESOURCE_TYPE_MCP = "mcp";
     
     private final AtomicBoolean initialized = new AtomicBoolean(false);
     
     private final ScheduledExecutorService backfillExecutor =
         ExecutorFactory.Managed.newSingleScheduledExecutorService(
-            AiResourceIndexBackfillTask.class.getCanonicalName(),
-            new ThreadFactoryBuilder().daemon(true).nameFormat("nacos-ai-ard-backfill-%d").build());
+            AiResourceIndexBackfillTask.class.getCanonicalName() + ".scan",
+            new ThreadFactoryBuilder().daemon(true)
+                .nameFormat("nacos-ai-resource-index-backfill-%d").build());
     
-    private final AiResourceManager resourceManager;
+    private final ScheduledExecutorService markerLeaseExecutor =
+        ExecutorFactory.Managed.newSingleScheduledExecutorService(
+            AiResourceIndexBackfillTask.class.getCanonicalName() + ".lease",
+            new ThreadFactoryBuilder().daemon(true)
+                .nameFormat("nacos-ai-resource-index-reconcile-lease-%d").build());
     
-    private final McpServerOperationService mcpServerOperationService;
+    private final AiResourceSearchTypeHandlerRegistry typeHandlerRegistry;
     
     private final AiResourceSearchRepository repository;
     
@@ -116,18 +126,18 @@ public class AiResourceIndexBackfillTask
     
     private final ConfigOperationService configOperationService;
     
-    private final AiResourceSearchDocumentBuilder entryBuilder =
-        new AiResourceSearchDocumentBuilder();
+    private final AiResourceSearchReadinessService readinessService;
     
-    public AiResourceIndexBackfillTask(AiResourceManager resourceManager,
-        McpServerOperationService mcpServerOperationService, AiResourceSearchRepository repository,
+    @Autowired
+    public AiResourceIndexBackfillTask(AiResourceSearchTypeHandlerRegistry typeHandlerRegistry,
+        AiResourceSearchRepository repository,
         AiResourceIndexMaintenanceService indexMaintenanceService,
         AiResourceEmbeddingService embeddingService, AiResourceVectorIndex vectorIndex,
         NamespaceOperationService namespaceOperationService,
         ConfigQueryChainService configQueryChainService,
-        ConfigOperationService configOperationService) {
-        this.resourceManager = resourceManager;
-        this.mcpServerOperationService = mcpServerOperationService;
+        ConfigOperationService configOperationService,
+        AiResourceSearchReadinessService readinessService) {
+        this.typeHandlerRegistry = typeHandlerRegistry;
         this.repository = repository;
         this.indexMaintenanceService = indexMaintenanceService;
         this.embeddingService = embeddingService;
@@ -135,6 +145,24 @@ public class AiResourceIndexBackfillTask
         this.namespaceOperationService = namespaceOperationService;
         this.configQueryChainService = configQueryChainService;
         this.configOperationService = configOperationService;
+        this.readinessService = readinessService;
+    }
+    
+    AiResourceIndexBackfillTask(AiResourceManager resourceManager,
+        McpLifecycleOperationService mcpOperationService,
+        AiResourceSearchRepository repository,
+        AiResourceIndexMaintenanceService indexMaintenanceService,
+        AiResourceEmbeddingService embeddingService, AiResourceVectorIndex vectorIndex,
+        NamespaceOperationService namespaceOperationService,
+        ConfigQueryChainService configQueryChainService,
+        ConfigOperationService configOperationService) {
+        this(new AiResourceSearchTypeHandlerRegistry(List.of(
+            new StoredAiResourceSearchTypeHandler(resourceManager,
+                AiResourceIndexContentLoader.NOOP),
+            new McpAiResourceSearchTypeHandler(mcpOperationService))), repository,
+            indexMaintenanceService, embeddingService, vectorIndex, namespaceOperationService,
+            configQueryChainService, configOperationService,
+            AiResourceSearchReadinessService.NOOP);
     }
     
     @Override
@@ -157,21 +185,36 @@ public class AiResourceIndexBackfillTask
     }
     
     private void executeBackfill() {
-        boolean markerCreated = false;
+        MarkerLease marker = null;
         try {
-            markerCreated = tryAcquireBackfillMarker();
-            if (!markerCreated) {
+            marker = tryAcquireBackfillMarker();
+            if (marker == null) {
                 LOGGER
                     .info("Skip AI resource index backfill because another node is processing it");
                 return;
             }
             BackfillStats stats = new BackfillStats();
-            for (Namespace namespace : getNamespaces()) {
+            Map<String, ReadinessTarget> readinessTargets = readinessTargets();
+            ReconciliationContext context = reconciliationContext();
+            NamespaceScan namespaceScan = getNamespaces();
+            for (Namespace namespace : namespaceScan.namespaces) {
+                marker.assertOwned();
                 String namespaceId = namespace.getNamespace();
-                reconcileAiResources(namespaceId, Constants.Skills.RESOURCE_TYPE_SKILL, stats);
-                reconcileAiResources(namespaceId,
-                    NacosConfigAiResourceStorage.RESOURCE_TYPE_PROMPT, stats);
-                reconcileMcpServers(namespaceId, stats);
+                for (AiResourceSearchTypeHandler handler : typeHandlerRegistry.handlers()) {
+                    for (String resourceType : handler.resourceTypes()) {
+                        BackfillStats typeStats = reconcileResources(namespaceId, resourceType,
+                            handler, context, marker);
+                        stats.add(typeStats);
+                        ReadinessTarget target = readinessTargets.get(resourceType);
+                        if (target != null) {
+                            target.stats.add(typeStats);
+                        }
+                    }
+                }
+            }
+            marker.assertOwned();
+            if (namespaceScan.complete) {
+                recordReadiness(readinessTargets);
             }
             LOGGER.info(
                 "AI resource index backfill completed: scanned={}, rebuilt={}, skipped={}, failed={}",
@@ -179,58 +222,86 @@ public class AiResourceIndexBackfillTask
         } catch (Exception e) {
             LOGGER.error("AI resource index backfill failed unexpectedly", e);
         } finally {
-            if (markerCreated) {
-                releaseBackfillMarker();
+            if (marker != null) {
+                marker.close();
             }
         }
     }
     
-    private List<Namespace> getNamespaces() {
+    private NamespaceScan getNamespaces() {
         try {
             List<Namespace> namespaces = namespaceOperationService.getNamespaceList();
             if (namespaces != null && !namespaces.isEmpty()) {
-                return namespaces;
+                return new NamespaceScan(namespaces, true);
             }
         } catch (Exception e) {
             LOGGER.warn("Failed to list namespaces for AI resource index backfill", e);
         }
-        return Collections.singletonList(new Namespace(
-            com.alibaba.nacos.api.common.Constants.DEFAULT_NAMESPACE_ID, "public"));
+        return new NamespaceScan(Collections.singletonList(new Namespace(
+            com.alibaba.nacos.api.common.Constants.DEFAULT_NAMESPACE_ID, "public")), false);
     }
     
-    private void reconcileAiResources(String namespaceId, String resourceType,
-        BackfillStats stats) {
-        Set<String> canonicalNames = new LinkedHashSet<>();
+    private BackfillStats reconcileResources(String namespaceId, String resourceType,
+        AiResourceSearchTypeHandler handler, ReconciliationContext context, MarkerLease marker)
+        throws Exception {
+        BackfillStats stats = new BackfillStats();
         int pageNo = 1;
         while (true) {
-            Page<AiResource> page = resourceManager.listMetaByType(namespaceId, resourceType, null,
-                null, pageNo, SCAN_PAGE_SIZE);
-            List<AiResource> resources = page == null ? null : page.getPageItems();
-            if (resources == null || resources.isEmpty()) {
+            marker.assertOwned();
+            AiResourceIndexSourcePage page =
+                handler.scan(namespaceId, resourceType, pageNo, SCAN_PAGE_SIZE);
+            if (page.getItems().isEmpty()) {
                 break;
             }
-            for (AiResource resource : resources) {
-                canonicalNames.add(resource.getName());
-                backfillAiResource(namespaceId, resource, stats);
+            for (AiResourceIndexSource source : page.getItems()) {
+                backfillResource(namespaceId, resourceType, source, context, stats);
             }
-            if (resources.size() < SCAN_PAGE_SIZE) {
+            if (!page.hasMore()) {
                 break;
             }
             pageNo++;
         }
-        scheduleOrphanDeletes(namespaceId, resourceType, canonicalNames, stats);
+        scheduleOrphanDeletes(namespaceId, resourceType, handler, marker, stats);
+        return stats;
     }
     
-    private void backfillAiResource(String namespaceId, AiResource resource,
-        BackfillStats stats) {
+    private Map<String, ReadinessTarget> readinessTargets() {
+        Map<String, ReadinessTarget> result = new LinkedHashMap<>();
+        for (AiResourceSearchTypeHandler handler : typeHandlerRegistry.handlers()) {
+            if (handler.projectionVersion() <= 0) {
+                continue;
+            }
+            for (String resourceType : handler.resourceTypes()) {
+                result.put(resourceType,
+                    new ReadinessTarget(resourceType, handler.projectionVersion()));
+            }
+        }
+        return result;
+    }
+    
+    private void recordReadiness(Map<String, ReadinessTarget> targets) {
+        for (ReadinessTarget target : targets.values()) {
+            readinessService.recordCompletedScan(target.resourceType, target.projectionVersion,
+                target.stats.rebuilt == 0 && target.stats.failed == 0);
+        }
+    }
+    
+    private void backfillResource(String namespaceId, String resourceType,
+        AiResourceIndexSource source, ReconciliationContext context, BackfillStats stats) {
         stats.scanned++;
+        if (source.getFailure() != null) {
+            stats.failed++;
+            LOGGER.warn("Failed to project AI resource index for {}:{} in namespace {}",
+                resourceType, source.getResourceName(), namespaceId, source.getFailure());
+            return;
+        }
         try {
-            if (!needsAiResourceRebuild(namespaceId, resource)) {
+            if (!needsRebuild(namespaceId, resourceType, source, context)) {
                 stats.skipped++;
                 return;
             }
-            if (indexMaintenanceService.schedule(namespaceId, resource.getType(),
-                resource.getName())) {
+            if (indexMaintenanceService.scheduleReconciliation(namespaceId, resourceType,
+                source.getResourceName())) {
                 stats.rebuilt++;
             } else {
                 stats.failed++;
@@ -238,82 +309,24 @@ public class AiResourceIndexBackfillTask
         } catch (Exception e) {
             stats.failed++;
             LOGGER.warn("Failed to backfill AI resource index for {}:{} in namespace {}",
-                resource.getType(), resource.getName(), namespaceId, e);
+                resourceType, source.getResourceName(), namespaceId, e);
         }
     }
     
-    private boolean needsAiResourceRebuild(String namespaceId, AiResource resource) {
-        AiResourceSearchDocument current =
-            repository.findEntry(namespaceId, resource.getType(), resource.getName());
-        String latestVersion = AiResourceManager.resolveVersion(resource, null,
-            AiResourceConstants.LABEL_LATEST);
-        if (StringUtils.isBlank(latestVersion)) {
+    private boolean needsRebuild(String namespaceId, String resourceType,
+        AiResourceIndexSource source,
+        ReconciliationContext context) {
+        AiResourceSearchDocument current = StringUtils.isBlank(source.getResourceName()) ? null
+            : repository.findEntry(namespaceId, resourceType, source.getResourceName());
+        AiResourceIndexProjection projection = source.getProjection();
+        if (projection == null) {
             return current != null;
         }
-        AiResourceVersion version = resourceManager.findVersion(namespaceId, resource.getName(),
-            resource.getType(), latestVersion);
-        if (!isIndexable(resource, version)) {
-            return current != null;
-        }
-        AiResourceSearchDocument expected = entryBuilder.fromAiResource(resource, version);
-        return !isCurrent(current, expected);
+        return !isCurrent(current, projection.getDocument(), context);
     }
     
-    private void reconcileMcpServers(String namespaceId, BackfillStats stats) {
-        Set<String> canonicalNames = new LinkedHashSet<>();
-        int pageNo = 1;
-        while (true) {
-            Page<McpServerBasicInfo> page = mcpServerOperationService.listMcpServerWithPage(
-                namespaceId, null, Constants.MCP_LIST_SEARCH_ACCURATE, pageNo, SCAN_PAGE_SIZE);
-            List<McpServerBasicInfo> servers = page == null ? null : page.getPageItems();
-            if (servers == null || servers.isEmpty()) {
-                break;
-            }
-            for (McpServerBasicInfo server : servers) {
-                canonicalNames.add(firstNotBlank(server.getId(), server.getName()));
-                backfillMcpServer(namespaceId, server, stats);
-            }
-            if (servers.size() < SCAN_PAGE_SIZE) {
-                break;
-            }
-            pageNo++;
-        }
-        scheduleOrphanDeletes(namespaceId, RESOURCE_TYPE_MCP, canonicalNames, stats);
-    }
-    
-    private void backfillMcpServer(String namespaceId, McpServerBasicInfo server,
-        BackfillStats stats) {
-        stats.scanned++;
-        try {
-            if (!needsMcpServerRebuild(namespaceId, server)) {
-                stats.skipped++;
-                return;
-            }
-            String resourceName = firstNotBlank(server.getId(), server.getName());
-            if (indexMaintenanceService.schedule(namespaceId, RESOURCE_TYPE_MCP, resourceName)) {
-                stats.rebuilt++;
-            } else {
-                stats.failed++;
-            }
-        } catch (Exception e) {
-            stats.failed++;
-            LOGGER.warn("Failed to backfill AI resource index for mcp:{} in namespace {}",
-                firstNotBlank(server.getId(), server.getName()), namespaceId, e);
-        }
-    }
-    
-    private boolean needsMcpServerRebuild(String namespaceId, McpServerBasicInfo server) {
-        String resourceName = firstNotBlank(server.getId(), server.getName());
-        AiResourceSearchDocument current = StringUtils.isBlank(resourceName) ? null
-            : repository.findEntry(namespaceId, RESOURCE_TYPE_MCP, resourceName);
-        if (!isIndexable(server) || StringUtils.isBlank(resourceName)) {
-            return current != null;
-        }
-        AiResourceSearchDocument expected = entryBuilder.fromMcpServer(namespaceId, server);
-        return !isCurrent(current, expected);
-    }
-    
-    private boolean isCurrent(AiResourceSearchDocument current, AiResourceSearchDocument expected) {
+    private boolean isCurrent(AiResourceSearchDocument current,
+        AiResourceSearchDocument expected, ReconciliationContext context) {
         if (current == null
             || !AiResourceSearchConstants.STATUS_ENABLED.equals(current.getStatus())) {
             return false;
@@ -322,28 +335,37 @@ public class AiResourceIndexBackfillTask
             || !Objects.equals(current.getSourceDigest(), expected.getSourceDigest())) {
             return false;
         }
-        return !vectorIndex.available() || vectorIndex.isResourceVersionReady(
+        if (!context.vectorAvailable) {
+            return true;
+        }
+        return current.getId() != null && vectorIndex.isResourceVersionReady(
             current.getNamespaceId(), current.getResourceType(), current.getResourceName(),
-            current.getResourceVersion(), embeddingService.model(),
+            current.getResourceVersion(), context.embeddingModel, current.getId(),
             repository.countChunks(current.getId()));
     }
     
     private void scheduleOrphanDeletes(String namespaceId, String resourceType,
-        Set<String> canonicalNames, BackfillStats stats) {
-        Set<String> scheduled = new LinkedHashSet<>();
+        AiResourceSearchTypeHandler handler, MarkerLease marker, BackfillStats stats) {
         long afterId = 0L;
         while (true) {
+            marker.assertOwned();
             List<AiResourceSearchDocument> batch = repository.scanEntries(namespaceId,
                 Collections.singletonList(resourceType), afterId, SCAN_PAGE_SIZE);
             if (batch == null || batch.isEmpty()) {
                 break;
             }
             for (AiResourceSearchDocument entry : batch) {
-                if (canonicalNames.contains(entry.getResourceName())
-                    || !scheduled.add(entry.getResourceName())) {
+                try {
+                    if (handler.exists(namespaceId, resourceType, entry.getResourceName())) {
+                        continue;
+                    }
+                } catch (Exception e) {
+                    stats.failed++;
+                    LOGGER.warn("Failed to check canonical AI resource {}:{} in namespace {}",
+                        resourceType, entry.getResourceName(), namespaceId, e);
                     continue;
                 }
-                if (indexMaintenanceService.schedule(namespaceId, resourceType,
+                if (indexMaintenanceService.scheduleReconciliation(namespaceId, resourceType,
                     entry.getResourceName())) {
                     stats.rebuilt++;
                 } else {
@@ -361,28 +383,10 @@ public class AiResourceIndexBackfillTask
         }
     }
     
-    private boolean isIndexable(AiResource resource, AiResourceVersion version) {
-        return resource != null && version != null
-            && AiResourceConstants.META_STATUS_ENABLE.equalsIgnoreCase(resource.getStatus())
-            && AiResourceConstants.VERSION_STATUS_ONLINE.equalsIgnoreCase(version.getStatus());
-    }
-    
-    private boolean isIndexable(McpServerBasicInfo server) {
-        return server != null && server.isEnabled()
-            && AiConstants.Mcp.MCP_STATUS_ACTIVE.equalsIgnoreCase(server.getStatus())
-            && StringUtils.isNotBlank(resolveMcpVersion(server));
-    }
-    
-    private String resolveMcpVersion(McpServerBasicInfo server) {
-        if (server.getVersionDetail() != null
-            && StringUtils.isNotBlank(server.getVersionDetail().getVersion())) {
-            return server.getVersionDetail().getVersion();
-        }
-        return server.getVersion();
-    }
-    
-    private String firstNotBlank(String first, String second) {
-        return StringUtils.isNotBlank(first) ? first : second;
+    private ReconciliationContext reconciliationContext() {
+        boolean vectorAvailable = vectorIndex.available();
+        return new ReconciliationContext(vectorAvailable,
+            vectorAvailable ? embeddingService.model() : null);
     }
     
     private long positiveLong(String key, long defaultValue) {
@@ -394,67 +398,83 @@ public class AiResourceIndexBackfillTask
         }
     }
     
-    private boolean tryAcquireBackfillMarker() {
-        for (int i = 0; i < 2; i++) {
-            try {
-                ConfigForm form = new ConfigForm();
-                form.setNamespaceId(
-                    com.alibaba.nacos.api.common.Constants.DEFAULT_NAMESPACE_ID);
-                form.setGroup(BACKFILL_MARKER_GROUP);
-                form.setDataId(BACKFILL_MARKER_DATA_ID);
-                form.setContent(String.valueOf(System.currentTimeMillis()));
-                form.setSrcUser("nacos");
-                ConfigRequestInfo requestInfo = new ConfigRequestInfo();
-                requestInfo.setUpdateForExist(false);
-                configOperationService.publishConfig(form, requestInfo, null);
-                return true;
-            } catch (ConfigAlreadyExistsException e) {
-                if (isBackfillMarkerStale()) {
-                    LOGGER.warn(
-                        "Found stale AI resource index backfill marker, removing and retrying");
-                    releaseBackfillMarker();
-                    continue;
-                }
-                return false;
-            } catch (Exception e) {
-                LOGGER.error("Failed to create AI resource index backfill marker", e);
-                return false;
+    private MarkerLease tryAcquireBackfillMarker() {
+        String owner = UUID.randomUUID().toString();
+        String content = markerContent(owner);
+        try {
+            publishMarker(content, false, null);
+            return new MarkerLease(owner, markerMd5(content));
+        } catch (ConfigAlreadyExistsException e) {
+            MarkerRecord current = readMarker();
+            if (current == null || !current.expired()) {
+                return null;
             }
+            if (StringUtils.isBlank(current.md5)) {
+                LOGGER.warn(
+                    "Cannot take over expired AI resource index reconciliation lease "
+                        + "without CAS metadata");
+                return null;
+            }
+            try {
+                publishMarker(content, true, current.md5);
+                LOGGER.warn("Took over expired AI resource index reconciliation lease");
+                return new MarkerLease(owner, markerMd5(content));
+            } catch (Exception takeoverFailure) {
+                LOGGER.info("AI resource index reconciliation lease was taken by another node");
+                return null;
+            }
+        } catch (Exception e) {
+            LOGGER.error("Failed to create AI resource index backfill marker", e);
+            return null;
         }
-        return false;
     }
     
-    private boolean isBackfillMarkerStale() {
+    private MarkerRecord readMarker() {
         try {
             ConfigQueryChainRequest request = ConfigQueryChainRequest.buildConfigQueryChainRequest(
                 BACKFILL_MARKER_DATA_ID, BACKFILL_MARKER_GROUP,
                 com.alibaba.nacos.api.common.Constants.DEFAULT_NAMESPACE_ID);
             ConfigQueryChainResponse response = configQueryChainService.handle(request);
-            if (response.getStatus() == ConfigQueryChainResponse.ConfigQueryStatus.CONFIG_NOT_FOUND
+            if (response == null
+                || response
+                    .getStatus() == ConfigQueryChainResponse.ConfigQueryStatus.CONFIG_NOT_FOUND
                 || StringUtils.isBlank(response.getContent())) {
-                return false;
+                return null;
             }
-            long markerTime = Long.parseLong(response.getContent().trim());
-            return System.currentTimeMillis() - markerTime > BACKFILL_MARKER_STALE_MILLIS;
+            return MarkerRecord.parse(response.getContent(), response.getMd5());
         } catch (Exception e) {
             LOGGER.warn("Failed to inspect AI resource index backfill marker", e);
-            return false;
+            return null;
         }
     }
     
-    private void releaseBackfillMarker() {
-        try {
-            configOperationService.deleteConfig(BACKFILL_MARKER_DATA_ID, BACKFILL_MARKER_GROUP,
-                com.alibaba.nacos.api.common.Constants.DEFAULT_NAMESPACE_ID, null, null, "nacos",
-                null);
-        } catch (Exception e) {
-            LOGGER.warn("Failed to delete AI resource index backfill marker", e);
-        }
+    private String markerContent(String owner) {
+        return owner + "|" + (System.currentTimeMillis() + BACKFILL_MARKER_STALE_MILLIS);
+    }
+    
+    private String markerMd5(String content) {
+        return MD5Utils.md5Hex(content,
+            com.alibaba.nacos.api.common.Constants.ENCODE);
+    }
+    
+    private void publishMarker(String content, boolean updateForExist, String casMd5)
+        throws Exception {
+        ConfigForm form = new ConfigForm();
+        form.setNamespaceId(com.alibaba.nacos.api.common.Constants.DEFAULT_NAMESPACE_ID);
+        form.setGroup(BACKFILL_MARKER_GROUP);
+        form.setDataId(BACKFILL_MARKER_DATA_ID);
+        form.setContent(content);
+        form.setSrcUser("nacos");
+        ConfigRequestInfo requestInfo = new ConfigRequestInfo();
+        requestInfo.setUpdateForExist(updateForExist);
+        requestInfo.setCasMd5(casMd5);
+        configOperationService.publishConfig(form, requestInfo, null);
     }
     
     @Override
     public void destroy() {
         backfillExecutor.shutdownNow();
+        markerLeaseExecutor.shutdownNow();
     }
     
     private static final class BackfillStats {
@@ -466,5 +486,133 @@ public class AiResourceIndexBackfillTask
         private int skipped;
         
         private int failed;
+        
+        private void add(BackfillStats source) {
+            scanned += source.scanned;
+            rebuilt += source.rebuilt;
+            skipped += source.skipped;
+            failed += source.failed;
+        }
+    }
+    
+    private static final class ReadinessTarget {
+        
+        private final String resourceType;
+        
+        private final int projectionVersion;
+        
+        private final BackfillStats stats = new BackfillStats();
+        
+        private ReadinessTarget(String resourceType, int projectionVersion) {
+            this.resourceType = resourceType;
+            this.projectionVersion = projectionVersion;
+        }
+    }
+    
+    private static final class NamespaceScan {
+        
+        private final List<Namespace> namespaces;
+        
+        private final boolean complete;
+        
+        private NamespaceScan(List<Namespace> namespaces, boolean complete) {
+            this.namespaces = namespaces;
+            this.complete = complete;
+        }
+    }
+    
+    private static final class ReconciliationContext {
+        
+        private final boolean vectorAvailable;
+        
+        private final String embeddingModel;
+        
+        private ReconciliationContext(boolean vectorAvailable, String embeddingModel) {
+            this.vectorAvailable = vectorAvailable;
+            this.embeddingModel = embeddingModel;
+        }
+    }
+    
+    private final class MarkerLease implements AutoCloseable {
+        
+        private final String owner;
+        
+        private final AtomicBoolean owned = new AtomicBoolean(true);
+        
+        private final ScheduledFuture<?> renewal;
+        
+        private String currentMd5;
+        
+        private MarkerLease(String owner, String markerMd5) {
+            this.owner = owner;
+            this.currentMd5 = markerMd5;
+            this.renewal = markerLeaseExecutor.scheduleWithFixedDelay(this::renewSafely,
+                BACKFILL_MARKER_RENEW_MILLIS, BACKFILL_MARKER_RENEW_MILLIS,
+                TimeUnit.MILLISECONDS);
+        }
+        
+        private void assertOwned() {
+            if (!owned.get()) {
+                throw new IllegalStateException(
+                    "AI resource index reconciliation lease was lost");
+            }
+        }
+        
+        private synchronized void renewSafely() {
+            if (!owned.get()) {
+                return;
+            }
+            try {
+                String content = markerContent(owner);
+                publishMarker(content, true, currentMd5);
+                currentMd5 = markerMd5(content);
+            } catch (Exception e) {
+                owned.set(false);
+                LOGGER.warn("Failed to renew AI resource index reconciliation lease", e);
+            }
+        }
+        
+        @Override
+        public synchronized void close() {
+            renewal.cancel(false);
+            if (!owned.compareAndSet(true, false)) {
+                return;
+            }
+            try {
+                publishMarker(owner + "|0", true, currentMd5);
+            } catch (Exception e) {
+                LOGGER.warn("Failed to release AI resource index reconciliation lease", e);
+            }
+        }
+    }
+    
+    private static final class MarkerRecord {
+        
+        private final String owner;
+        
+        private final long expireAt;
+        
+        private final String md5;
+        
+        private MarkerRecord(String owner, long expireAt, String md5) {
+            this.owner = owner;
+            this.expireAt = expireAt;
+            this.md5 = md5;
+        }
+        
+        private boolean expired() {
+            return expireAt <= System.currentTimeMillis();
+        }
+        
+        private static MarkerRecord parse(String content, String md5) {
+            String value = content.trim();
+            int separator = value.lastIndexOf('|');
+            if (separator < 0) {
+                long createdAt = Long.parseLong(value);
+                return new MarkerRecord("", createdAt + BACKFILL_MARKER_STALE_MILLIS, md5);
+            }
+            return new MarkerRecord(value.substring(0, separator),
+                Long.parseLong(value.substring(separator + 1)), md5);
+        }
     }
 }

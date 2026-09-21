@@ -18,8 +18,10 @@ package com.alibaba.nacos.config.server.service;
 
 import com.alibaba.nacos.common.utils.MD5Utils;
 import com.alibaba.nacos.config.server.model.CacheItem;
+import com.alibaba.nacos.config.server.model.ConfigCache;
 import com.alibaba.nacos.config.server.model.ConfigCacheGray;
 import com.alibaba.nacos.config.server.model.gray.GrayRuleManager;
+import com.alibaba.nacos.config.server.service.dump.disk.ConfigDiskPathException;
 import com.alibaba.nacos.config.server.service.dump.disk.ConfigDiskService;
 import com.alibaba.nacos.config.server.service.dump.disk.ConfigDiskServiceFactory;
 import com.alibaba.nacos.config.server.utils.GroupKey2;
@@ -47,6 +49,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
@@ -401,6 +404,8 @@ class ConfigCacheServiceTest {
             ConfigCacheService.getGrayLastModifiedTs(groupKey, grayName));
         assertEquals(0,
             ConfigCacheService.getGrayLastModifiedTs(groupKey, "noGray"));
+        assertEquals(0,
+            ConfigCacheService.getGrayLastModifiedTs("noKey", grayName));
         
         ConfigCacheService.remove(dataId, group, tenant);
     }
@@ -636,6 +641,163 @@ class ConfigCacheServiceTest {
     }
     
     @Test
+    void testDumpRethrowsRejectedDiskPath() throws Exception {
+        String dataId = "rejectedDumpD";
+        String group = "rejectedDumpG";
+        String tenant = "rejectedDumpT";
+        String groupKey = GroupKey2.getKey(dataId, group, tenant);
+        ConfigDiskPathException rejection = new ConfigDiskPathException("group", "..");
+        doThrow(rejection).when(configDiskService)
+            .saveToDisk(eq(dataId), eq(group), eq(tenant), anyString());
+        
+        ConfigDiskPathException actual = assertThrows(ConfigDiskPathException.class,
+            () -> ConfigCacheService.dump(dataId, group, tenant, "content",
+                System.currentTimeMillis(), "text", "key"));
+        
+        assertEquals(rejection, actual);
+        cache().remove(groupKey);
+    }
+    
+    @Test
+    void testDumpGrayRethrowsRejectedDiskPath() throws Exception {
+        String dataId = "rejectedGrayDumpD";
+        String group = "rejectedGrayDumpG";
+        String tenant = "rejectedGrayDumpT";
+        String grayName = "tag_rejected";
+        String grayRule = "{\"type\":\"tag\",\"version\":\"1.0.0\","
+            + "\"expr\":\"rejected\",\"priority\":1}";
+        String groupKey = GroupKey2.getKey(dataId, group, tenant);
+        ConfigDiskPathException rejection = new ConfigDiskPathException("grayName", "..");
+        doThrow(rejection).when(configDiskService)
+            .saveGrayToDisk(eq(dataId), eq(group), eq(tenant), eq(grayName), anyString());
+        
+        ConfigDiskPathException actual = assertThrows(ConfigDiskPathException.class,
+            () -> ConfigCacheService.dumpGray(dataId, group, tenant, grayName, grayRule,
+                "content", System.currentTimeMillis(), "key"));
+        
+        assertEquals(rejection, actual);
+        cache().remove(groupKey);
+    }
+    
+    @Test
+    void testRemoveRethrowsRejectedDiskPath() throws Exception {
+        String dataId = "rejectedRemoveD";
+        String group = "rejectedRemoveG";
+        String tenant = "rejectedRemoveT";
+        String groupKey = GroupKey2.getKey(dataId, group, tenant);
+        ConfigCacheService.makeSure(groupKey, null);
+        ConfigDiskPathException rejection = new ConfigDiskPathException("group", "..");
+        doThrow(rejection).when(configDiskService).removeConfigInfo(dataId, group, tenant);
+        
+        ConfigDiskPathException actual = assertThrows(ConfigDiskPathException.class,
+            () -> ConfigCacheService.remove(dataId, group, tenant));
+        
+        assertEquals(rejection, actual);
+        cache().remove(groupKey);
+    }
+    
+    @Test
+    void testRemoveGrayRethrowsRejectedDiskPath() throws Exception {
+        String dataId = "rejectedGrayRemoveD";
+        String group = "rejectedGrayRemoveG";
+        String tenant = "rejectedGrayRemoveT";
+        String grayName = "tag_rejected";
+        String groupKey = GroupKey2.getKey(dataId, group, tenant);
+        ConfigCacheService.makeSure(groupKey, null);
+        ConfigDiskPathException rejection = new ConfigDiskPathException("grayName", "..");
+        doThrow(rejection).when(configDiskService)
+            .removeConfigInfo4Gray(dataId, group, tenant, grayName);
+        
+        ConfigDiskPathException actual = assertThrows(ConfigDiskPathException.class,
+            () -> ConfigCacheService.removeGray(dataId, group, tenant, grayName));
+        
+        assertEquals(rejection, actual);
+        cache().remove(groupKey);
+    }
+    
+    @Test
+    void testDumpWithMd5RetriesAndUpdatesCacheAfterTransientContention() throws Exception {
+        String dataId = "retryDumpD";
+        String group = "retryDumpG";
+        String tenant = "retryDumpT";
+        String content = "retryContent";
+        String md5 = "retryMd5";
+        long ts = System.currentTimeMillis();
+        String encryptedDataKey = "retryKey";
+        String groupKey = GroupKey2.getKey(dataId, group, tenant);
+        
+        // Simulate transient write-lock contention: fail the first few attempts, then succeed.
+        SimpleReadWriteLock lock = Mockito.mock(SimpleReadWriteLock.class);
+        OngoingStubbing<Boolean> when = Mockito.when(lock.tryWriteLock());
+        for (int i = 0; i < 5; i++) {
+            when = when.thenReturn(false);
+        }
+        when.thenReturn(true);
+        // A real ConfigCache is required so dumpWithMd5 can read/write the cached md5.
+        ConfigCache configCache = new ConfigCache();
+        CacheItem cacheItem = Mockito.mock(CacheItem.class);
+        Mockito.when(cacheItem.getRwLock()).thenReturn(lock);
+        Mockito.when(cacheItem.getConfigCache()).thenReturn(configCache);
+        cache().put(groupKey, cacheItem);
+        
+        boolean result = ConfigCacheService.dumpWithMd5(dataId, group, tenant, content, md5, ts,
+            "text", encryptedDataKey);
+        
+        // dumpWithMd5 must eventually succeed through the retry path and update the cache.
+        assertTrue(result);
+        assertEquals(md5, configCache.getMd5());
+        assertEquals(ts, configCache.getLastModifiedTs());
+        assertEquals(encryptedDataKey, configCache.getEncryptedDataKey());
+        Mockito.verify(configDiskService, times(1)).saveToDisk(eq(dataId), eq(group), eq(tenant),
+            eq(content));
+        cache().remove(groupKey);
+    }
+    
+    @Test
+    void testDumpGrayRetriesAndUpdatesCacheAfterTransientContention() throws Exception {
+        String dataId = "retryGrayD";
+        String group = "retryGrayG";
+        String tenant = "retryGrayT";
+        String grayName = "grayRetry";
+        String grayRule = "{\"type\":\"tag\",\"version\":\"1.0.0\",\"expr\":\"retry\","
+            + "\"priority\":1}";
+        String content = "retryGrayContent";
+        String expectedMd5 = MD5Utils.md5Hex(content, "UTF-8");
+        long ts = System.currentTimeMillis();
+        String encryptedDataKey = "retryGrayKey";
+        String groupKey = GroupKey2.getKey(dataId, group, tenant);
+        
+        // Simulate transient write-lock contention: fail the first few attempts, then succeed.
+        SimpleReadWriteLock lock = Mockito.mock(SimpleReadWriteLock.class);
+        OngoingStubbing<Boolean> when = Mockito.when(lock.tryWriteLock());
+        for (int i = 0; i < 4; i++) {
+            when = when.thenReturn(false);
+        }
+        when.thenReturn(true);
+        // A real gray cache is required so dumpGray can read/write the cached md5 / gray rule.
+        ConfigCacheGray grayCache = new ConfigCacheGray(grayName);
+        Map<String, ConfigCacheGray> grayMap = new ConcurrentHashMap<>();
+        grayMap.put(grayName, grayCache);
+        CacheItem cacheItem = Mockito.mock(CacheItem.class);
+        Mockito.when(cacheItem.getRwLock()).thenReturn(lock);
+        Mockito.when(cacheItem.getConfigCacheGray()).thenReturn(grayMap);
+        cache().put(groupKey, cacheItem);
+        
+        boolean result = ConfigCacheService.dumpGray(dataId, group, tenant, grayName, grayRule,
+            content, ts, encryptedDataKey);
+        
+        // dumpGray must eventually succeed through the retry path and update the gray cache.
+        assertTrue(result);
+        assertEquals(expectedMd5, grayCache.getMd5());
+        assertEquals(ts, grayCache.getLastModifiedTs());
+        assertEquals(encryptedDataKey, grayCache.getEncryptedDataKey());
+        Mockito.verify(configDiskService, times(1)).saveGrayToDisk(eq(dataId), eq(group),
+            eq(tenant),
+            eq(grayName), eq(content));
+        cache().remove(groupKey);
+    }
+    
+    @Test
     void testRemoveWriteLockFailed() throws Exception {
         String dataId = "rmLockD";
         String group = "rmLockG";
@@ -701,6 +863,45 @@ class ConfigCacheServiceTest {
     }
     
     @Test
+    void testTryConfigWriteLock() throws Exception {
+        String dataId = "123testTryConfigWriteLock";
+        String group = "1234";
+        String tenant = "1234";
+        CacheItem cacheItem = Mockito.mock(CacheItem.class);
+        SimpleReadWriteLock lock = Mockito.mock(SimpleReadWriteLock.class);
+        Mockito.when(cacheItem.getRwLock()).thenReturn(lock);
+        String groupKey = GroupKey2.getKey(dataId, group, tenant);
+        ConcurrentHashMap<String, CacheItem> cache = cache();
+        cache.put(groupKey, cacheItem);
+        
+        // lock ==0,not exist
+        int writeLock = ConfigCacheService.tryConfigWriteLock(groupKey + "3245");
+        assertEquals(0, writeLock);
+        
+        //lock == 1 , success get lock
+        Mockito.when(lock.tryWriteLock()).thenReturn(true);
+        int writeLockSuccess = ConfigCacheService.tryConfigWriteLock(groupKey);
+        assertEquals(1, writeLockSuccess);
+        
+        //lock ==-1 fail after spin all times;
+        OngoingStubbing<Boolean> when = Mockito.when(lock.tryWriteLock());
+        for (int i = 0; i < 10; i++) {
+            when = when.thenReturn(false);
+        }
+        int writeLockFail = ConfigCacheService.tryConfigWriteLock(groupKey);
+        assertEquals(-1, writeLockFail);
+        
+        //lock ==1 success after serval spin  times;
+        OngoingStubbing<Boolean> when2 = Mockito.when(lock.tryWriteLock());
+        for (int i = 0; i < 5; i++) {
+            when2 = when2.thenReturn(false);
+        }
+        when2.thenReturn(true);
+        int writeLockSuccessAfterRetry = ConfigCacheService.tryConfigWriteLock(groupKey);
+        assertEquals(1, writeLockSuccessAfterRetry);
+    }
+    
+    @Test
     void testTryConfigReadLockWhenSleepInterrupted() throws Exception {
         String dataId = "interruptReadLockD";
         String group = "interruptReadLockG";
@@ -710,8 +911,33 @@ class ConfigCacheServiceTest {
         String groupKey = putMockCacheItem(dataId, group, tenant, lock);
         
         Thread.currentThread().interrupt();
-        assertEquals(-1, ConfigCacheService.tryConfigReadLock(groupKey));
-        assertFalse(Thread.currentThread().isInterrupted());
+        try {
+            assertEquals(-1, ConfigCacheService.tryConfigReadLock(groupKey));
+            // The interrupt flag must be restored so callers higher up the stack can react to it.
+            assertTrue(Thread.currentThread().isInterrupted());
+        } finally {
+            Thread.interrupted();
+        }
+        cache().remove(groupKey);
+    }
+    
+    @Test
+    void testTryConfigWriteLockWhenSleepInterrupted() throws Exception {
+        String dataId = "interruptWriteLockD";
+        String group = "interruptWriteLockG";
+        String tenant = "interruptWriteLockT";
+        SimpleReadWriteLock lock = Mockito.mock(SimpleReadWriteLock.class);
+        Mockito.when(lock.tryWriteLock()).thenReturn(false);
+        String groupKey = putMockCacheItem(dataId, group, tenant, lock);
+        
+        Thread.currentThread().interrupt();
+        try {
+            assertEquals(-1, ConfigCacheService.tryConfigWriteLock(groupKey));
+            // The interrupt flag must be restored so callers higher up the stack can react to it.
+            assertTrue(Thread.currentThread().isInterrupted());
+        } finally {
+            Thread.interrupted();
+        }
         cache().remove(groupKey);
     }
     

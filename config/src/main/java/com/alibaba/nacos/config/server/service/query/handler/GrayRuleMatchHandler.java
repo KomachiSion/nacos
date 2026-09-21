@@ -16,6 +16,7 @@
 
 package com.alibaba.nacos.config.server.service.query.handler;
 
+import com.alibaba.nacos.common.utils.StringUtils;
 import com.alibaba.nacos.config.server.model.CacheItem;
 import com.alibaba.nacos.config.server.model.ConfigCacheGray;
 import com.alibaba.nacos.config.server.service.dump.disk.ConfigDiskServiceFactory;
@@ -59,6 +60,21 @@ public class GrayRuleMatchHandler extends AbstractConfigQueryHandler {
             long lastModified = matchedGray.getLastModifiedTs();
             String md5 = matchedGray.getMd5();
             String encryptedDataKey = matchedGray.getEncryptedDataKey();
+            
+            // 304 optimization for gray/tag configs: compare metadata MD5 before reading
+            // gray content from disk. On match, skip content read entirely and return
+            // CONFIG_NOT_MODIFIED with matchedGray preserved for pull-event classification.
+            String localMd5 = request.getLocalMd5();
+            if (StringUtils.isNotBlank(localMd5) && localMd5.equals(md5)) {
+                response.setMd5(md5);
+                response.setLastModified(lastModified);
+                response.setEncryptedDataKey(encryptedDataKey);
+                response.setMatchedGray(matchedGray);
+                response.setConfigType(cacheItem.getType());
+                response.setStatus(ConfigQueryChainResponse.ConfigQueryStatus.CONFIG_NOT_MODIFIED);
+                return response;
+            }
+            
             String content = ConfigDiskServiceFactory.getInstance()
                 .getGrayContent(request.getDataId(), request.getGroup(), request.getTenant(),
                     matchedGray.getGrayName());

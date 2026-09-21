@@ -40,19 +40,27 @@ auth plugin.
 
 ## Auth Framework Configuration
 
-| Configuration | Purpose |
-|---------------|---------|
-| `nacos.core.auth.enabled` | Enable the general auth system and Open API auth. |
-| `nacos.core.auth.admin.enabled` | Enable Admin API auth. |
-| `nacos.core.auth.console.enabled` | Enable Console API auth and default login behavior. |
-| `nacos.plugin.auth.type` | Select the auth plugin at startup, default `nacos`; `nacos.core.auth.system.type` is the legacy alias. |
-| `nacos.core.auth.server.identity.key` | Server-to-server identity key. |
-| `nacos.core.auth.server.identity.value` | Server-to-server identity value. |
+| Configuration | Purpose | Default since Nacos 3.3 |
+|---------------|---------|-------------------------|
+| `nacos.core.auth.enabled` | Enable the general auth system and Open API, Java SDK, and gRPC request auth. | `true` |
+| `nacos.core.auth.admin.enabled` | Enable Admin API auth. | `true` |
+| `nacos.core.auth.console.enabled` | Enable Console API auth and default login behavior. | `true` |
+| `nacos.plugin.auth.type` | Select the auth plugin at startup; `nacos.core.auth.system.type` is the legacy alias. | `nacos` |
+| `nacos.core.auth.server.identity.key` | Server-to-server identity key. | No shared default |
+| `nacos.core.auth.server.identity.value` | Server-to-server identity value. | No shared default |
 
 These settings control the auth module, API scopes, startup plugin selection,
 and server identity. They are not configuration items owned by `auth:nacos`.
 Plugin selection requires restart. Server identity values must be
 deployment-specific.
+
+An explicitly configured auth-scope value overrides the default. In
+particular, `nacos.core.auth.enabled=false` remains the supported compatibility
+setting while applications are being prepared with credentials. Enabling a
+scope that uses the default plugin requires a deployment-specific token secret,
+and enabling Client auth also requires non-empty server identity key/value for
+server-to-server calls. Distribution startup scripts may generate or migrate
+these values, but embedded and custom deployments must supply them explicitly.
 
 ## Managed Plugin Configuration
 
@@ -89,6 +97,13 @@ same base manager. Disabling token caching switches back to the base manager
 and clears the token cache. Changing token expiration also clears the wrapper
 cache so the next token request uses the accepted runtime lifetime; tokens
 already returned to clients remain valid until their signed expiration.
+
+In an independently deployed Console, the Console-local auth initializer applies the built-in
+`auth:nacos` configuration from `STATIC > DEFAULT` before requests are accepted. This initializes
+the stable `TokenManagerDelegate` with its concrete token managers. All configurable auth
+implementations are applied because identity providers such as LDAP continue to consume token and
+authorization infrastructure owned by `auth:nacos`; only the selected implementation receives the
+optional startup lifecycle callback.
 
 The `ldap` implementation also implements `PluginConfigSpec` and is registered
 as configurable plugin `auth:ldap`. Its canonical configuration prefix is
@@ -187,6 +202,22 @@ auth implementations, including [RAM](ram-auth-plugin-spec.md) and
 [OIDC](oidc-auth-plugin-spec.md), are documented as Java Client SDK extensions
 in the [Java SDK Implementation Spec](../sdk/sdk-java-impl-spec.md).
 
+### Login Response Compatibility
+
+Successful default-auth login responses from `/v3/auth/user/login` and the
+legacy v1 login routes remain a flat token object containing `accessToken`,
+`tokenTtl`, `globalAdmin`, and `username`. They are not wrapped in `Result<T>`
+because released Java clients parse this flat shape directly.
+
+An unknown username, an incorrect password, or blank credentials must produce
+the same HTTP 403 status and the same generic
+`User not found! Please check user exist or password is right!` response body.
+The HTTP status and response body must not disclose whether the username exists.
+Unknown-user authentication does not perform a password hash comparison, so
+arbitrary usernames cannot force the server to execute the CPU-intensive
+password encoder. Unexpected user storage or token issuance failures are
+operational errors and must not be converted into credential failures.
+
 ## RBAC Storage Model
 
 The default plugin stores:
@@ -199,6 +230,18 @@ The default plugin stores:
 
 `ROLE_ADMIN` is the global administrator role. Users with this role may access
 all resources and console management operations.
+
+Fuzzy search over users, roles, and permissions escapes the `_` wildcard with a
+backslash so that it is matched literally. A backslash is only the default LIKE
+escape character on some databases, so the embedded storage declares
+`ESCAPE '\'` explicitly. The clause qualifies the single `LIKE` predicate it
+immediately follows, so a query combining several fuzzy filters MUST repeat the
+clause after every one of them.
+
+The rule applies to every fuzzy entry point of a resource, not only to the paged
+search. The name searches backing the console autocompletion (`findRoleNames`,
+`findUserNames`) MUST escape their argument the same way the paged searches do,
+so that one keyword selects the same rows in both.
 
 ## Permission Resource Format
 
@@ -267,7 +310,8 @@ used by AI resources.
 
 Default behavior:
 
-- New resources default to `PRIVATE` unless the domain supplies another scope.
+- New `agent` and `mcp` resources default to `PUBLIC`; other resource types retain
+  the `PRIVATE` default. This is a creation default, never a publish-time scope reset.
 - Global administrators can read and write all visibility-aware resources.
 - A resource owner can read and write the resource.
 - `PUBLIC` resources can be read by non-owners.
@@ -362,6 +406,14 @@ with the visible resource set and avoids full-load in-memory filtering.
 Legacy or compatibility endpoints may remain for existing clients, but new
 documentation and new development should target the v3 auth API and the plugin
 contracts defined here.
+
+Nacos 3.3 changes only the default value of Client API authentication. A
+missing `nacos.core.auth.enabled` setting and a new distribution template both
+enable Client auth. An existing configuration that explicitly contains
+`nacos.core.auth.enabled=false` remains disabled, and an explicit environment
+or deployment-tool value continues to win. Operators may distribute client
+credentials first while the switch is explicitly disabled and then enable the
+runtime-refreshable switch on every cluster member.
 
 Legacy static configuration aliases in the managed-plugin table remain
 supported. New distribution templates use canonical keys and identify the old

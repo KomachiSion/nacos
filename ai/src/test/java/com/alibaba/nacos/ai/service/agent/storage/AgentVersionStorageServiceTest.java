@@ -23,8 +23,10 @@ import com.alibaba.nacos.api.ai.model.agent.AgentCallInterface;
 import com.alibaba.nacos.api.ai.model.agent.EndpointSource;
 import com.alibaba.nacos.api.exception.NacosException;
 import com.alibaba.nacos.plugin.ai.storage.AiResourceStorageRouter;
+import com.alibaba.nacos.plugin.ai.storage.model.AiResourceStorageConsistencyMode;
 import com.alibaba.nacos.plugin.ai.storage.model.StorageKey;
 import com.alibaba.nacos.plugin.ai.storage.spi.AiResourceStorage;
+import com.alibaba.nacos.plugin.ai.storage.spi.AiResourceStorageChangeListener;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -396,6 +398,23 @@ class AgentVersionStorageServiceTest {
     }
     
     @Test
+    void testConsistencyAndChangeListenersDelegateToStorageRouter() throws NacosException {
+        AgentVersionStorageDescriptor descriptor = descriptor(reorderedContentBytes());
+        AiResourceStorageChangeListener listener = event -> {
+        };
+        when(storageRouter.route(any(StorageKey.class))).thenReturn(storage);
+        when(storage.consistencyMode()).thenReturn(AiResourceStorageConsistencyMode.STRONG);
+        
+        assertEquals(AiResourceStorageConsistencyMode.STRONG,
+            service.consistencyMode(descriptor));
+        service.addChangeListener(listener);
+        service.removeChangeListener(listener);
+        
+        verify(storageRouter).addChangeListener(listener);
+        verify(storageRouter).removeChangeListener(listener);
+    }
+    
+    @Test
     void testDeleteWrapsMalformedPersistedKey() throws NacosException {
         AgentVersionStorageDescriptor descriptor = descriptor(reorderedContentBytes());
         descriptor.setKey("malformed");
@@ -486,12 +505,13 @@ class AgentVersionStorageServiceTest {
         callInterface.setProtocol("a2a");
         callInterface.setDescriptorMediaType("application/json");
         callInterface.setNativeDescriptor("descriptor");
-        callInterface.setEndpointSourceOrder(Collections.singletonList(EndpointSource.RUNTIME));
+        callInterface.setEndpointSourceOrder(
+            java.util.Arrays.asList(EndpointSource.RUNTIME, EndpointSource.DECLARED));
         return new AgentVersionContent(Collections.singletonList(callInterface));
     }
     
     private byte[] reorderedContentBytes() {
-        return ("{\"callInterfaces\":[{\"endpointSourceOrder\":[\"RUNTIME\"],"
+        return ("{\"callInterfaces\":[{\"endpointSourceOrder\":[\"RUNTIME\",\"DECLARED\"],"
             + "\"nativeDescriptor\":\"descriptor\",\"descriptorMediaType\":"
             + "\"application/json\",\"protocol\":\"a2a\"}],\"schemaVersion\":1,"
             + "\"kind\":\"AgentVersionContent\"}").getBytes(StandardCharsets.UTF_8);

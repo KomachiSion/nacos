@@ -33,17 +33,22 @@ Java 客户端为默认插件暴露的用户名/密码和 token 流程提供
 
 ## 鉴权框架配置
 
-| 配置 | 目的 |
-|------|------|
-| `nacos.core.auth.enabled` | 启用通用鉴权系统和 Open API 鉴权。 |
-| `nacos.core.auth.admin.enabled` | 启用 Admin API 鉴权。 |
-| `nacos.core.auth.console.enabled` | 启用 Console API 鉴权和默认登录行为。 |
-| `nacos.plugin.auth.type` | 启动时选择鉴权插件，默认 `nacos`；`nacos.core.auth.system.type` 是历史 alias。 |
-| `nacos.core.auth.server.identity.key` | 服务端之间调用的身份 key。 |
-| `nacos.core.auth.server.identity.value` | 服务端之间调用的身份 value。 |
+| 配置 | 目的 | Nacos 3.3 起默认值 |
+|------|------|--------------------|
+| `nacos.core.auth.enabled` | 启用通用鉴权系统和 Open API、Java SDK、gRPC 请求鉴权。 | `true` |
+| `nacos.core.auth.admin.enabled` | 启用 Admin API 鉴权。 | `true` |
+| `nacos.core.auth.console.enabled` | 启用 Console API 鉴权和默认登录行为。 | `true` |
+| `nacos.plugin.auth.type` | 启动时选择鉴权插件；`nacos.core.auth.system.type` 是历史 alias。 | `nacos` |
+| `nacos.core.auth.server.identity.key` | 服务端之间调用的身份 key。 | 无共享默认值 |
+| `nacos.core.auth.server.identity.value` | 服务端之间调用的身份 value。 | 无共享默认值 |
 
 这些配置负责鉴权模块、API 范围、启动期插件选择和服务端身份，不属于 `auth:nacos` 插件
 自身的配置项。插件选择需要重启生效，服务端身份值必须由部署环境独立配置。
+
+显式配置的鉴权范围值优先于默认值。特别是，应用分发身份期间仍可以使用
+`nacos.core.auth.enabled=false` 保持兼容。开启使用默认插件的鉴权范围需要部署环境独立的 token
+secret；开启 Client 鉴权还要求服务端之间调用使用的 identity key/value 非空。发行包启动脚本可以生成
+或迁移这些值，embedded 和自定义部署必须显式提供。
 
 ## 统一管理的插件配置
 
@@ -72,6 +77,11 @@ item key，并遵循 [Nacos 插件化规范](../plugin/plugin-spec.md)定义的 
 restart-only 密钥构建。开启 token 缓存时，在同一个基础 manager 外选择缓存包装；关闭时
 切回基础 manager，并清空 token 缓存。token 过期时间变化时也会清空包装缓存，使下一次
 取 token 使用新的运行时有效期；已经返回给客户端的 token 仍按签名中的原过期时间有效。
+
+独立部署 Console 时，Console 本地 auth initializer 会在开始接收请求前，从
+`STATIC > DEFAULT` 对内置 `auth:nacos` 应用配置，使稳定的 `TokenManagerDelegate` 完成具体
+token manager 初始化。LDAP 等身份提供方仍消费 `auth:nacos` 持有的 token 和授权基础设施，
+因此所有可配置鉴权实现都要执行 apply，只有当前选中实现接收可选的启动生命周期回调。
 
 `ldap` 实现同样实现 `PluginConfigSpec`，并以可配置插件 `auth:ldap` 注册。其 canonical
 配置前缀为 `nacos.plugin.auth.ldap.`。
@@ -148,6 +158,17 @@ token 签名和有效期、Nacos 用户与角色存储及授权仍使用 `auth:n
 [RAM](ram-auth-plugin-spec.md)、[OIDC](oidc-auth-plugin-spec.md) 等其他客户端鉴权实现作为
 Java Client SDK 扩展在 [Java SDK 实现规范](../sdk/sdk-java-impl-spec.md)中描述。
 
+### 登录响应兼容性
+
+`/v3/auth/user/login` 和遗留 v1 登录路由的默认鉴权登录成功响应保持为平铺 token 对象，
+包含 `accessToken`、`tokenTtl`、`globalAdmin` 和 `username`。该响应不使用 `Result<T>`
+包装，因为已发布的 Java 客户端会直接解析这一平铺结构。
+
+用户名不存在、密码错误或凭据为空时，必须返回相同的 HTTP 403 状态和相同的通用
+`User not found! Please check user exist or password is right!` 响应体，HTTP 状态和响应体不得
+泄露用户名是否存在。未知用户认证不执行密码哈希比对，避免攻击者使用任意用户名迫使服务端执行高 CPU
+开销的密码编码操作。用户存储或 token 签发的非预期故障属于运行异常，不得转换为凭据错误。
+
 ## RBAC 存储模型
 
 默认插件存储：
@@ -159,6 +180,14 @@ Java Client SDK 扩展在 [Java SDK 实现规范](../sdk/sdk-java-impl-spec.md)�
 | `PermissionInfo` | 分配给角色的资源和动作。 |
 
 `ROLE_ADMIN` 是全局管理员角色。拥有该角色的用户可以访问所有资源和控制台管理操作。
+
+用户、角色和权限的模糊搜索会用反斜杠转义 `_` 通配符，使其按字面量匹配。反斜杠只在部分数据库上是
+LIKE 的默认转义字符，因此嵌入式存储显式声明 `ESCAPE '\'`。该子句只作用于紧邻其前的那一个 `LIKE`
+谓词，所以组合多个模糊过滤条件的查询必须在每个谓词之后都重复声明该子句。
+
+该规则适用于同一资源的所有模糊查询入口，而不仅是分页搜索。控制台名称联想所依赖的名称搜索
+（`findRoleNames`、`findUserNames`）必须与分页搜索采用相同的转义方式，使同一个关键字在两者中
+选出相同的记录。
 
 ## 权限资源格式
 
@@ -221,7 +250,8 @@ Java Client SDK 扩展在 [Java SDK 实现规范](../sdk/sdk-java-impl-spec.md)�
 
 默认行为：
 
-- 除非领域提供其他 scope，新资源默认 `PRIVATE`。
+- 新建 `agent`、`mcp` 资源默认 `PUBLIC`；其他类型保持默认 `PRIVATE`。这仅是首建默认值，
+  发布时不得重置已有 scope。
 - 全局管理员可以读写所有具备可见性语义的资源。
 - 资源 owner 可以读写该资源。
 - `PUBLIC` 资源可以被非 owner 读取。
@@ -303,6 +333,11 @@ DELETE /v3/auth/visibility
 
 旧端点或兼容端点可以为已有客户端保留，但新的文档和新的开发应以 v3 鉴权 API 以及本文档
 定义的插件契约为准。
+
+Nacos 3.3 只修改 Client API 鉴权的默认值。缺失 `nacos.core.auth.enabled` 的配置和新的发行包模板
+都会开启 Client 鉴权。已有配置显式包含 `nacos.core.auth.enabled=false` 时继续关闭，显式环境变量或
+部署工具值仍然优先。运维人员可以在显式关闭期间先分发 Client 凭据，再把可运行时刷新的开关应用到
+每个集群成员。
 
 统一管理表中的历史静态 alias 继续兼容。新的发行版模板使用 canonical key，并在注释中
 标明历史 key。canonical token 密钥缺失或为空时，启动脚本会把合法的历史密钥迁移到

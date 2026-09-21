@@ -20,40 +20,45 @@ import com.alibaba.nacos.ai.constant.AiResourceConstants;
 import com.alibaba.nacos.ai.constant.Constants;
 import com.alibaba.nacos.ai.model.AiResourceVersion;
 import com.alibaba.nacos.ai.model.agent.AgentVersionStorageDescriptor;
+import com.alibaba.nacos.ai.model.search.AiResourceSearchResult;
 import com.alibaba.nacos.ai.service.agent.runtime.AgentRuntimeRegistryService;
 import com.alibaba.nacos.ai.service.agent.storage.AgentVersionStorageDescriptorSerializer;
 import com.alibaba.nacos.ai.service.repository.QueryCondition;
 import com.alibaba.nacos.ai.service.resource.AiResourceManager;
+import com.alibaba.nacos.ai.service.search.AiResourceSearchService;
+import com.alibaba.nacos.ai.service.search.AiResourceSearchService.NumberedPage;
+import com.alibaba.nacos.ai.service.search.AiResourceSearchService.Predicate;
+import com.alibaba.nacos.ai.service.search.AiResourceSearchService.PredicateOperator;
+import com.alibaba.nacos.ai.service.search.AiResourceSearchService.Query;
 import com.alibaba.nacos.api.ai.constant.AiConstants;
-import com.alibaba.nacos.api.ai.model.agent.Agent;
+import com.alibaba.nacos.api.ai.model.agent.AgentSummary;
 import com.alibaba.nacos.api.ai.model.agent.AgentCallInterface;
 import com.alibaba.nacos.api.ai.model.agent.AgentProvider;
-import com.alibaba.nacos.api.ai.model.agent.AgentSummary;
-import com.alibaba.nacos.api.ai.model.agent.AgentVersionCatalog;
-import com.alibaba.nacos.api.ai.model.agent.AgentVersionCatalogEntry;
-import com.alibaba.nacos.api.ai.model.agent.AgentVersionDetail;
 import com.alibaba.nacos.api.ai.model.agent.AgentVersionInfo;
+import com.alibaba.nacos.api.ai.model.agent.AgentVersionSummary;
+import com.alibaba.nacos.api.ai.model.agent.AgentVersionDetail;
 import com.alibaba.nacos.api.ai.model.agent.Endpoint;
 import com.alibaba.nacos.api.ai.model.agent.EndpointSource;
 import com.alibaba.nacos.api.ai.model.agent.RuntimeVersionBinding;
-import com.alibaba.nacos.api.ai.model.rad.AgentCatalogEntry;
-import com.alibaba.nacos.api.ai.model.rad.AgentDiscoveryCallInterface;
-import com.alibaba.nacos.api.ai.model.rad.AgentDiscoveryEndpoint;
-import com.alibaba.nacos.api.ai.model.rad.AgentDiscoveryFilter;
-import com.alibaba.nacos.api.ai.model.rad.AgentDiscoveryRequest;
-import com.alibaba.nacos.api.ai.model.rad.AgentDiscoveryResult;
-import com.alibaba.nacos.api.ai.model.rad.AgentReference;
-import com.alibaba.nacos.api.ai.model.rad.AgentSearchRequest;
-import com.alibaba.nacos.api.ai.model.rad.EndpointSet;
+import com.alibaba.nacos.api.ai.model.agent.AgentDiscoveryFilter;
+import com.alibaba.nacos.api.ai.model.agent.AgentDiscoveryRequest;
+import com.alibaba.nacos.api.ai.model.agent.AgentDiscoveryResult;
+import com.alibaba.nacos.api.ai.model.agent.AgentReference;
+import com.alibaba.nacos.api.ai.model.agent.AgentSearchRequest;
+import com.alibaba.nacos.api.ai.model.agent.EndpointSet;
+import com.alibaba.nacos.api.ai.utils.AgentDiscoveryCanonicalizer;
 import com.alibaba.nacos.api.exception.NacosException;
 import com.alibaba.nacos.api.exception.api.NacosApiException;
 import com.alibaba.nacos.api.model.Page;
 import com.alibaba.nacos.plugin.visibility.constant.VisibilityConstants;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.beans.factory.ObjectProvider;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -64,11 +69,17 @@ import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.anyList;
+import static org.mockito.Mockito.lenient;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -105,12 +116,57 @@ class AgentDiscoveryApplicationServiceTest {
     @Mock
     private AgentRuntimeRegistryService runtimeRegistryService;
     
+    @Mock
+    private AiResourceSearchService searchService;
+    
     private AgentDiscoveryApplicationService service;
     
     @BeforeEach
-    void setUp() {
+    void setUp() throws NacosException {
+        lenient().when(runtimeRegistryService.getRuntimeEndpointSet(
+            anyString(), anyString(), anyString(),
+            anyList()))
+            .thenAnswer(invocation -> endpointSet(EndpointSource.RUNTIME, RUNTIME_REVISION,
+                Collections.emptyList()));
+        lenient().when(runtimeRegistryService.getCurrentRuntimeEndpointSet(
+            anyString(), anyString(), anyString(),
+            anyList()))
+            .thenAnswer(invocation -> endpointSet(EndpointSource.RUNTIME, RUNTIME_REVISION,
+                Collections.emptyList()));
         service = new AgentDiscoveryApplicationService(operationService, persistenceService,
-            resourceManager, runtimeRegistryService);
+            resourceManager, runtimeRegistryService, searchService,
+            new AgentSearchModeResolver(() -> AgentSearchMode.SCAN.name()));
+    }
+    
+    @Test
+    void testDiscoverCopiesCurrentMetadataWithoutAdditionalQueries() throws NacosException {
+        AgentSummary agent = enabledAgent();
+        agent.setDescription("Current catalog description");
+        agent.setTags(new ArrayList<String>(Arrays.asList("research", "chat")));
+        stubDiscover(agent, DIGEST, Collections.singletonList(callInterface("a2a", "1.0",
+            Arrays.asList(EndpointSource.RUNTIME, EndpointSource.DECLARED), null)));
+        AgentDiscoveryFilter filter = new AgentDiscoveryFilter();
+        filter.setProtocols(Collections.singletonList("other"));
+        AgentDiscoveryResult result = service.discover(discoveryRequest(VERSION, null, filter));
+        assertEquals(agent.getDescription(), result.getDescription());
+        assertEquals(agent.getTags(), result.getTags());
+        assertEquals(DIGEST, result.getContentDigest());
+        assertTrue(result.getCallInterfaces().isEmpty());
+        agent.getTags().clear();
+        assertEquals(Arrays.asList("research", "chat"), result.getTags());
+        verify(operationService, times(1)).getAgent(NAMESPACE_ID, AGENT_NAME);
+        verify(persistenceService, never()).getAgent(anyString(), anyString());
+        verifyNoInteractions(searchService, runtimeRegistryService);
+    }
+    
+    @Test
+    void testDiscoverOmitsEmptyCatalogTags() throws NacosException {
+        AgentSummary agent = enabledAgent();
+        agent.setTags(Collections.<String>emptyList());
+        stubDiscover(agent, DIGEST, Collections.<AgentCallInterface>emptyList());
+        AgentDiscoveryResult result = service.discover(discoveryRequest(VERSION, null, null));
+        assertNull(result.getDescription());
+        assertNull(result.getTags());
     }
     
     @Test
@@ -146,7 +202,7 @@ class AgentDiscoveryApplicationServiceTest {
         AgentSummary noCatalog = summary("catalog-Agent", true, "1.0.0",
             Collections.singletonList(catalog("1.0.0", null, "a2a")),
             Collections.singletonList("team"));
-        noCatalog.setVersionCatalog(null);
+        noCatalog.setVersionInfo(null);
         AgentSummary wrongName = summary("lower-agent", true, "1.0.0",
             Collections.singletonList(catalog("1.0.0", null, "a2a")),
             Collections.singletonList("team"));
@@ -164,7 +220,7 @@ class AgentDiscoveryApplicationServiceTest {
         when(persistenceService.listAgents(condition, 2, 100))
             .thenReturn(sourcePage(2, 2, alpha));
         
-        Page<AgentCatalogEntry> result = service.search(request);
+        Page<AgentSummary> result = service.search("public", request);
         
         assertEquals(2, result.getTotalCount());
         assertEquals(2, result.getPagesAvailable());
@@ -172,24 +228,24 @@ class AgentDiscoveryApplicationServiceTest {
         assertEquals("alpha-Agent", result.getPageItems().get(0).getAgentName());
         
         request.setPageNo(2);
-        Page<AgentCatalogEntry> second = service.search(request);
-        AgentCatalogEntry betaResult = second.getPageItems().get(0);
+        Page<AgentSummary> second = service.search("public", request);
+        AgentSummary betaResult = second.getPageItems().get(0);
         assertEquals("beta-Agent", betaResult.getAgentName());
         assertEquals("Beta", betaResult.getDisplayName());
         assertEquals("Beta Agent", betaResult.getDescription());
         assertEquals("https://example.com/icon.png", betaResult.getIconUrl());
         assertSame(provider, betaResult.getProvider());
         assertEquals(Collections.singletonList("team"), betaResult.getTags());
-        assertEquals("2.0.0", betaResult.getLatestVersion());
-        assertEquals("2.0.0", betaResult.getVersions().get(0).getVersion());
+        assertEquals("2.0.0", betaResult.getVersionInfo().latestVersion());
+        assertEquals("2.0.0", betaResult.getVersionInfo().getOnlineVersions().get(0).getVersion());
         assertEquals(Collections.singletonList("stable"),
-            betaResult.getVersions().get(0).getLabels());
-        assertNull(betaResult.getVersions().get(1).getLabels());
+            betaResult.getVersionInfo().getOnlineVersions().get(0).getLabels());
+        assertNull(betaResult.getVersionInfo().getOnlineVersions().get(1).getLabels());
         assertEquals(Collections.singletonList("a2a"),
-            betaResult.getVersions().get(1).getProtocols());
+            betaResult.getVersionInfo().getOnlineVersions().get(1).getProtocols());
         
         request.setPageNo(Integer.MAX_VALUE);
-        assertTrue(service.search(request).getPageItems().isEmpty());
+        assertTrue(service.search("public", request).getPageItems().isEmpty());
         verify(persistenceService, times(3)).listAgents(condition, 1, 100);
         verify(persistenceService, times(3)).listAgents(condition, 2, 100);
     }
@@ -199,14 +255,15 @@ class AgentDiscoveryApplicationServiceTest {
         QueryCondition condition = new QueryCondition();
         AgentSearchRequest request = searchRequest();
         AgentSummary summary = summary("plain-agent", true, "1.0.0",
-            Collections.singletonList(catalog("1.0.0", null, "a2a")), null);
+            Collections.singletonList(catalog("1.0.0", null, "a2a")),
+            Collections.emptyList());
         when(resourceManager.buildQueryCondition(NAMESPACE_ID,
             Constants.Agent.RESOURCE_TYPE_AGENT, null, null,
             VisibilityConstants.ACTION_READ)).thenReturn(condition);
         when(persistenceService.listAgents(condition, 1, 100))
             .thenReturn(sourcePage(1, 1, summary));
         
-        Page<AgentCatalogEntry> result = service.search(request);
+        Page<AgentSummary> result = service.search("public", request);
         
         assertEquals(1, result.getPageNumber());
         assertEquals(1, result.getTotalCount());
@@ -224,7 +281,7 @@ class AgentDiscoveryApplicationServiceTest {
         AgentSearchRequest request = searchRequest();
         request.setPageNo(3);
         
-        Page<AgentCatalogEntry> result = service.search(request);
+        Page<AgentSummary> result = service.search("public", request);
         
         assertEquals(3, result.getPageNumber());
         assertEquals(0, result.getTotalCount());
@@ -233,9 +290,162 @@ class AgentDiscoveryApplicationServiceTest {
     }
     
     @Test
+    void testSearchIndexMapsTypedPredicatesAndCompleteCatalog() throws NacosException {
+        AgentSearchModeResolver resolver = mock(AgentSearchModeResolver.class);
+        when(resolver.resolve()).thenReturn(AgentSearchMode.INDEX);
+        service = new AgentDiscoveryApplicationService(operationService, persistenceService,
+            resourceManager, runtimeRegistryService, searchService, resolver);
+        AgentSearchRequest request = searchRequest();
+        request.setAgentNameContains("Agent%_\\A");
+        request.setTagsAll(Arrays.asList("team", "blue"));
+        request.setProtocolsAny(Arrays.asList("a2a", "mcp"));
+        request.setPageNo(2);
+        request.setPageSize(2);
+        
+        AgentVersionInfo versionCatalog = new AgentVersionInfo();
+        versionCatalog.setLabels(new LinkedHashMap<String, String>(
+            Collections.singletonMap("latest", "2.0.0")));
+        versionCatalog.setOnlineVersions(Arrays.asList(
+            catalog("1.0.0", null, "a2a"),
+            catalog("2.0.0", Arrays.asList(AiResourceConstants.LABEL_LATEST, "stable"),
+                "a2a", "mcp")));
+        AgentProvider provider = new AgentProvider();
+        provider.setName("Nacos");
+        provider.setUrl("https://nacos.io");
+        Map<String, Object> metadata = new LinkedHashMap<String, Object>();
+        metadata.put("iconUrl", "https://example.com/icon.png");
+        metadata.put("provider", provider);
+        metadata.put("tags", Collections.emptyList());
+        Map<String, Object> storedCatalog = new LinkedHashMap<>();
+        storedCatalog.put("latestVersion", "2.0.0");
+        storedCatalog.put("onlineVersions", versionCatalog.getOnlineVersions());
+        metadata.put("versionCatalog", storedCatalog);
+        AiResourceSearchResult indexed = indexedResult("beta-Agent", metadata);
+        when(searchService.numberedList(any(Query.class))).thenReturn(
+            new NumberedPage(Collections.singletonList(indexed), 3L, 2, 2));
+        
+        Page<AgentSummary> result = service.search("public", request);
+        
+        assertEquals(3, result.getTotalCount());
+        assertEquals(2, result.getPageNumber());
+        assertEquals(2, result.getPagesAvailable());
+        AgentSummary item = result.getPageItems().get(0);
+        assertEquals("beta-Agent", item.getAgentName());
+        assertEquals("Beta Agent", item.getDisplayName());
+        assertEquals("Indexed Agent", item.getDescription());
+        assertEquals("https://example.com/icon.png", item.getIconUrl());
+        assertEquals("Nacos", item.getProvider().getName());
+        assertNull(item.getTags());
+        assertEquals("2.0.0", item.getVersionInfo().latestVersion());
+        assertEquals("2.0.0", item.getVersionInfo().getOnlineVersions().get(0).getVersion());
+        assertEquals(Collections.singletonList("stable"),
+            item.getVersionInfo().getOnlineVersions().get(0).getLabels());
+        assertEquals("1.0.0", item.getVersionInfo().getOnlineVersions().get(1).getVersion());
+        
+        org.mockito.ArgumentCaptor<Query> queryCaptor =
+            org.mockito.ArgumentCaptor.forClass(Query.class);
+        verify(searchService).numberedList(queryCaptor.capture());
+        Query query = queryCaptor.getValue();
+        assertEquals(NAMESPACE_ID, query.getNamespaceId());
+        assertEquals(Collections.singletonList(Constants.Agent.RESOURCE_TYPE_AGENT),
+            query.getResourceTypes());
+        assertEquals(2, query.getPageNumber());
+        assertEquals(2, query.getPageSize());
+        assertPredicate(query.getPredicates().get(0), "resourceName",
+            PredicateOperator.LITERAL_CONTAINS, Collections.singletonList("Agent%_\\A"));
+        assertPredicate(query.getPredicates().get(1), "tags", PredicateOperator.EXACT_ALL,
+            Arrays.asList("team", "blue"));
+        assertPredicate(query.getPredicates().get(2), "metadata.protocols",
+            PredicateOperator.EXACT_ANY, Arrays.asList("a2a", "mcp"));
+        verifyNoInteractions(resourceManager, persistenceService);
+    }
+    
+    @Test
+    void testSearchIndexUsesDefaultsAndLegacyTagFallback() throws NacosException {
+        AgentSearchModeResolver resolver = mock(AgentSearchModeResolver.class);
+        when(resolver.resolve()).thenReturn(AgentSearchMode.INDEX);
+        service = new AgentDiscoveryApplicationService(operationService, persistenceService,
+            resourceManager, runtimeRegistryService, searchService, resolver);
+        AgentVersionInfo catalog = new AgentVersionInfo();
+        catalog.setLabels(new LinkedHashMap<String, String>(
+            Collections.singletonMap("latest", "1.0.0")));
+        catalog.setOnlineVersions(
+            Collections.singletonList(catalog("1.0.0", null, "a2a")));
+        Map<String, Object> metadata = new LinkedHashMap<String, Object>();
+        Map<String, Object> storedCatalog = new LinkedHashMap<>();
+        storedCatalog.put("latestVersion", catalog.latestVersion());
+        storedCatalog.put("onlineVersions", catalog.getOnlineVersions());
+        metadata.put("versionCatalog", storedCatalog);
+        AiResourceSearchResult indexed = indexedResult("legacy-Agent", metadata);
+        indexed.setTags(Collections.singletonList("legacy"));
+        when(searchService.numberedList(any(Query.class))).thenReturn(
+            new NumberedPage(Collections.singletonList(indexed), 1L, 1, 1));
+        
+        Page<AgentSummary> result = service.search("public", searchRequest());
+        
+        assertEquals(Collections.singletonList("legacy"),
+            result.getPageItems().get(0).getTags());
+        org.mockito.ArgumentCaptor<Query> queryCaptor =
+            org.mockito.ArgumentCaptor.forClass(Query.class);
+        verify(searchService).numberedList(queryCaptor.capture());
+        assertEquals(1, queryCaptor.getValue().getPageNumber());
+        assertEquals(20, queryCaptor.getValue().getPageSize());
+        assertTrue(queryCaptor.getValue().getPredicates().isEmpty());
+    }
+    
+    @Test
+    void testSearchIndexFailsWithoutFallbackForUnavailableInvalidOrOversizedIndex()
+        throws NacosException {
+        AgentSearchModeResolver resolver = mock(AgentSearchModeResolver.class);
+        when(resolver.resolve()).thenReturn(AgentSearchMode.INDEX);
+        service = new AgentDiscoveryApplicationService(operationService, persistenceService,
+            resourceManager, runtimeRegistryService, searchService, resolver);
+        NacosException failure = new NacosException(NacosException.SERVER_ERROR, "index failed");
+        when(searchService.numberedList(any(Query.class))).thenThrow(failure);
+        assertSame(failure, assertThrows(NacosException.class,
+            () -> service.search("public", searchRequest())));
+        verifyNoInteractions(resourceManager, persistenceService);
+        
+        resetSearchService();
+        AiResourceSearchResult invalid = indexedResult("invalid-Agent",
+            Collections.emptyMap());
+        when(searchService.numberedList(any(Query.class))).thenReturn(
+            new NumberedPage(Collections.singletonList(invalid), 1L, 1, 1));
+        NacosApiException invalidError = assertThrows(NacosApiException.class,
+            () -> service.search("public", searchRequest()));
+        assertEquals(NacosException.SERVER_ERROR, invalidError.getErrCode());
+        
+        resetSearchService();
+        when(searchService.numberedList(any(Query.class))).thenReturn(
+            new NumberedPage(Collections.emptyList(), (long) Integer.MAX_VALUE + 1L, 1, 1));
+        NacosApiException oversized = assertThrows(NacosApiException.class,
+            () -> service.search("public", searchRequest()));
+        assertEquals(NacosException.SERVER_ERROR, oversized.getErrCode());
+    }
+    
+    @Test
+    void testSearchIndexReportsUnavailableRuntimeAndProductionConstructor() throws Exception {
+        AgentSearchModeResolver resolver = mock(AgentSearchModeResolver.class);
+        when(resolver.resolve()).thenReturn(AgentSearchMode.INDEX);
+        service = new AgentDiscoveryApplicationService(operationService, persistenceService,
+            resourceManager, runtimeRegistryService, (AiResourceSearchService) null, resolver);
+        NacosException unavailable = assertThrows(NacosException.class,
+            () -> service.search("public", searchRequest()));
+        assertEquals(503, unavailable.getErrCode());
+        
+        @SuppressWarnings("unchecked")
+        ObjectProvider<AiResourceSearchService> provider = mock(ObjectProvider.class);
+        when(provider.getIfAvailable()).thenReturn(searchService);
+        AgentDiscoveryApplicationService injected = new AgentDiscoveryApplicationService(
+            operationService, persistenceService, resourceManager, runtimeRegistryService,
+            provider, resolver);
+        assertNotNull(injected);
+    }
+    
+    @Test
     void testDiscoverResolvesLatestCombinesSourcesSortsAndCachesContent()
         throws NacosException {
-        Agent agent = enabledAgent();
+        AgentSummary agent = enabledAgent();
         AiResourceVersion row = onlineVersion(DIGEST);
         AgentVersionDetail detail = detail(DIGEST, completeInterfaces());
         when(operationService.getAgent(NAMESPACE_ID, AGENT_NAME)).thenReturn(agent);
@@ -243,7 +453,7 @@ class AgentDiscoveryApplicationServiceTest {
             .thenReturn(row);
         when(persistenceService.getAgentVersion(NAMESPACE_ID, AGENT_NAME, VERSION))
             .thenReturn(detail);
-        AgentDiscoveryEndpoint runtimeEndpoint = discoveryEndpoint(
+        Endpoint runtimeEndpoint = discoveryEndpoint(
             endpoint("HTTPS://Runtime.Example.com/agent", "http", 0, null, false), VERSION);
         when(runtimeRegistryService.getRuntimeEndpointSet(NAMESPACE_ID, AGENT_NAME, "a2a",
             Collections.singletonList(VERSION))).thenReturn(endpointSet(EndpointSource.RUNTIME,
@@ -255,7 +465,7 @@ class AgentDiscoveryApplicationServiceTest {
         assertEquals(VERSION, first.getVersion());
         assertEquals(DIGEST, first.getContentDigest());
         assertEquals(2, first.getCallInterfaces().size());
-        AgentDiscoveryCallInterface a2a = first.getCallInterfaces().get(0);
+        AgentCallInterface a2a = first.getCallInterfaces().get(0);
         assertEquals("a2a", a2a.getProtocol());
         assertEquals("1.0", a2a.getProtocolVersion());
         assertEquals("application/json", a2a.getDescriptorMediaType());
@@ -266,7 +476,7 @@ class AgentDiscoveryApplicationServiceTest {
         assertFalse(a2a.getEndpointSets().get(0).getEndpoints().get(0).getHealthy());
         assertEquals(VERSION, a2a.getEndpointSets().get(0).getEndpoints().get(0).getBindings()
             .get(0).getRuntimeVersion());
-        List<AgentDiscoveryEndpoint> declared =
+        List<Endpoint> declared =
             a2a.getEndpointSets().get(1).getEndpoints();
         assertEquals("https://a.example.com:443/agent", declared.get(0).getUri());
         assertEquals("https://b.example.com:443/agent", declared.get(1).getUri());
@@ -282,15 +492,31 @@ class AgentDiscoveryApplicationServiceTest {
     }
     
     @Test
+    void testModelD01DefaultDiscoveryStillUsesSelectedDefinitionProtocols() throws NacosException {
+        // Characterize the separately tracked MODEL-D01 limitation; this is not the desired
+        // protocol union contract and must not be counted as its compatibility coverage.
+        AgentSummary agent = enabledAgent();
+        agent.getVersionInfo().setOnlineVersions(Arrays.asList(
+            catalog(VERSION, null, "a2a"), catalog("1.0.0", null, "custom")));
+        stubDiscover(agent, DIGEST, Collections.singletonList(callInterface("a2a", "1.0",
+            Arrays.asList(EndpointSource.RUNTIME, EndpointSource.DECLARED), null)));
+        AgentDiscoveryResult result = service.discover(discoveryRequest(null, null, null));
+        assertEquals(1, result.getCallInterfaces().size());
+        assertEquals("a2a", result.getCallInterfaces().get(0).getProtocol());
+        verify(runtimeRegistryService, never()).getRuntimeEndpointSet(eq(NAMESPACE_ID),
+            eq(AGENT_NAME), eq("custom"), anyList());
+    }
+    
+    @Test
     void testDiscoverSeparatesDefaultOnlinePoolFromExplicitLatest() throws NacosException {
-        Agent agent = enabledAgent();
-        agent.getVersionCatalog().setOnlineVersions(Arrays.asList(
+        AgentSummary agent = enabledAgent();
+        agent.getVersionInfo().setOnlineVersions(Arrays.asList(
             catalog(VERSION, null, "a2a"), catalog("1.0.0", null, "a2a")));
         stubDiscover(agent, DIGEST, Collections.singletonList(callInterface("a2a", "1.0",
             Collections.singletonList(EndpointSource.RUNTIME), null)));
-        AgentDiscoveryEndpoint versionOne = discoveryEndpoint(
+        Endpoint versionOne = discoveryEndpoint(
             endpoint("https://v1.example.com/agent", "http", 0, null, true), "1.0.0");
-        AgentDiscoveryEndpoint versionTwo = discoveryEndpoint(
+        Endpoint versionTwo = discoveryEndpoint(
             endpoint("https://v2.example.com/agent", "http", 0, null, true), VERSION);
         when(runtimeRegistryService.getRuntimeEndpointSet(NAMESPACE_ID, AGENT_NAME, "a2a",
             Arrays.asList(VERSION, "1.0.0"))).thenReturn(endpointSet(EndpointSource.RUNTIME,
@@ -344,7 +570,7 @@ class AgentDiscoveryApplicationServiceTest {
         
         assertEquals(1, result.getCallInterfaces().size());
         assertEquals(1, result.getCallInterfaces().get(0).getEndpointSets().size());
-        List<AgentDiscoveryEndpoint> filtered =
+        List<Endpoint> filtered =
             result.getCallInterfaces().get(0).getEndpointSets().get(0).getEndpoints();
         assertEquals(1, filtered.size());
         assertEquals("https://cn.example.com:443/agent", filtered.get(0).getUri());
@@ -378,9 +604,61 @@ class AgentDiscoveryApplicationServiceTest {
         assertTrue(noProtocolVersion.getCallInterfaces().isEmpty());
     }
     
+    @ParameterizedTest
+    @ValueSource(booleans = {true, false})
+    void testDiscoverKeepsAllowedEmptyDeclaredSourceWhenDefinitionHasNoSets(boolean absent)
+        throws NacosException {
+        AgentCallInterface definition = callInterface("custom", "1.0",
+            Collections.singletonList(EndpointSource.DECLARED), Collections.emptyList());
+        definition.setEndpointSets(absent ? null : Collections.emptyList());
+        stubDiscover(DIGEST, Collections.singletonList(definition));
+        AgentDiscoveryResult result = service.discover(discoveryRequest(VERSION, null, null));
+        assertEquals(1, result.getCallInterfaces().size());
+        AgentCallInterface discovered = result.getCallInterfaces().get(0);
+        assertEquals(2, discovered.getEndpointSets().size());
+        EndpointSet declared = discovered.getEndpointSets().get(0);
+        assertEquals(EndpointSource.DECLARED, declared.getSource());
+        assertEquals(DIGEST, declared.getSourceRevision());
+        assertTrue(declared.getEndpoints().isEmpty());
+        assertNull(discovered.getEndpointSourceOrder());
+    }
+    
+    @ParameterizedTest
+    @ValueSource(booleans = {true, false})
+    void testSourceOrderIsAPreferenceAndFiltersCanSelectEitherSource(boolean runtimeFirst)
+        throws NacosException {
+        List<EndpointSource> order = runtimeFirst
+            ? Arrays.asList(EndpointSource.RUNTIME, EndpointSource.DECLARED)
+            : Arrays.asList(EndpointSource.DECLARED, EndpointSource.RUNTIME);
+        stubDiscover(DIGEST, Collections.singletonList(callInterface("a2a", "1.0", order,
+            Collections
+                .singletonList(endpoint("https://declared.example.com", "http", 0, null, null)))));
+        AgentDiscoveryResult all = service.discover(discoveryRequest(VERSION, null, null));
+        assertEquals(order,
+            Arrays.asList(all.getCallInterfaces().get(0).getEndpointSets().get(0).getSource(),
+                all.getCallInterfaces().get(0).getEndpointSets().get(1).getSource()));
+        AgentDiscoveryFilter filter = new AgentDiscoveryFilter();
+        filter.setEndpointSources(Collections.singletonList(EndpointSource.RUNTIME));
+        AgentDiscoveryResult runtime = service.discover(discoveryRequest(VERSION, null, filter));
+        assertEquals(1, runtime.getCallInterfaces().get(0).getEndpointSets().size());
+        assertEquals(EndpointSource.RUNTIME,
+            runtime.getCallInterfaces().get(0).getEndpointSets().get(0).getSource());
+        assertTrue(
+            runtime.getCallInterfaces().get(0).getEndpointSets().get(0).getEndpoints().isEmpty());
+        filter.setEndpointSources(Collections.singletonList(EndpointSource.DECLARED));
+        assertEquals(1,
+            service.discover(discoveryRequest(VERSION, null, filter)).getCallInterfaces()
+                .get(0).getEndpointSets().get(0).getEndpoints().size());
+        filter.setEndpointSources(Arrays.asList(order.get(1), order.get(0)));
+        AgentDiscoveryResult selectedBoth =
+            service.discover(discoveryRequest(VERSION, null, filter));
+        assertEquals(order.get(0),
+            selectedBoth.getCallInterfaces().get(0).getEndpointSets().get(0).getSource());
+    }
+    
     @Test
     void testDiscoverResolvesCustomLabel() throws NacosException {
-        Agent agent = enabledAgent();
+        AgentSummary agent = enabledAgent();
         agent.getVersionInfo().getLabels().put("stable", VERSION);
         stubDiscover(agent, DIGEST, Collections.singletonList(callInterface("a2a", "1.0",
             Collections.singletonList(EndpointSource.DECLARED), null)));
@@ -393,7 +671,7 @@ class AgentDiscoveryApplicationServiceTest {
     
     @Test
     void testDiscoverHidesDisabledMissingLabelAndMissingVersionInfo() throws NacosException {
-        Agent disabled = enabledAgent();
+        AgentSummary disabled = enabledAgent();
         disabled.setStatus(AiConstants.Agent.RESOURCE_STATUS_DISABLE);
         when(operationService.getAgent(NAMESPACE_ID, AGENT_NAME)).thenReturn(disabled);
         NacosApiException disabledError = assertThrows(NacosApiException.class,
@@ -401,25 +679,74 @@ class AgentDiscoveryApplicationServiceTest {
         assertEquals(NacosException.NOT_FOUND, disabledError.getErrCode());
         verifyNoInteractions(persistenceService);
         
-        Agent missingLabel = enabledAgent();
+        AgentSummary missingLabel = enabledAgent();
         when(operationService.getAgent(NAMESPACE_ID, AGENT_NAME)).thenReturn(missingLabel);
         NacosApiException labelError = assertThrows(NacosApiException.class,
             () -> service.discover(discoveryRequest(null, "missing", null)));
         assertEquals(NacosException.NOT_FOUND, labelError.getErrCode());
         
-        Agent missingInfo = enabledAgent();
+        AgentSummary missingInfo = enabledAgent();
         missingInfo.setVersionInfo(null);
         when(operationService.getAgent(NAMESPACE_ID, AGENT_NAME)).thenReturn(missingInfo);
         NacosApiException infoError = assertThrows(NacosApiException.class,
             () -> service.discover(discoveryRequest(null, "stable", null)));
         assertEquals(NacosException.NOT_FOUND, infoError.getErrCode());
         
-        Agent missingCatalog = enabledAgent();
-        missingCatalog.setVersionCatalog(null);
+        AgentSummary missingCatalog = enabledAgent();
+        missingCatalog.setVersionInfo(null);
         when(operationService.getAgent(NAMESPACE_ID, AGENT_NAME)).thenReturn(missingCatalog);
         NacosApiException catalogError = assertThrows(NacosApiException.class,
             () -> service.discover(discoveryRequest(null, null, null)));
         assertEquals(NacosException.NOT_FOUND, catalogError.getErrCode());
+    }
+    
+    @Test
+    void testInternalProjectionUsesPersistenceAfterAdmissionAndMatchesDiscover()
+        throws NacosException {
+        AgentSummary agent = enabledAgent();
+        agent.setDescription("Shared current metadata");
+        agent.setTags(Arrays.asList("chat", "research"));
+        AgentDiscoveryRequest request = discoveryRequest(VERSION, null, null);
+        when(operationService.getAgent(NAMESPACE_ID, AGENT_NAME)).thenReturn(agent);
+        when(persistenceService.getAgent(NAMESPACE_ID, AGENT_NAME)).thenReturn(agent);
+        when(persistenceService.requireVersionRow(NAMESPACE_ID, AGENT_NAME, VERSION))
+            .thenReturn(onlineVersion(DIGEST));
+        when(persistenceService.getAgentVersion(NAMESPACE_ID, AGENT_NAME, VERSION))
+            .thenReturn(detail(DIGEST, Collections.singletonList(callInterface("a2a", "1.0",
+                Arrays.asList(EndpointSource.RUNTIME, EndpointSource.DECLARED), null))));
+        EndpointSet runtime = endpointSet(EndpointSource.RUNTIME, RUNTIME_REVISION,
+            Collections.<Endpoint>emptyList());
+        when(runtimeRegistryService.getRuntimeEndpointSet(NAMESPACE_ID, AGENT_NAME, "a2a",
+            Collections.singletonList(VERSION))).thenReturn(runtime);
+        when(runtimeRegistryService.getCurrentRuntimeEndpointSet(NAMESPACE_ID, AGENT_NAME, "a2a",
+            Collections.singletonList(VERSION))).thenReturn(runtime);
+        
+        AgentDiscoveryResult authorized = service.discover(request);
+        AgentDiscoveryResult internal = service.projectCurrentFact(request);
+        
+        assertEquals("Shared current metadata", internal.getDescription());
+        assertEquals(Arrays.asList("chat", "research"), internal.getTags());
+        assertEquals(AgentDiscoveryCanonicalizer.fingerprint(authorized),
+            AgentDiscoveryCanonicalizer.fingerprint(internal));
+        verify(operationService).getAgent(NAMESPACE_ID, AGENT_NAME);
+        verify(persistenceService).getAgent(NAMESPACE_ID, AGENT_NAME);
+        verify(runtimeRegistryService).getRuntimeEndpointSet(NAMESPACE_ID, AGENT_NAME, "a2a",
+            Collections.singletonList(VERSION));
+        verify(runtimeRegistryService).getCurrentRuntimeEndpointSet(NAMESPACE_ID, AGENT_NAME,
+            "a2a", Collections.singletonList(VERSION));
+    }
+    
+    @Test
+    void testInternalProjectionStillAppliesAvailabilityRules() throws NacosException {
+        AgentSummary disabled = enabledAgent();
+        disabled.setStatus(AiConstants.Agent.RESOURCE_STATUS_DISABLE);
+        when(persistenceService.getAgent(NAMESPACE_ID, AGENT_NAME)).thenReturn(disabled);
+        
+        NacosApiException error = assertThrows(NacosApiException.class,
+            () -> service.projectCurrentFact(discoveryRequest(null, null, null)));
+        
+        assertEquals(NacosException.NOT_FOUND, error.getErrCode());
+        verifyNoInteractions(operationService);
     }
     
     @Test
@@ -487,12 +814,38 @@ class AgentDiscoveryApplicationServiceTest {
         assertNull(error.getCause());
     }
     
+    private AiResourceSearchResult indexedResult(String agentName,
+        Map<String, Object> metadata) {
+        AiResourceSearchResult result = new AiResourceSearchResult();
+        result.setNamespaceId(NAMESPACE_ID);
+        result.setResourceType(Constants.Agent.RESOURCE_TYPE_AGENT);
+        result.setResourceName(agentName);
+        result.setResourceVersion("2.0.0");
+        result.setDisplayName("Beta Agent");
+        result.setDescription("Indexed Agent");
+        result.setMetadata(metadata);
+        return result;
+    }
+    
+    private void assertPredicate(Predicate predicate, String field,
+        PredicateOperator operator, List<String> values) {
+        assertEquals(field, predicate.getField());
+        assertEquals(operator, predicate.getOperator());
+        assertEquals(values, predicate.getValues());
+        assertTrue(predicate.isCaseSensitive());
+    }
+    
+    private void resetSearchService() {
+        org.mockito.Mockito.reset(searchService);
+    }
+    
     private void stubDiscover(String digest, List<AgentCallInterface> interfaces)
         throws NacosException {
         stubDiscover(enabledAgent(), digest, interfaces);
     }
     
-    private void stubDiscover(Agent agent, String digest, List<AgentCallInterface> interfaces)
+    private void stubDiscover(AgentSummary agent, String digest,
+        List<AgentCallInterface> interfaces)
         throws NacosException {
         when(operationService.getAgent(NAMESPACE_ID, AGENT_NAME)).thenReturn(agent);
         when(persistenceService.requireVersionRow(NAMESPACE_ID, AGENT_NAME, VERSION))
@@ -503,7 +856,6 @@ class AgentDiscoveryApplicationServiceTest {
     
     private AgentSearchRequest searchRequest() {
         AgentSearchRequest result = new AgentSearchRequest();
-        result.setNamespaceId(NAMESPACE_ID);
         return result;
     }
     
@@ -520,19 +872,20 @@ class AgentDiscoveryApplicationServiceTest {
         return result;
     }
     
-    private Agent enabledAgent() {
+    private AgentSummary enabledAgent() {
         AgentVersionInfo versionInfo = new AgentVersionInfo();
         versionInfo.setLabels(new LinkedHashMap<String, String>());
         versionInfo.getLabels().put(AiResourceConstants.LABEL_LATEST, VERSION);
-        Agent result = new Agent();
+        AgentSummary result = new AgentSummary();
         result.setAgentName(AGENT_NAME);
         result.setStatus(AiConstants.Agent.RESOURCE_STATUS_ENABLE);
         result.setVersionInfo(versionInfo);
-        AgentVersionCatalog versionCatalog = new AgentVersionCatalog();
-        versionCatalog.setLatestVersion(VERSION);
+        AgentVersionInfo versionCatalog = new AgentVersionInfo();
+        versionCatalog.setLabels(new LinkedHashMap<String, String>(
+            Collections.singletonMap("latest", VERSION)));
         versionCatalog.setOnlineVersions(
             Collections.singletonList(catalog(VERSION, null, "a2a")));
-        result.setVersionCatalog(versionCatalog);
+        result.setVersionInfo(versionCatalog);
         return result;
     }
     
@@ -560,7 +913,8 @@ class AgentDiscoveryApplicationServiceTest {
         return AgentVersionStorageDescriptorSerializer.serialize(descriptor);
     }
     
-    private AgentVersionDetail detail(String digest, List<AgentCallInterface> interfaces) {
+    private AgentVersionDetail detail(String digest,
+        List<AgentCallInterface> interfaces) {
         AgentVersionDetail result = new AgentVersionDetail();
         result.setStatus(AiConstants.Agent.VERSION_STATUS_ONLINE);
         result.setContentDigest(digest);
@@ -587,13 +941,20 @@ class AgentDiscoveryApplicationServiceTest {
         result.setProtocolVersion(protocolVersion);
         result.setDescriptorMediaType("application/json");
         result.setNativeDescriptor(Collections.singletonMap("name", "demo"));
-        result.setEndpointSourceOrder(sources);
-        result.setDeclaredEndpoints(endpoints);
+        result.setEndpointSourceOrder(sources.size() == 1
+            ? Arrays.asList(sources.get(0), sources.get(0) == EndpointSource.RUNTIME
+                ? EndpointSource.DECLARED : EndpointSource.RUNTIME)
+            : sources);
+        
+        EndpointSet declaredSet1 = new EndpointSet();
+        declaredSet1.setSource(EndpointSource.DECLARED);
+        declaredSet1.setEndpoints(endpoints);
+        result.setEndpointSets(Collections.singletonList(declaredSet1));
         return result;
     }
     
     private EndpointSet endpointSet(EndpointSource source, String revision,
-        List<AgentDiscoveryEndpoint> endpoints) {
+        List<Endpoint> endpoints) {
         EndpointSet result = new EndpointSet();
         result.setSource(source);
         result.setSourceRevision(revision);
@@ -601,8 +962,8 @@ class AgentDiscoveryApplicationServiceTest {
         return result;
     }
     
-    private AgentDiscoveryEndpoint discoveryEndpoint(Endpoint source, String runtimeVersion) {
-        AgentDiscoveryEndpoint result = new AgentDiscoveryEndpoint();
+    private Endpoint discoveryEndpoint(Endpoint source, String runtimeVersion) {
+        Endpoint result = new Endpoint();
         result.setUri(source.getUri());
         result.setTransport(source.getTransport());
         result.setPriority(source.getPriority());
@@ -621,29 +982,34 @@ class AgentDiscoveryApplicationServiceTest {
         Endpoint result = new Endpoint();
         result.setUri(uri);
         result.setTransport(transport);
-        result.setPriority(priority);
+        if (priority != null) {
+            result.setPriority(priority);
+        }
         result.setMetadata(metadata);
-        result.setHealthy(healthy);
+        if (healthy != null) {
+            result.setHealthy(healthy);
+        }
         return result;
     }
     
     private AgentSummary summary(String agentName, boolean enabled, String latest,
-        List<AgentVersionCatalogEntry> versions, List<String> tags) {
-        AgentVersionCatalog catalog = new AgentVersionCatalog();
-        catalog.setLatestVersion(latest);
+        List<AgentVersionSummary> versions, List<String> tags) {
+        AgentVersionInfo catalog = new AgentVersionInfo();
+        catalog.setLabels(new LinkedHashMap<String, String>(
+            Collections.singletonMap("latest", latest)));
         catalog.setOnlineVersions(versions);
         AgentSummary result = new AgentSummary();
         result.setAgentName(agentName);
         result.setStatus(enabled ? AiConstants.Agent.RESOURCE_STATUS_ENABLE
             : AiConstants.Agent.RESOURCE_STATUS_DISABLE);
-        result.setVersionCatalog(catalog);
+        result.setVersionInfo(catalog);
         result.setTags(tags);
         return result;
     }
     
-    private AgentVersionCatalogEntry catalog(String version, List<String> labels,
+    private AgentVersionSummary catalog(String version, List<String> labels,
         String... protocols) {
-        AgentVersionCatalogEntry result = new AgentVersionCatalogEntry();
+        AgentVersionSummary result = new AgentVersionSummary();
         result.setVersion(version);
         result.setLabels(labels);
         result.setProtocols(Arrays.asList(protocols));

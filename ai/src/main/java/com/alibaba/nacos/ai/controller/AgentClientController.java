@@ -16,24 +16,29 @@
 
 package com.alibaba.nacos.ai.controller;
 
+import com.alibaba.nacos.ai.service.agent.AgentClientMigrationGuard;
 import com.alibaba.nacos.ai.constant.Constants;
 import com.alibaba.nacos.ai.form.agent.client.AgentDiscoveryForm;
 import com.alibaba.nacos.ai.form.agent.client.AgentEndpointDeregistrationForm;
 import com.alibaba.nacos.ai.form.agent.client.AgentEndpointRegistrationForm;
 import com.alibaba.nacos.ai.form.agent.client.AgentPublishForm;
 import com.alibaba.nacos.ai.form.agent.client.AgentSearchForm;
+import com.alibaba.nacos.ai.form.agent.client.AgentWatchBatchForm;
 import com.alibaba.nacos.ai.param.AgentClientHttpParamExtractor;
 import com.alibaba.nacos.ai.service.agent.AgentDiscoveryApplicationService;
 import com.alibaba.nacos.ai.service.agent.AgentPublishApplicationService;
 import com.alibaba.nacos.ai.service.agent.runtime.AgentHttpClientLifecycleService;
-import com.alibaba.nacos.api.ai.model.agent.ClientLivenessInfo;
-import com.alibaba.nacos.api.ai.model.agent.AgentPublishRequest;
+import com.alibaba.nacos.ai.service.agent.watch.AgentHttpWatchService;
+import com.alibaba.nacos.api.ai.model.ClientLivenessInfo;
+import com.alibaba.nacos.api.ai.model.agent.client.AgentPublishRequest;
 import com.alibaba.nacos.api.ai.model.agent.AgentVersionDetail;
-import com.alibaba.nacos.api.ai.model.rad.AgentCatalogEntry;
-import com.alibaba.nacos.api.ai.model.rad.AgentDiscoveryRequest;
-import com.alibaba.nacos.api.ai.model.rad.AgentDiscoveryResult;
-import com.alibaba.nacos.api.ai.model.rad.AgentEndpointRegistrationBatch;
-import com.alibaba.nacos.api.ai.model.rad.AgentSearchRequest;
+import com.alibaba.nacos.api.ai.model.agent.AgentSummary;
+import com.alibaba.nacos.api.ai.model.agent.AgentDiscoveryRequest;
+import com.alibaba.nacos.api.ai.model.agent.AgentDiscoveryResult;
+import com.alibaba.nacos.api.ai.model.agent.AgentEndpointRegistrationBatch;
+import com.alibaba.nacos.api.ai.model.agent.AgentSearchRequest;
+import com.alibaba.nacos.api.ai.model.agent.AgentWatchBatchRequest;
+import com.alibaba.nacos.api.ai.model.agent.AgentWatchBatchResponse;
 import com.alibaba.nacos.api.annotation.NacosApi;
 import com.alibaba.nacos.api.annotation.Since;
 import com.alibaba.nacos.api.common.ApiType;
@@ -67,6 +72,7 @@ import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.context.request.async.DeferredResult;
 
 /**
  * RAD Agent Client HTTP API.
@@ -83,18 +89,25 @@ import org.springframework.web.bind.annotation.RestController;
             properties = @ExtensionProperty(name = RemoteConstants.LABEL_MODULE, value = "ai"))})
 public class AgentClientController {
     
+    private final AgentClientMigrationGuard migrationGuard;
+    
     private final AgentDiscoveryApplicationService discoveryService;
     
     private final AgentHttpClientLifecycleService clientLifecycleService;
     
     private final AgentPublishApplicationService publishService;
     
+    private final AgentHttpWatchService watchService;
+    
     public AgentClientController(AgentDiscoveryApplicationService discoveryService,
         AgentHttpClientLifecycleService clientLifecycleService,
-        AgentPublishApplicationService publishService) {
+        AgentPublishApplicationService publishService, AgentHttpWatchService watchService,
+        AgentClientMigrationGuard migrationGuard) {
+        this.migrationGuard = migrationGuard;
         this.discoveryService = discoveryService;
         this.clientLifecycleService = clientLifecycleService;
         this.publishService = publishService;
+        this.watchService = watchService;
     }
     
     /**
@@ -128,6 +141,7 @@ public class AgentClientController {
         @Parameter(name = "form", hidden = true)})
     public Result<AgentVersionDetail> publish(AgentPublishForm form) throws NacosException {
         AgentPublishRequest request = form.toRequest();
+        migrationGuard.checkReady();
         return Result.success(publishService.publish(form.getNamespaceId(), request));
     }
     
@@ -152,15 +166,16 @@ public class AgentClientController {
         @Parameter(name = "pageNo", schema = @Schema(type = "integer"), example = "1"),
         @Parameter(name = "pageSize", schema = @Schema(type = "integer"), example = "20"),
         @Parameter(name = "form", hidden = true)})
-    public Result<Page<AgentCatalogEntry>> search(AgentSearchForm form,
+    public Result<Page<AgentSummary>> search(AgentSearchForm form,
         @Parameter(name = ClientConstants.HTTP_CLIENT_ID_HEADER,
             description = "nacos.admin.ai.agent.client.api.http.client.id.query.header.description",
             in = ParameterIn.HEADER) @RequestHeader(name = ClientConstants.HTTP_CLIENT_ID_HEADER,
                 required = false) String clientId)
         throws NacosException {
         AgentSearchRequest request = form.toRequest();
-        clientLifecycleService.renewForQuery(clientId, request.getNamespaceId());
-        return Result.success(discoveryService.search(request));
+        migrationGuard.checkReady();
+        clientLifecycleService.renewForQuery(clientId, form.getNamespaceId());
+        return Result.success(discoveryService.search(form.getNamespaceId(), request));
     }
     
     /**
@@ -194,8 +209,27 @@ public class AgentClientController {
                 required = false) String clientId)
         throws NacosException {
         AgentDiscoveryRequest request = form.toRequest();
+        migrationGuard.checkReady();
         clientLifecycleService.renewForQuery(clientId, request.getNamespaceId());
         return Result.success(discoveryService.discover(request));
+    }
+    
+    /**
+     * Wait for any changed Agent discovery projection in one complete client generation.
+     */
+    @Since("3.3.0")
+    @PostMapping("/watch")
+    @Secured(action = ActionTypes.READ, signType = SignType.AI, apiType = ApiType.OPEN_API)
+    public DeferredResult<Result<AgentWatchBatchResponse>> watch(AgentWatchBatchForm form,
+        @RequestHeader(name = ClientConstants.HTTP_CLIENT_ID_HEADER,
+            required = false) String clientId,
+        @RequestHeader(name = HttpHeaderConsts.REQUEST_MODULE,
+            required = false) String requestModule)
+        throws NacosException {
+        AgentWatchBatchRequest request = form.toRequest();
+        migrationGuard.checkReady();
+        return watchService.watch(clientId, requestModule, request,
+            form.getWatchPayloadBytes());
     }
     
     /**
@@ -231,7 +265,9 @@ public class AgentClientController {
                 required = false) String requestModule)
         throws NacosException {
         AgentEndpointRegistrationBatch batch = form.toRequest();
-        return Result.success(clientLifecycleService.register(clientId, requestModule, batch));
+        migrationGuard.checkReady();
+        return Result.success(
+            clientLifecycleService.register(clientId, requestModule, form.getNamespaceId(), batch));
     }
     
     /**

@@ -17,6 +17,9 @@
 package com.alibaba.nacos.console.handler.ai;
 
 import com.alibaba.nacos.api.ai.model.mcp.McpEndpointSpec;
+import com.alibaba.nacos.api.ai.model.mcp.McpServerVersionDetail;
+import com.alibaba.nacos.api.ai.model.mcp.McpServerVersionSummary;
+import com.alibaba.nacos.api.ai.model.mcp.McpResourceSpecification;
 import com.alibaba.nacos.api.ai.model.mcp.McpServerBasicInfo;
 import com.alibaba.nacos.api.ai.model.mcp.McpServerDetailInfo;
 import com.alibaba.nacos.api.ai.model.mcp.McpServerImportRequest;
@@ -26,6 +29,8 @@ import com.alibaba.nacos.api.ai.model.mcp.McpTool;
 import com.alibaba.nacos.api.ai.model.mcp.McpToolSpecification;
 import com.alibaba.nacos.api.exception.NacosException;
 import com.alibaba.nacos.api.model.Page;
+
+import java.util.Map;
 
 /**
  * Actual Handler class for handling AI MCP operations.
@@ -107,6 +112,94 @@ public interface McpHandler {
      * @throws NacosException any exception during handling
      */
     void deleteMcpServer(String namespaceId, String mcpName, String mcpId, String version)
+        throws NacosException;
+    
+    /**
+     * Page MCP Server Version summaries.
+     */
+    Page<McpServerVersionSummary> listMcpServerVersions(String namespaceId, String mcpName,
+        String status, int pageNo, int pageSize) throws NacosException;
+    
+    /**
+     * Read one exact MCP Server Version.
+     */
+    McpServerVersionDetail getMcpServerVersion(String namespaceId, String mcpName,
+        String version) throws NacosException;
+    
+    /**
+     * Create one standard MCP draft.
+     */
+    McpServerVersionDetail createMcpServerDraft(String namespaceId,
+        McpServerBasicInfo serverSpecification, McpToolSpecification toolSpecification,
+        McpResourceSpecification resourceSpecification,
+        McpEndpointSpec endpointSpecification) throws NacosException;
+    
+    /**
+     * Replace one exact standard MCP draft.
+     */
+    McpServerVersionDetail updateMcpServerDraft(String namespaceId,
+        McpServerBasicInfo serverSpecification, McpToolSpecification toolSpecification,
+        McpResourceSpecification resourceSpecification,
+        McpEndpointSpec endpointSpecification) throws NacosException;
+    
+    /**
+     * Delete one exact standard MCP draft.
+     */
+    void deleteMcpServerDraft(String namespaceId, String mcpName, String version)
+        throws NacosException;
+    
+    /**
+     * Submit one standard MCP Version.
+     */
+    McpServerVersionSummary submitMcpServerVersion(String namespaceId, String mcpName,
+        String version) throws NacosException;
+    
+    /**
+     * Publish one standard MCP Version.
+     */
+    McpServerVersionSummary publishMcpServerVersion(String namespaceId, String mcpName,
+        String version) throws NacosException;
+    
+    /**
+     * Force-publish one standard MCP Version.
+     */
+    McpServerVersionSummary forcePublishMcpServerVersion(String namespaceId, String mcpName,
+        String version) throws NacosException;
+    
+    /**
+     * Return one reviewed standard MCP Version to draft.
+     */
+    McpServerVersionSummary redraftMcpServerVersion(String namespaceId, String mcpName,
+        String version) throws NacosException;
+    
+    /**
+     * Bring one standard MCP Version online.
+     */
+    McpServerVersionSummary onlineMcpServerVersion(String namespaceId, String mcpName,
+        String version) throws NacosException;
+    
+    /**
+     * Take one standard MCP Version offline.
+     */
+    McpServerVersionSummary offlineMcpServerVersion(String namespaceId, String mcpName,
+        String version) throws NacosException;
+    
+    /**
+     * Replace custom MCP labels.
+     */
+    Map<String, String> updateMcpServerLabels(String namespaceId, String mcpName,
+        Map<String, String> labels) throws NacosException;
+    
+    /**
+     * Enable or disable one MCP Server Resource.
+     */
+    void updateMcpServerStatus(String namespaceId, String mcpName, boolean enabled)
+        throws NacosException;
+    
+    /**
+     * Update one MCP Server Resource visibility scope.
+     */
+    void updateMcpServerScope(String namespaceId, String mcpName, String scope)
         throws NacosException;
     
     /**

@@ -189,29 +189,76 @@ old connection unregistered, and replays complete desired groups under the new
 connection. HTTP and gRPC publisher records stay separate; one transport must
 not deregister contributions owned by the other.
 
-### 8.3 Local Polling Subscription Identity
+The AI gRPC connection also carries an opaque UUID that remains stable only for
+the lifetime of that SDK process. It lets the server reattach temporary
+historical-A2A physical child publishers when a new connection id replays one
+logical Publication after reconnect. It does not change the public redo key,
+the current-connection ownership of SDK intent, or sticky transport ownership;
+a process restart creates a new UUID.
 
-The first SDK does not create a server Watch or store a connection-scoped
-`watchKey`. Its canonical local polling-subscription key contains:
+In Agent `AUTO` transport mode, a Publication selects and caches its
+`ownerTransport` before the first send. Subsequent complete-Batch replacement,
+partial deregistration, whole-publication deregistration, HTTP heartbeat, and
+redo for the same `(namespaceId, agentName, protocol)` use that owner. A client
+may concurrently hold different Publications owned by HTTP and gRPC, but a
+connection-state change never migrates an existing Publication owner, and HTTP
+maintenance never processes a gRPC-owned record.
+
+The SDK uses a soft watermark of 100 Runtime Endpoint entries across retained
+complete publication batches by default, configurable with
+`nacosAiAgentEndpointMaxPublications`. If the entry count before an atomic
+Register is below the watermark, the SDK retains the whole validated batch even
+when it crosses the watermark. At or above it, equal-size or shrinking
+replacement remains allowed, while a new or growing batch is rejected without
+partial cache mutation. The server separately enforces its authoritative
+per-Client watermark. A local or remote publication-capacity rejection is a
+definitive write failure: the rejected identity is removed from the publication
+manager and gRPC redo cache, and HTTP maintenance must not heartbeat or retry
+it. Other transient 5xx transport failures retain the existing rollback and
+redo behavior.
+
+### 8.3 Local Watch Manager And Wire Intent
+
+The canonical local Watch key contains:
 
 ```text
 (namespaceId, canonicalAgentReference, canonicalFilter, listenerIdentity)
 ```
 
-Reference canonicalization preserves the distinction between an exact
-version, a label, and latest. Filter collection and map contents participate
-in value equality. Listener identity is the same listener instance used to
-cancel the subscription. The SDK periodically performs the same Discover;
-gRPC reconnect does not add subscription redo because the next poll naturally
-uses the new connection. A missing target retains the poll without delivering
-an empty snapshot. A changed resolved version, `contentDigest`, or any
-`sourceRevision` atomically replaces the cache and delivers a complete result.
+Reference canonicalization preserves exact Version, Label, explicit latest,
+and unspecified-version semantics. Filter collections and maps participate in
+canonical value equality. Listener identity is the same instance used to
+cancel. One record owns the defensive request copy, listener, last complete
+result, canonical fingerprint, availability state, selected Wire transport,
+Wire generation/key, dirty/refresh state, and bounded retry state. Transport
+adapters never own another listener or result cache.
 
-The server Watch/Push design in the
-[Runtime Push And Reconnect Spec](runtime-push-reconnect-spec.md) is a separate
-future contract. Agent API, abilities, and transport payloads must be updated
-before that contract is implemented; wire Watch state cannot be inferred from
-the local polling identity.
+The local Watch manager retains at most 300 distinct canonical subscription
+keys by default, configurable with
+`nacosAiAgentDiscoveryMaxSubscriptions`. An over-limit subscribe fails before
+the initial Discover, cache insertion, or Wire scheduling. Duplicate subscribe
+is idempotent, and unsubscribe or shutdown releases capacity. A rejected local
+or server capacity registration is rolled back completely and does not enter
+retry. Any batch mutation uses the soft pre-operation watermark and either
+retains the whole normalized batch from below the watermark or rejects growth
+without partial insertion.
+
+Wire Intent is derived from, and never replaces, local intent:
+
+- gRPC state stores the current connection-scoped `watchKey`; disconnect clears
+  that key and marks the record for resubscription under the new connection;
+- HTTP state contributes the request and fingerprint to the next complete-list
+  batch generation; it stores no durable server key;
+- polling fallback schedules bounded periodic Discover without changing the
+  canonical identity;
+- an accepted Hint only marks refresh dirty. One serialized current-fact
+  Discover computes the complete fingerprint, atomically updates cache, and
+  dispatches a listener event outside transport I/O;
+- unsubscribe removes the listener and local intent before best-effort Wire
+  cleanup, so late gRPC hints and HTTP responses cannot invoke it.
+
+The [Runtime Push And Reconnect Spec](runtime-push-reconnect-spec.md) defines
+the corresponding transport recovery and latest-projection push discipline.
 
 ### 8.4 Legacy A2A Compatibility Recovery
 
@@ -221,6 +268,28 @@ exact versions never overwrite one another. A redo record stores a defensive
 snapshot of the Endpoint collection and fields such as URI, transport, and
 metadata. Later caller mutation of an original `AgentEndpoint` or collection
 must not change reconnect intent.
+
+During the temporary historical A2A `AUTO` migration, the client still owns
+exactly one logical redo record and sends exactly one legacy publication
+request. The server may materialize that request into a historical primary and
+canonical mirror, or a canonical primary and optional historical shadow, as
+defined by the
+[Historical A2A Upgrade Migration Spec](../ai/a2a-upgrade-migration-spec.md).
+The client does not cache physical child-publisher ids, double its local
+capacity, or independently retry one layout. Reconnect replays the complete
+logical record once under the new connection, and the server rebuilds the
+layouts required by its current migration marker. For the current Java SDK,
+the server derives those children from the process-stable connection label and
+claims a matching Distro replica before replay, preventing old and new
+connection ids from creating duplicate physical contributions. Older clients
+without the label keep the connection-scoped compatibility path and rely on
+normal Distro expiry after an owner restart.
+
+A successful primary response remains a successful client operation when a
+required mirror or optional shadow enters bounded server-side retry. A primary
+failure remains a normal controlled SDK failure. Migration completion may
+remove a historical child when the frozen shadow policy is disabled without
+changing the client's redo identity or desired batch.
 
 Exact-Version and latest legacy AgentCard subscriptions are distinct local
 identities. Whether a returned Version is currently latest cannot replace the
@@ -237,6 +306,10 @@ transport clients, and stop local cache/failover refresh tasks. Shutdown should
 not delete user-maintained failover files or server-derived snapshots unless the
 user explicitly calls a cache cleanup operation.
 
+Agent shutdown additionally cancels the HTTP batch long poll, best-effort
+unsubscribes current gRPC wire keys, rejects late generations, stops fallback
+polling, and shuts down listener execution after preventing new callbacks.
+
 ## 10. Pending Issues
 
 - Naming redo currently uses its own implementation while newer AI redo uses
@@ -247,3 +320,14 @@ user explicitly calls a cache cleanup operation.
   should share common observability fields.
 - Multi-language SDKs should document which local cache and redo behaviors they
   support and where they intentionally differ from Java.
+
+### 8.5 Adapted A2A Runtime Intent
+
+When A2A uses RAD, the publication state additionally retains per-exact-Version
+reference snapshots and per-Endpoint continuous ranges. This state is committed,
+rolled back, replayed and removed together with the existing complete Batch and
+sticky owner transport; it is not a second redo cache. Same-publication native
+RAD/A2A source exclusion follows the [A2A Agent Spec](../ai/a2a-agent-spec.md).
+The gRPC task delegates managed publications to that same serialized owner.
+Expected snapshot identity prevents old work from overwriting a newer write;
+completed/rejected replay reconciles only its own current redo record.

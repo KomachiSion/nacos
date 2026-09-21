@@ -418,7 +418,8 @@ public class NamingGrpcClientProxy extends AbstractNamingClientProxy {
     @Override
     public ServiceInfo subscribe(String serviceName, String groupName, String clusters)
         throws NacosException {
-        NAMING_LOGGER.info("[GRPC-SUBSCRIBE] service:{}, group:{}, cluster:{} ", serviceName,
+        NAMING_LOGGER.info("[GRPC-SUBSCRIBE] {} service:{}, group:{}, cluster:{} ", namespaceId,
+            serviceName,
             groupName, clusters);
         redoService.cacheSubscriberForRedo(serviceName, groupName, clusters);
         return doSubscribe(serviceName, groupName, clusters);
@@ -447,7 +448,8 @@ public class NamingGrpcClientProxy extends AbstractNamingClientProxy {
     @Override
     public void unsubscribe(String serviceName, String groupName, String clusters)
         throws NacosException {
-        NAMING_LOGGER.info("[GRPC-UNSUBSCRIBE] service:{}, group:{}, cluster:{} ", serviceName,
+        NAMING_LOGGER.info("[GRPC-UNSUBSCRIBE] {} service:{}, group:{}, cluster:{} ", namespaceId,
+            serviceName,
             groupName, clusters);
         redoService.subscriberDeregister(serviceName, groupName, clusters);
         doUnsubscribe(serviceName, groupName, clusters);
@@ -562,14 +564,14 @@ public class NamingGrpcClientProxy extends AbstractNamingClientProxy {
         
         try {
             if (Objects.isNull(response)) {
-                MetricsMonitor.getNamingRequestFailedMonitor(request.getClass().getSimpleName(),
+                MetricsMonitor.recordNamingRequestFailed(request.getClass().getSimpleName(),
                     MONITOR_LABEL_NONE,
-                    MONITOR_LABEL_NONE, exception.getClass().getSimpleName()).inc();
+                    MONITOR_LABEL_NONE, exception.getClass().getSimpleName());
             } else {
-                MetricsMonitor.getNamingRequestFailedMonitor(request.getClass().getSimpleName(),
+                MetricsMonitor.recordNamingRequestFailed(request.getClass().getSimpleName(),
                     String.valueOf(response.getResultCode()),
                     String.valueOf(response.getErrorCode()),
-                    MONITOR_LABEL_NONE).inc();
+                    MONITOR_LABEL_NONE);
             }
         } catch (Throwable t) {
             NAMING_LOGGER.warn("Fail to record metrics for request {}",

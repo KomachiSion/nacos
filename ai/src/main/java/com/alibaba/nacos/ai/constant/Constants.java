@@ -16,6 +16,8 @@
 
 package com.alibaba.nacos.ai.constant;
 
+import com.alibaba.nacos.api.ai.constant.AiConstants;
+
 /**
  * Nacos AI Server Constants.
  *
@@ -23,17 +25,33 @@ package com.alibaba.nacos.ai.constant;
  */
 public class Constants {
     
+    public static final String AI_RESOURCE_SEARCH_CLIENT_PATH =
+        "/v3/client/ai/resources/search";
+    
     public static final String MCP_PATH = "/ai/mcp";
     
     public static final String MCP_ADMIN_PATH = "/v3/admin" + MCP_PATH;
     
     public static final String MCP_CONSOLE_PATH = "/v3/console" + MCP_PATH;
     
+    public static final String MCP_CLIENT_PATH = "/v3/client" + MCP_PATH;
+    
     public static final String AI_RESOURCE_IMPORT_ADMIN_PATH = "/v3/admin/ai/import";
     
     public static final String AI_RESOURCE_IMPORT_CONSOLE_PATH = "/v3/console/ai/import";
     
     public static final String ARD_ENABLED_KEY = "nacos.ai.ard.enabled";
+    
+    /**
+     * Enables the protocol-neutral AI Resource Search runtime.
+     */
+    public static final String AI_RESOURCE_SEARCH_ENABLED_KEY =
+        "nacos.ai.resource.search.enabled";
+    
+    /**
+     * Selects the default AI Resource storage provider for new writes.
+     */
+    public static final String AI_STORAGE_PROVIDER_CONFIG_KEY = "nacos.ai.storage.provider";
     
     public static final String MCP_LIST_SEARCH_ACCURATE = "accurate";
     
@@ -48,6 +66,19 @@ public class Constants {
     public static final String MCP_SERVER_TOOL_GROUP = "mcp-tools";
     
     public static final String MCP_SERVER_RESOURCE_GROUP = "mcp-resources";
+    
+    /**
+     * Dedicated Config namespace for internal AI control state.
+     *
+     * <p>The namespace is intentionally not registered in the user Namespace catalog. Operators
+     * should avoid creating a Namespace or managing Config content with this identifier.</p>
+     */
+    public static final String AI_INTERNAL_STATE_NAMESPACE = "_nacos_internal_";
+    
+    /**
+     * Dedicated Config namespace for MCP lifecycle reconciliation state.
+     */
+    public static final String MCP_LIFECYCLE_STATE_NAMESPACE = AI_INTERNAL_STATE_NAMESPACE;
     
     public static final String MCP_SERVER_SPEC_DATA_ID_SUFFIX = "-mcp-server.json";
     
@@ -125,12 +156,58 @@ public class Constants {
         public static final String ADMIN_PATH = "/v3/admin/ai/agents";
         
         /**
+         * Selects the RAD Agent Search read path.
+         */
+        public static final String RAD_SEARCH_MODE_CONFIG_KEY = "nacos.ai.rad.search.mode";
+        
+        /**
+         * Soft watermark for Runtime Endpoint publication entries owned by one publisher Client.
+         */
+        public static final String MAX_PUBLICATIONS_PER_CLIENT_CONFIG_KEY =
+            "nacos.ai.rad.capacity.publication.max-publications-per-client";
+        
+        public static final int DEFAULT_MAX_PUBLICATIONS_PER_CLIENT = 100;
+        
+        /**
+         * Soft watermark for gRPC Watches or HTTP Batch items owned by one client.
+         */
+        public static final String MAX_WATCHES_PER_CLIENT_CONFIG_KEY =
+            "nacos.ai.rad.capacity.watch.max-per-client";
+        
+        public static final int DEFAULT_MAX_WATCHES_PER_CLIENT = 300;
+        
+        /**
+         * Hard limit for request-scoped HTTP Watch waiters retained by one server node.
+         */
+        public static final String MAX_HTTP_WATCH_WAITERS_PER_NODE_CONFIG_KEY =
+            "nacos.ai.rad.capacity.watch.http.max-active-requests-per-node";
+        
+        public static final int DEFAULT_MAX_HTTP_WATCH_WAITERS_PER_NODE = 10000;
+        
+        /**
+         * Hard aggregate byte limit for active HTTP Watch JSON fields on one server node.
+         */
+        public static final String MAX_HTTP_WATCH_ACTIVE_BYTES_PER_NODE_CONFIG_KEY =
+            "nacos.ai.rad.capacity.watch.http.max-active-bytes-per-node";
+        
+        public static final long DEFAULT_MAX_HTTP_WATCH_ACTIVE_BYTES_PER_NODE =
+            64L * 1024L * 1024L;
+        
+        /**
+         * Hard byte limit for one HTTP Watch JSON-valued form field.
+         */
+        public static final String MAX_HTTP_WATCH_REQUEST_BYTES_CONFIG_KEY =
+            "nacos.ai.rad.capacity.watch.http.max-request-bytes";
+        
+        public static final long DEFAULT_MAX_HTTP_WATCH_REQUEST_BYTES = 1024L * 1024L;
+        
+        /**
          * Resource type stored in {@code ai_resource} and {@code ai_resource_version}.
          */
         public static final String RESOURCE_TYPE_AGENT = "agent";
         
         /**
-         * Selects the AI Storage provider for Agent Version content.
+         * Compatibility override for the Agent storage provider.
          */
         public static final String AGENT_STORAGE_PROVIDER_CONFIG_KEY =
             "nacos.ai.agent.storage.provider";
@@ -149,7 +226,7 @@ public class Constants {
             AGENT_ENDPOINT_METADATA_PREFIX + "protocol__";
         
         public static final String AGENT_ENDPOINT_PROTOCOL_VERSION_KEY =
-            AGENT_ENDPOINT_METADATA_PREFIX + "protocolVersion__";
+            AiConstants.A2a.ENDPOINT_PROTOCOL_VERSION;
         
         public static final String AGENT_ENDPOINT_SUPPORT_TLS_KEY =
             AGENT_ENDPOINT_METADATA_PREFIX + "supportTls__";
@@ -158,7 +235,7 @@ public class Constants {
             AGENT_ENDPOINT_METADATA_PREFIX + "query__";
         
         public static final String AGENT_ENDPOINT_TENANT_KEY =
-            AGENT_ENDPOINT_METADATA_PREFIX + "tenant__";
+            AiConstants.A2a.ENDPOINT_TENANT;
         
         public static final String AGENT_ENDPOINT_VERSION_KEY =
             AGENT_ENDPOINT_METADATA_PREFIX + "version__";

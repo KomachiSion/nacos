@@ -16,6 +16,9 @@
 
 package com.alibaba.nacos.ai.storage;
 
+import com.alibaba.nacos.ai.constant.AiResourceConstants;
+import com.alibaba.nacos.ai.constant.Constants;
+import com.alibaba.nacos.ai.service.SyncEffectService;
 import com.alibaba.nacos.api.ai.model.NacosAiConfigKeyCodec;
 import com.alibaba.nacos.api.ai.model.agentspecs.AgentSpecUtils;
 import com.alibaba.nacos.api.ai.model.prompt.PromptUtils;
@@ -23,36 +26,53 @@ import com.alibaba.nacos.api.ai.model.skills.SkillUtils;
 import com.alibaba.nacos.api.ai.utils.AgentValidationUtils;
 import com.alibaba.nacos.api.config.ConfigType;
 import com.alibaba.nacos.api.exception.NacosException;
+import com.alibaba.nacos.common.notify.NotifyCenter;
+import com.alibaba.nacos.common.notify.listener.Subscriber;
+import com.alibaba.nacos.common.utils.LogRateLimiter;
 import com.alibaba.nacos.common.utils.StringUtils;
 import com.alibaba.nacos.config.server.exception.ConfigAlreadyExistsException;
 import com.alibaba.nacos.config.server.model.ConfigRequestInfo;
+import com.alibaba.nacos.config.server.model.event.LocalDataChangeEvent;
 import com.alibaba.nacos.config.server.model.form.ConfigForm;
 import com.alibaba.nacos.config.server.service.ConfigOperationService;
 import com.alibaba.nacos.config.server.service.query.ConfigQueryChainService;
 import com.alibaba.nacos.config.server.service.query.model.ConfigQueryChainRequest;
 import com.alibaba.nacos.config.server.service.query.model.ConfigQueryChainResponse;
-import com.alibaba.nacos.ai.service.SyncEffectService;
+import com.alibaba.nacos.config.server.utils.ConfigPersistContext;
+import com.alibaba.nacos.config.server.utils.GroupKey2;
+import com.alibaba.nacos.plugin.ai.storage.model.AiResourceStorageChangeEvent;
+import com.alibaba.nacos.plugin.ai.storage.model.AiResourceStorageConsistencyMode;
 import com.alibaba.nacos.plugin.ai.storage.model.StorageKey;
 import com.alibaba.nacos.plugin.ai.storage.spi.AiResourceStorage;
-import com.alibaba.nacos.config.server.utils.ConfigPersistContext;
+import com.alibaba.nacos.plugin.ai.storage.spi.AiResourceStorageChangeListener;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.nio.charset.StandardCharsets;
+import java.util.Set;
+import java.util.concurrent.CopyOnWriteArraySet;
 
 /**
  * Nacos Config based {@link AiResourceStorage} implementation.
  *
- * <p>Supports Skill, AgentSpec, Prompt and Agent Version resources.
+ * <p>Supports Skill, AgentSpec, Prompt, Agent Version and allowlisted MCP resources.
  * StorageKey.key format:
  * <ul>
  *   <li>Legacy (Skill): {@code namespaceId:name:version:filePath} (4-part, defaults to skill__ prefix)</li>
  *   <li>Typed: {@code namespaceId:resourceType:name:version:filePath} (5-part, resourceType = "skill", "agentspec" or "prompt")</li>
  *   <li>Agent Version: {@code namespaceId:agent-version:dataId} (3-part opaque key)</li>
+ *   <li>MCP Version content: {@code namespaceId:mcp-owned-group:dataId} (3-part opaque key)</li>
  * </ul>
  * File path convention: main = {@link #getMainFilePath()} / {@link #getMainFilePath(String)},
  * resources = {@link #getResourceFilePath(String, String)} / {@link #getAgentSpecResourceFilePath(String, String)},
  * manifest = {@link #buildManifestStorageKey(String, String, String)}.</p>
  */
 public class NacosConfigAiResourceStorage implements AiResourceStorage {
+    
+    private static final Logger LOGGER =
+        LoggerFactory.getLogger(NacosConfigAiResourceStorage.class);
+    
+    private static final LogRateLimiter WARN_LOG_LIMITER = new LogRateLimiter(60000L);
     
     public static final String TYPE = "nacos_config";
     
@@ -175,6 +195,25 @@ public class NacosConfigAiResourceStorage implements AiResourceStorage {
     
     private final SyncEffectService syncEffectService;
     
+    private final Set<AiResourceStorageChangeListener> changeListeners =
+        new CopyOnWriteArraySet<AiResourceStorageChangeListener>();
+    
+    private final Subscriber<LocalDataChangeEvent> localDataChangeSubscriber =
+        new Subscriber<LocalDataChangeEvent>() {
+            
+            @Override
+            public void onEvent(LocalDataChangeEvent event) {
+                onLocalDataChange(event);
+            }
+            
+            @Override
+            public Class<? extends com.alibaba.nacos.common.notify.Event> subscribeType() {
+                return LocalDataChangeEvent.class;
+            }
+        };
+    
+    private boolean localDataChangeSubscriberRegistered;
+    
     public NacosConfigAiResourceStorage(ConfigQueryChainService configQueryChainService,
         ConfigOperationService configOperationService, SyncEffectService syncEffectService) {
         this.configQueryChainService = configQueryChainService;
@@ -188,13 +227,47 @@ public class NacosConfigAiResourceStorage implements AiResourceStorage {
     }
     
     @Override
+    public AiResourceStorageConsistencyMode consistencyMode() {
+        return AiResourceStorageConsistencyMode.EVENTUAL_WITH_NOTIFICATION;
+    }
+    
+    @Override
+    public synchronized void addChangeListener(AiResourceStorageChangeListener listener) {
+        if (listener == null || !changeListeners.add(listener)
+            || localDataChangeSubscriberRegistered) {
+            return;
+        }
+        try {
+            NotifyCenter.registerSubscriber(localDataChangeSubscriber);
+            localDataChangeSubscriberRegistered = true;
+        } catch (RuntimeException e) {
+            changeListeners.remove(listener);
+            throw e;
+        }
+    }
+    
+    @Override
+    public synchronized void removeChangeListener(AiResourceStorageChangeListener listener) {
+        if (listener == null || !changeListeners.remove(listener) || !changeListeners.isEmpty()
+            || !localDataChangeSubscriberRegistered) {
+            return;
+        }
+        try {
+            NotifyCenter.deregisterSubscriber(localDataChangeSubscriber);
+            localDataChangeSubscriberRegistered = false;
+        } catch (RuntimeException e) {
+            changeListeners.add(listener);
+            throw e;
+        }
+    }
+    
+    @Override
     public void save(StorageKey storageKey, byte[] content) throws NacosException {
         long startTimeStamp = System.currentTimeMillis();
         KeyParts parts = parse(storageKey);
         ConfigForm form = new ConfigForm();
-        String physicalDataId = NacosAiConfigKeyCodec.toPhysicalDataId(parts.dataId());
-        String physicalGroup =
-            NacosAiConfigKeyCodec.toPhysicalGroup(parts.group(), parts.groupPrefix());
+        String physicalDataId = toPhysicalDataId(parts);
+        String physicalGroup = toPhysicalGroup(parts);
         form.setDataId(physicalDataId);
         form.setGroup(physicalGroup);
         form.setNamespaceId(parts.namespaceId());
@@ -223,9 +296,8 @@ public class NacosConfigAiResourceStorage implements AiResourceStorage {
     @Override
     public byte[] get(StorageKey storageKey) throws NacosException {
         KeyParts parts = parse(storageKey);
-        String physicalDataId = NacosAiConfigKeyCodec.toPhysicalDataId(parts.dataId());
-        String physicalGroup =
-            NacosAiConfigKeyCodec.toPhysicalGroup(parts.group(), parts.groupPrefix());
+        String physicalDataId = toPhysicalDataId(parts);
+        String physicalGroup = toPhysicalGroup(parts);
         ConfigQueryChainRequest request = ConfigQueryChainRequest.buildConfigQueryChainRequest(
             physicalDataId, physicalGroup, parts.namespaceId());
         ConfigQueryChainResponse response = configQueryChainService.handle(request);
@@ -239,9 +311,8 @@ public class NacosConfigAiResourceStorage implements AiResourceStorage {
     @Override
     public void delete(StorageKey storageKey) throws NacosException {
         KeyParts parts = parse(storageKey);
-        String physicalDataId = NacosAiConfigKeyCodec.toPhysicalDataId(parts.dataId());
-        String physicalGroup =
-            NacosAiConfigKeyCodec.toPhysicalGroup(parts.group(), parts.groupPrefix());
+        String physicalDataId = toPhysicalDataId(parts);
+        String physicalGroup = toPhysicalGroup(parts);
         try (ConfigPersistContext.Guard ignored = ConfigPersistContext.withSkipHistory()) {
             configOperationService.deleteConfig(physicalDataId, physicalGroup, parts.namespaceId(),
                 null, null, "nacos",
@@ -269,9 +340,10 @@ public class NacosConfigAiResourceStorage implements AiResourceStorage {
     }
     
     /**
-     * Parse StorageKey into KeyParts. Supports four key formats:
+     * Parse StorageKey into KeyParts. Supports five key formats:
      * <ul>
      *   <li>Agent Version: {@code namespaceId:agent-version:dataId} → group = agent-version</li>
+     *   <li>MCP content: {@code namespaceId:mcp-owned-group:dataId} → exact legacy coordinate</li>
      *   <li>Legacy 4-part (Skill): {@code namespaceId:name:version:filePath} → group = skill__{name}__{version}</li>
      *   <li>Legacy 4-part manifest: {@code namespaceId:name::filePath} (blank version) → group = skill_{name}</li>
      *   <li>Typed 5-part: {@code namespaceId:resourceType:name:version:filePath} → group = {prefix}{name}__{version}</li>
@@ -281,6 +353,10 @@ public class NacosConfigAiResourceStorage implements AiResourceStorage {
     static KeyParts parse(StorageKey storageKey) {
         if (storageKey == null || StringUtils.isBlank(storageKey.getKey())) {
             throw new IllegalArgumentException("StorageKey.key is blank");
+        }
+        KeyParts mcpParts = parseMcpStorageKey(storageKey.getKey());
+        if (mcpParts != null) {
+            return mcpParts;
         }
         String[] agentVersionParts = storageKey.getKey().split(":", -1);
         if (agentVersionParts.length == 3 && AGENT_VERSION_GROUP.equals(agentVersionParts[1])
@@ -339,6 +415,103 @@ public class NacosConfigAiResourceStorage implements AiResourceStorage {
             group = SkillUtils.buildSkillVersionGroup(skillName, version);
         }
         return new KeyParts(namespaceId, group, SkillUtils.SKILL_GROUP_PREFIX, filePath);
+    }
+    
+    private static KeyParts parseMcpStorageKey(String key) {
+        int namespaceSeparator = key.indexOf(':');
+        if (namespaceSeparator < 0) {
+            return null;
+        }
+        int groupSeparator = key.indexOf(':', namespaceSeparator + 1);
+        if (groupSeparator < 0) {
+            return null;
+        }
+        String group = key.substring(namespaceSeparator + 1, groupSeparator);
+        if (!isMcpStorageGroup(group)) {
+            return null;
+        }
+        String namespaceId = key.substring(0, namespaceSeparator);
+        String dataId = key.substring(groupSeparator + 1);
+        if (!isMcpStorageDataId(group, dataId)) {
+            return null;
+        }
+        AgentValidationUtils.validateNamespaceId(namespaceId);
+        return new KeyParts(namespaceId, group, group, dataId);
+    }
+    
+    private static boolean isMcpStorageDataId(String group, String dataId) {
+        String suffix;
+        if (Constants.MCP_SERVER_GROUP.equals(group)) {
+            suffix = Constants.MCP_SERVER_SPEC_DATA_ID_SUFFIX;
+        } else if (Constants.MCP_SERVER_TOOL_GROUP.equals(group)) {
+            suffix = Constants.MCP_SERVER_TOOL_DATA_ID_SUFFIX;
+        } else {
+            suffix = Constants.MCP_SERVER_RESOURCE_DATA_ID_SUFFIX;
+        }
+        return dataId.length() > suffix.length() && dataId.endsWith(suffix);
+    }
+    
+    private static boolean isMcpStorageGroup(String group) {
+        return Constants.MCP_SERVER_GROUP.equals(group)
+            || Constants.MCP_SERVER_TOOL_GROUP.equals(group)
+            || Constants.MCP_SERVER_RESOURCE_GROUP.equals(group);
+    }
+    
+    void onLocalDataChange(LocalDataChangeEvent event) {
+        if (event == null || StringUtils.isBlank(event.groupKey)) {
+            return;
+        }
+        String resourceType;
+        try {
+            String[] coordinate = GroupKey2.parseKey(event.groupKey);
+            resourceType = resolveResourceType(coordinate[1]);
+        } catch (RuntimeException e) {
+            return;
+        }
+        if (resourceType == null) {
+            return;
+        }
+        AiResourceStorageChangeEvent storageEvent = new AiResourceStorageChangeEvent(TYPE,
+            resourceType, event.groupKey);
+        for (AiResourceStorageChangeListener listener : changeListeners) {
+            try {
+                listener.onStorageChanged(storageEvent);
+            } catch (RuntimeException e) {
+                if (WARN_LOG_LIMITER.tryAcquire()) {
+                    LOGGER.warn("AI storage local-visibility listener failed for provider {}",
+                        TYPE, e);
+                }
+            }
+        }
+    }
+    
+    private static String resolveResourceType(String group) {
+        if (AGENT_VERSION_GROUP.equals(group)) {
+            return Constants.Agent.RESOURCE_TYPE_AGENT;
+        }
+        if (group != null && group.startsWith(AgentSpecUtils.AGENTSPEC_GROUP_PREFIX)) {
+            return Constants.AgentSpecs.RESOURCE_TYPE_AGENTSPEC;
+        }
+        if (group != null && group.startsWith(SkillUtils.SKILL_GROUP_PREFIX)) {
+            return AiResourceConstants.RESOURCE_TYPE_SKILL;
+        }
+        if (group != null && group.startsWith(PromptUtils.PROMPT_GROUP_PREFIX)) {
+            return AiResourceConstants.RESOURCE_TYPE_PROMPT;
+        }
+        if (isMcpStorageGroup(group)) {
+            return AiResourceConstants.RESOURCE_TYPE_MCP;
+        }
+        return null;
+    }
+    
+    private static String toPhysicalDataId(KeyParts parts) {
+        return isMcpStorageGroup(parts.group()) ? parts.dataId()
+            : NacosAiConfigKeyCodec.toPhysicalDataId(parts.dataId());
+    }
+    
+    private static String toPhysicalGroup(KeyParts parts) {
+        return isMcpStorageGroup(parts.group()) ? parts.group()
+            : NacosAiConfigKeyCodec.toPhysicalGroup(parts.group(), parts.groupPrefix());
     }
     
     private static void validateAgentVersionDataId(String dataId) {

@@ -127,7 +127,7 @@ public class A2aConsoleApiOpenApiITCase extends AiConsoleApiBaseITCase {
             assertEquals("PUBLIC", canonicalOverview.get("agent").get("scope").asText(),
                     canonicalOverview.toString());
             assertEquals(1,
-                    canonicalOverview.get("agent").get("versionInfo").get("onlineCnt").asInt(),
+                    canonicalOverview.get("agent").get("versionInfo").get("onlineVersions").size(),
                     canonicalOverview.toString());
             JsonNode canonicalVersion = getJsonOk(CONSOLE_AGENT_VERSION_PATH,
                     agentVersionIdentityQuery(null, agentName, version)).get("data");
@@ -140,7 +140,7 @@ public class A2aConsoleApiOpenApiITCase extends AiConsoleApiBaseITCase {
                     canonicalVersion.get("callInterfaces").get(0).get("nativeDescriptor")
                             .get("description").asText(), canonicalVersion.toString());
             assertEquals(2,
-                    canonicalVersion.get("callInterfaces").get(0).get("declaredEndpoints")
+                    canonicalVersion.get("callInterfaces").get(0).get("endpointSets").get(0).get("endpoints")
                             .size(), canonicalVersion.toString());
         } finally {
             deleteAgentQuietly(agentName, version, REGISTRATION_TYPE_URL);
@@ -339,8 +339,8 @@ public class A2aConsoleApiOpenApiITCase extends AiConsoleApiBaseITCase {
     }
 
     private JsonNode postAdminFormOk(String path, Map<String, String> form) throws Exception {
-        HttpRestResult<String> result = nacosRestTemplate.postForm(BASE_URL + path, Header.EMPTY,
-                form, String.class);
+        HttpRestResult<String> result = nacosRestTemplate.postForm(BASE_URL + path,
+                requestHeader(BASE_URL + path), form, String.class);
         assertTrue(result.ok(), "Admin HTTP status should be 2xx, code=" + result.getCode()
                 + ", body=" + result.getData() + ", message=" + result.getMessage());
         JsonNode root = JacksonUtils.toObj(result.getData());
@@ -349,8 +349,8 @@ public class A2aConsoleApiOpenApiITCase extends AiConsoleApiBaseITCase {
     }
 
     private JsonNode getAdminJsonOk(String path, Query query) throws Exception {
-        HttpRestResult<String> result = nacosRestTemplate.get(BASE_URL + path, Header.EMPTY,
-                query, String.class);
+        HttpRestResult<String> result = nacosRestTemplate.get(BASE_URL + path,
+                requestHeader(BASE_URL + path), query, String.class);
         assertTrue(result.ok(), "Admin HTTP status should be 2xx, code=" + result.getCode()
                 + ", body=" + result.getData() + ", message=" + result.getMessage());
         JsonNode root = JacksonUtils.toObj(result.getData());
@@ -365,7 +365,7 @@ public class A2aConsoleApiOpenApiITCase extends AiConsoleApiBaseITCase {
                 overview.toString());
         assertEquals("enable", agent.get("status").asText(), overview.toString());
         assertEquals("PUBLIC", agent.get("scope").asText(), overview.toString());
-        assertEquals(1, agent.get("versionInfo").get("onlineCnt").asInt(),
+        assertEquals(1, agent.get("versionInfo").get("onlineVersions").size(),
                 overview.toString());
         assertEquals(version, agent.get("versionInfo").get("labels").get("latest").asText(),
                 overview.toString());
@@ -384,7 +384,7 @@ public class A2aConsoleApiOpenApiITCase extends AiConsoleApiBaseITCase {
         assertEquals("v1-" + agentName,
                 callInterface.get("nativeDescriptor").get("description").asText(),
                 detail.toString());
-        assertEquals(2, callInterface.get("declaredEndpoints").size(), detail.toString());
+        assertEquals(2, callInterface.get("endpointSets").get(0).get("endpoints").size(), detail.toString());
     }
 
     private void assertLegacyProjection(JsonNode card, String agentName, String version) {
@@ -404,9 +404,13 @@ public class A2aConsoleApiOpenApiITCase extends AiConsoleApiBaseITCase {
         callInterface.put("nativeDescriptor",
                 JacksonUtils.toObj(buildV1AgentCard(agentName, version, "1.0"), Map.class));
         callInterface.put("endpointSourceOrder", Arrays.asList("DECLARED", "RUNTIME"));
-        callInterface.put("declaredEndpoints", Arrays.asList(
+
+        Map<String, Object> declaredSet1 = new LinkedHashMap<>();
+        declaredSet1.put("source", "DECLARED");
+        declaredSet1.put("endpoints", Arrays.asList(
                 declaredEndpoint(agentName, "jsonrpc", "JSONRPC"),
                 declaredEndpoint(agentName, "grpc", "GRPC")));
+        callInterface.put("endpointSets", java.util.Collections.singletonList(declaredSet1));
         result.put("callInterfaces", Collections.singletonList(callInterface));
         return result;
     }

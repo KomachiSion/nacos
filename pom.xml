@@ -134,13 +134,13 @@
         <commons-collections.version>3.2.2</commons-collections.version>
         <slf4j-api.version>2.0.13</slf4j-api.version>
         <logback.version>1.5.32</logback.version>
-        <log4j.version>2.25.4</log4j.version>
+        <log4j.version>2.25.5</log4j.version>
         
         <mysql-connector-java.version>8.2.0</mysql-connector-java.version>
         <postgresql.version>42.7.12</postgresql.version>
         <derby.version>10.14.2.0</derby.version>
         <jjwt.version>0.11.2</jjwt.version>
-        <grpc-java.version>1.78.0</grpc-java.version>
+        <grpc-java.version>1.81.0</grpc-java.version>
         <proto-google-common-protos.version>2.17.0</proto-google-common-protos.version>
         <protobuf-java.version>3.25.5</protobuf-java.version>
         <protoc-gen-grpc-java.version>${grpc-java.version}</protoc-gen-grpc-java.version>
@@ -148,7 +148,7 @@
         <mockito.version>4.11.0</mockito.version>
         <byte-buddy-agent.version>1.17.8</byte-buddy-agent.version>
         <HikariCP.version>3.4.2</HikariCP.version>
-        <jraft-core.version>1.4.0</jraft-core.version>
+        <jraft-core.version>1.4.1</jraft-core.version>
         <rpc-grpc-impl.version>${jraft-core.version}</rpc-grpc-impl.version>
         <rocksdb.version>8.10.2</rocksdb.version>
         <!-- gson version should follow grcp-core dependency -->
@@ -289,7 +289,7 @@
                     <inputEncoding>UTF-8</inputEncoding>
                     <consoleOutput>true</consoleOutput>
                     <failsOnError>true</failsOnError>
-                    <excludes>**/consistency/entity/**,**/nacos/test/**,**/api/grpc/auto/**,**/istio/**,**/protobuf/**
+                    <excludes>**/consistency/entity/**,**/nacos/test/**,**/api/grpc/auto/**,**/istio/**,**/protobuf/**,**/core/remote/thirdparty/clhm/**
                     </excludes>
                 </configuration>
                 <executions>
@@ -320,6 +320,7 @@
                             <exclude>**/consistency/entity/**</exclude>
                             <exclude>**/istio/model/**</exclude>
                             <exclude>**/common/packagescan/**</exclude>
+                            <exclude>**/core/remote/thirdparty/clhm/**</exclude>
                             <exclude>**/nacos/test/**</exclude>
                             <exclude>**/protobuf/**</exclude>
                         </excludes>
@@ -423,6 +424,7 @@
                         <exclude>**/packagescan/classreading/**</exclude>
                         <exclude>**/packagescan/resource/**</exclude>
                         <exclude>**/packagescan/util/**</exclude>
+                        <exclude>**/core/remote/thirdparty/clhm/**</exclude>
                     </excludes>
                 </configuration>
                 <executions>
@@ -614,6 +616,7 @@
         <module>core</module>
         <module>naming</module>
         <module>address</module>
+        <module>dns</module>
         <module>test</module>
         <module>api</module>
         <module>client</module>
@@ -724,6 +727,11 @@
             <dependency>
                 <groupId>${project.groupId}</groupId>
                 <artifactId>nacos-naming</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>${project.groupId}</groupId>
+                <artifactId>nacos-dns</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>

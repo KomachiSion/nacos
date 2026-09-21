@@ -142,6 +142,10 @@ Repository operation
 启用分布式嵌入式存储时，读路径使用 CP read。启动 dump 可以设置阻塞读上下文，让节点等到已有可读数据
 后再重建服务缓存。
 
+分布式嵌入式读请求必须在执行 JDBC 前校验其声明的结果目标。基于 mapper 的查询只能使用已注册到
+持久化 RowMapper 注册表中的类名；标量查询只能使用显式白名单中的基础结果类型，并从固定 Class 常量
+解析，禁止根据请求内容动态加载类。结果目标缺失、未知或与 query type 不匹配时，必须使读请求失败。
+
 Snapshot 规则由[CP 一致性规范](foundation-cp-consistency-spec.md)定义。嵌入式存储必须提供足够
 snapshot 数据，使本地 Derby state 可以在重启或成员变化后重建。
 
@@ -196,6 +200,8 @@ Durable write or cluster change notification
 - raw disk 存储将正式和灰度内容保存在 Nacos home 下的数据目录，并区分带 namespace 和不带
   namespace 的路径；
 - dump 存储 key 必须从经过校验和编码的 Config 身份字段派生；
+- 不安全的派生 identity 必须 fail-closed，并记录有长度边界且已处理控制字符的诊断信息。单个 identity
+  被拒绝不得阻止其他无关 dump identity 执行，同时必须保持已有任务重试和启动失败语义；
 - 切换本地 dump backend 不得改变 Config 资源身份、md5 语义、鉴权或持久事实来源。
 
 本地 dump 存储属于服务缓存路径，不是 repository 契约，也不得作为独立持久数据库使用。

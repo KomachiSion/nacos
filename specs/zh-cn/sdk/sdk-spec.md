@@ -82,7 +82,7 @@ Maintainer SDK 应被视为 Nacos Admin API 能力面的类型化门面。只对
   不传 namespace；
 - 提供 Agent Search、带或不带 Filter 的 Discover、Watch 与取消 Watch，以及运行时
   Endpoint Register 和 Deregister；
-- 通过 `AiService.publishAgent` 提供可选的代码式 Agent 定义发布，默认只创建 draft，并可通过
+- 通过 `AiService.agent().publishAgent` 提供可选的代码式 Agent 定义发布，默认只创建 draft，并可通过
   `autoSubmit` 执行普通 submit Pipeline；
 - 在不修改调用方对象的前提下，把绑定的 namespace 注入传输请求；
 - 按客户端恢复规范在 reconnect 后恢复 Watch 和 Endpoint 发布意图。
@@ -94,7 +94,58 @@ Maintainer SDK 应被视为 Nacos Admin API 能力面的类型化门面。只对
 目标 Maintainer SDK 不绑定 namespace；每个 Agent 管理调用都必须显式标识 namespace。
 它提供新的 Agent 管理 Facade，并在 A2A 兼容窗口内继续保留 A2A 管理 Facade。
 
-## 5. 安全规则
+## 5. MCP 生命周期托管契约
+
+MCP Metadata 和 Version 迁移到通用 AI Resource 生命周期期间，现有 Java Client MCP 接口
+继续作为兼容表面。只要现有操作可以在内部适配，公开方法签名就保持不变：
+
+- Release 继续作为 Direct-Online 兼容写入，并保持相同返回值；
+- Query 保持当前 Serving 投影，省略 Version 时使用 `latest`；
+- Subscription 继续轮询完整 MCP Query 投影，不订阅底层 Naming Service；
+- Endpoint 注销、重连和 Redo 保留 Client 所有的 Runtime Publication 意图，且不创建或删除
+  MCP 定义。
+
+生命周期托管不修改当前 Runtime ServiceName、Cluster、Metadata、Endpoint Request、
+Reconnect Snapshot 或能力协商，也不增加 Runtime Version Range 或多 Transport 字段。
+此类 Endpoint 模型变更需要后续独立兼容设计。
+
+Maintainer SDK 保留现有 MCP 方法作为兼容 Facade，并增加与 Admin MCP Version、Draft、
+Submit、Publish、Force Publish、Redraft、Online、Offline 和 Label 操作一一对应的类型化方法。
+旧 Detail 和 Direct-online Create/Update 方法自 3.3.0 起废弃，计划在 4.0.0 删除；调用方应迁移到
+精确 Version 读取和 Draft-Submit-Publish 流程。跨 Resource List/Search，以及
+Published Version 或完整 Resource Delete 在提供语义等价的类型化方法之前继续保留。每个新管理
+调用都显式标识 Namespace，使用 `mcpName + version`，并与 Admin/Console API 共用同一个
+Lifecycle Application Service。
+
+Draft 创建/更新通过 Request Object 重载复用既有 `createMcpServer` 和 `updateMcpServer` 名称；
+其他公开方法和模型名描述 Version 与用户操作，不暴露内部 Lifecycle 托管机制。
+
+类型化 Request Object 为 `McpServerDraftRequest`、`McpServerVersionCommand` 和
+`McpServerLabelsUpdateRequest`。它们不新增顶层 Namespace 或 `mcpId` 选择器；显式重载
+独立接收 Namespace，便利重载使用默认 Namespace。复用 `McpServerBasicInfo` 内容内的历史
+身份字段不参与 Lifecycle Target 解析。实现把这些对象映射到现有 Admin Form/Query 契约，
+不增加 JSON Body HTTP Route。
+
+现有只接收 `mcpId` 的 Maintainer Overload 继续作为已废弃兼容输入。服务端从 MCP AI Resource
+Row 解析别名，再执行相同的 Name-Based 鉴权和操作。Java Client 不开始填充 Dormant 顶层
+gRPC `mcpId`；当前 Model、Event 和 Release Response ID 字段保持 Wire-Compatible。
+
+Java Client 通过既有 `nacosAiTransportMode` 属性，为 MCP Query、Release、Runtime Endpoint
+Publication 和轮询 Subscription 提供 `grpc`、`http`、`auto`。现有 Overload 继续保持
+Direct-online，等价于 `createDraft=false`。新增两个 Source/Binary Compatible 的 Default
+Overload 接收 `createDraft`；为 `true` 时只创建生命周期 Draft。未实现新操作的第三方
+`AiService` 必须对 `true` 返回 `SERVER_NOT_IMPLEMENTED`，不得静默委托到 Direct-online。
+
+一个 `AiService` 实例为 Agent 与 MCP Runtime Publication 共享一个稳定 HTTP Client Id 和一个
+Heartbeat Coordinator。各领域仍保存自己的完整 Desired Payload；收到
+`HTTP_CLIENT_NOT_FOUND` 时，必须把该 HTTP Client 拥有的 Agent 与 MCP Publication 意图全部
+标记并重放。MCP Subscription 继续使用本地轮询，但每次 Query 都经过选定的 Transport Router。
+
+MCP Client HTTP Input 使用 Canonical `mcpName`，不增加顶层 `mcpId`。Query、Release 分别
+返回既有 `McpServerDetailInfo` 和 String ID 形态，Endpoint 活性复用
+`ClientLivenessInfo`。
+
+## 6. 安全规则
 
 SDK 能力设计必须遵循最小权限原则：
 
@@ -105,7 +156,7 @@ SDK 能力设计必须遵循最小权限原则：
 - 当 API 可以列举或导出大量配置、服务、客户端或元数据时，SDK 文档应明确说明
   可能的数据泄露风险。
 
-## 6. 传输和 API 对齐
+## 7. 传输和 API 对齐
 
 SDK 契约是语义契约，而不是传输契约：
 
@@ -121,7 +172,7 @@ SDK 契约是语义契约，而不是传输契约：
 - SDK 错误应将 Nacos 错误码和校验失败映射为符合语言习惯的异常或结果类型，
   同时保留服务端语义。
 
-## 7. 多语言 SDK 对齐
+## 8. 多语言 SDK 对齐
 
 Java 目前是定义共享 SDK 语义的基准实现。其他语言 SDK 应对齐相同的能力分类：
 

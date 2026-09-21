@@ -28,7 +28,7 @@ AI Registry 适配器负责协议兼容面。它将 Nacos AI Registry 资源转�
 - 通过 MCP Registry v0 兼容只读 API 暴露 MCP Server 数据；
 - 通过 skills CLI 与 well-known discovery 兼容端点暴露 Skill 数据；
 - 通过 Agentic Resource Discovery（ARD）的搜索、探索、目录和 artifact 端点暴露
-  Skill、Prompt 和 MCP 数据；
+  Agent、Skill、Prompt 和 MCP 数据；
 - 这些生态需要的协议特定分页、搜索、响应和文件读取行为。
 
 适配器不负责标准 AI resource identity、生命周期、存储、可见性或发布规则。这些规则仍由
@@ -50,12 +50,17 @@ AI Registry 适配器负责协议兼容面。它将 Nacos AI Registry 资源转�
 | --- | --- | --- |
 | `nacos.ai.mcp.registry.enabled` | `false` | 开启 MCP Registry 兼容端点。 |
 | `nacos.ai.skill.registry.enabled` | `false` | 开启 Skill registry 兼容端点。 |
-| `nacos.ai.ard.enabled` | `false` | 开启 ARD 端点及其依赖的 AI 资源检索运行时。 |
+| `nacos.ai.ard.enabled` | `false` | 只开启 ARD 端点；不拥有基础 AI 资源检索运行时。 |
+| `nacos.ai.resource.search.enabled` | `true` | 在主 AI 模块中开启 RAD、ARD 和资源 API 共用的基础关系检索。 |
 | `nacos.ai.registry.port` | `9080` | 适配器 Context 使用的 HTTP 端口。 |
 | `nacos.ai.mcp.registry.port` | deprecated | 适配器端口的历史兼容配置。 |
 
 用户必须主动开启该能力，因为适配器会额外占用端口，并暴露面向社区客户端的协议形态，
 而不是面向 Nacos Admin、Console 或 Client API 消费者的标准接口。
+
+`nacos.ai.ard.enabled=true` 且 `nacos.ai.resource.search.enabled=false` 时，服务端必须在启动配置
+校验时明确失败，不能创建 ARD 专属索引。关闭 ARD 不影响 RAD 或资源专用
+Search 的索引、任务和 Reconciliation。
 
 关闭 ARD 时不能要求安装 PostgreSQL pgvector。AI 资源检索 document 和 chunk 元数据使用
 主数据源；pgvector 扩展及 `ai_resource_search_embedding_pg` 表只能通过
@@ -161,7 +166,7 @@ Nacos 以 ARD 上游 commit
 
 | 方法 | 路径 | 行为 |
 | --- | --- | --- |
-| `POST` | `/v3/ai/ard/search` | 搜索最新 online 的 Skill、Prompt 和 MCP 资源。 |
+| `POST` | `/v3/ai/ard/search` | 搜索最新 online 的 Agent、Skill、Prompt 和 MCP 资源。 |
 | `POST` | `/v3/ai/ard/explore` | 返回可发现资源的 facets。 |
 | `GET` | `/v3/ai/ard/agents` | 按过滤条件和分页参数列出可发现资源。 |
 | `GET` | `/v3/ai/ard/ai-catalog.json` | 返回 namespace 维度的 catalog。 |
@@ -200,14 +205,39 @@ Nacos 主服务 context path。
 
 对于 Skill 资源，artifact 端点以 `application/agent-skills+zip` 返回完整 Skill
 压缩包，其中包含 `SKILL.md` 及其打包资源。Prompt 和 MCP artifact 使用各自协议规定的
-表示形式。默认 Nacos 主服务运行在 8848、适配器运行在 9080 时，无需通过网关合并路径
+表示形式。Agent 支持：
+
+```text
+application/a2a-agent-card+json
+application/vnd.nacos.ai-agent+json
+```
+
+前者只在 common latest 精确 Version 中存在可完整导出的合法 A2A Agent Card 时可用，响应只
+包含该原生 Agent Card。后者返回版本化、协议无关的 Nacos Agent 定义，不包含 Runtime Endpoint、
+实时健康观测、Publisher、心跳、owner、scope 或审批状态。声明地址携带 healthy/enabled=true 生效默认值，不代表探活。Artifact URL 必须包含精确 Version、该
+Version 的 `contentDigest` 和 representation key；Version offline、digest 不匹配或表示不可用时
+返回 ARD not found。Nacos 表示必须通过
+[`NacosAgentArtifact`](../../schemas/ai/agent/agent-artifact.schema.json#/$defs/NacosAgentArtifact)
+校验。默认 Nacos 主服务运行在 8848、适配器运行在 9080 时，无需通过网关合并路径
 也必须可以正常获取 artifact。
+
+共享 Agent Search document 仍然每个逻辑 Agent 只有一个。其 `artifactKinds` 至少使用稳定 key
+`a2a-agent-card` 和 `nacos-agent`。ARD media type filter 先映射为
+`resourceType=agent + artifactKinds`，不能只按 `protocols` 判断。一个 ARD 请求对同一逻辑 Agent
+最多返回一个 Entry：无 type filter 时，纯 A2A latest 优先 A2A 表示，多协议或自定义协议 latest
+优先 Nacos 表示；有 type filter 时从请求允许且实际存在的表示中选择同一确定性 primary 顺序。
+表示切换不改变逻辑 resource identifier，representation-specific Artifact URL 负责区分内容。
+过滤和表示选择必须在 total 与 page token 计算前完成。
 
 ### 6.3 Discovery 边界
 
-AI 模块负责 [AI 资源检索规范](ai-resource-search-spec.md)定义的协议无关能力。当前版本只有
-ARD 使用该能力，因此 `nacos.ai.ard.enabled` 会激活其依赖的检索运行时，但不会增加独立的
-运维检索开关或其他公开 API。
+AI 模块负责 [AI 资源检索规范](ai-resource-search-spec.md)定义的协议无关能力。RAD、ARD、
+通用 AI Resource Search 和资源专用 Search 共用该运行时；`nacos.ai.ard.enabled` 只控制
+适配器协议面，不激活或关闭基础 Search Core。
+
+系统为请求涉及的每个可检索资源类型跟踪 readiness。类型未 READY 不会导致 ARD Search
+不可用：适配器返回当前共享索引快照，在收敛前结果可能不完整；服务端输出不包含查询内容的
+限频诊断。
 
 可见性与当前版本校验必须在截取请求结果数量之前执行。列表和聚合按有界数据库批次扫描；
 关键词和向量召回使用 AI 资源检索规范定义的边界，任一通道超过配置上限时必须明确失败。
@@ -221,10 +251,13 @@ Search 接受固定版本 OpenAPI 定义的全部 federation 值：`auto`、`ref
 未传值时默认为 `auto`。在尚未配置上游 Registry 时，三种模式都执行本地检索；
 `referrals` 返回空 referrals 数组，而不是拒绝请求。
 
-`GET /agents` filter 支持以 `AND` 连接、值使用单引号包裹的等值表达式，以及
-`createdAfter > '2026-01-01T00:00:00Z'` 这类时间比较。解析必须感知引号边界。
-不支持的操作符、错误的引号、未知字段和旧分隔符语法必须返回 ARD invalid-argument，
-不能只解析其中一部分。
+`GET /agents` filter 支持以 `AND` 连接、值使用单引号包裹的等值表达式，以及使用 ISO
+date 或 instant 的时间比较，例如 `createdAfter > '2026-01-01'` 和
+`createdAfter > '2026-01-01T00:00:00Z'`。解析必须感知引号边界。Search 和 explore
+filter 接受语法合法的点分字段路径，包括固定 OpenAPI 中的
+`trustManifest.attestations.type` 示例；路径对应的值不存在时不匹配任何条目。不支持的
+扩展字段路径分段可以使用任意非空、非空白且不含点号的属性名。不支持的操作符、错误的
+引号、非法字段路径语法和旧分隔符语法必须返回 ARD invalid-argument，不能只解析其中一部分。
 
 Catalog identifier 对每个来自 Nacos 的 URN segment 使用确定性、无碰撞且符合 Schema
 字符集的编码。包含空格、斜杠、Unicode 或标点的 namespace 与资源名必须保持可区分，
@@ -239,22 +272,24 @@ Explore facet 必须在可见性、当前版本和请求过滤后，对完整的
 
 ### 6.4 索引一致性
 
-标准资源写入是事实来源。单个资源对应的 search document 和 chunks 必须原子替换：删除旧
-索引行、插入新 document、插入全部 chunks 必须在同一个数据源事务中完成。
+标准资源写入是事实来源。单个资源对应的 search document、chunks 和内嵌 facets 必须原子
+替换：删除旧索引行、插入新 document、插入全部 chunks 必须在同一个数据源事务中完成。
 
 关系索引与向量索引之间不要求分布式事务。AI 模块改为记录资源级、幂等、持久化的索引任务，
 任务以 namespace、resource type 和 resource name 为键。Consumer 重新读取标准资源状态，
 替换或删除关系索引，再使所选向量索引收敛。只有已配置的两类索引均完成收敛，任务才算完成。
 
-失败任务保留 attempt count、next retry time、lease 和 last error 等重试状态。周期性
-reconciliation 用于发现遗漏的生命周期事件，并分别校验关系索引与向量索引状态。只记录
-日志并吞掉索引异常不构成一致性机制，仅依靠启动 backfill 也不充分。
+失败任务回到 `pending`，并保留 retry count、Unix Epoch 毫秒形式的 next execution 与
+lease 截止点，以及 last error。周期性 reconciliation 用于发现遗漏的生命周期事件，并
+分别校验关系索引与向量索引状态。只记录日志并吞掉索引异常不构成一致性机制，仅依靠启动
+backfill 也不充分。
 
-`ai_resource_search_index_task` 保存合并后的任务 revision 与重试状态。任务完成和重试更新
-都必须带 revision 条件，避免旧租约结束时误删并发产生的新变更。向量替换期间，关系
-document 保持 `pending`，检索只读取 `enabled` document；Vector Provider 完成替换后，
-Consumer 才启用关系 document。Reconciliation 还需要比较 embedding model、向量文档数量与关系 chunks，
-并调度缺失、部分写入、过期、模型不一致及孤儿索引。
+`ai_resource_task` 保存合并后的 `search_index` 任务 revision、版本化 Payload 和 Result，
+以及重试状态。任务完成和重试更新都必须带 revision 条件，避免旧租约结束时误删并发产生的
+新变更。向量替换期间，关系 document 保持 `pending`，检索只读取 `enabled` document；
+Vector Provider 完成替换后，Consumer 才启用关系 document。Reconciliation 还需要比较
+embedding model、向量文档数量与关系 chunks，并调度缺失、部分写入、过期、模型不一致及
+孤儿索引。
 
 ### 6.5 一致性测试
 
@@ -263,7 +298,9 @@ Consumer 才启用关系 document。Reconciliation 还需要比较 embedding mod
 Context 运行固定版本的官方 conformance runner，或运行从该 runner 等价转换出的测试矩阵。
 
 集成测试至少覆盖列表 `items`、整数搜索 score、URI `source`、trust identity 行为、
-协议错误体、catalog schema，以及主服务和适配器使用不同端口时的 Skill ZIP 获取。
+协议错误体、catalog schema，以及主服务和适配器使用不同端口时的 Skill ZIP 获取。Agent
+还必须覆盖纯 A2A、多协议、只有旧 online Version 支持 A2A、两种 media type filter、稳定逻辑
+identifier、representation-specific URL、offline/digest 失效，以及 Artifact 不包含 Runtime 状态。
 
 ## 7. 兼容规则
 
@@ -281,3 +318,9 @@ Context 运行固定版本的官方 conformance runner，或运行从该 runner 
   范围之外。
 - 跟踪 skills CLI 与 skills.sh 协议变化，包括是否支持更丰富的详情、审计或鉴权 API 形态。
 - 定义通过网关和服务网格运行适配器的运维指引。
+
+## 地址模型统一的验收
+
+Nacos Agent Artifact 随统一定义模型调整声明地址 JSON 结构，并同步 Schema/测试；原生 A2A AgentCard 协议表示保持。实际公开 Agent 的非空 Artifact HTTP 流程、exact version/digest 与 offline 错误必须验证；不得导出 Runtime、健康或管理观测字段。
+
+统一模型和 Schema 遵循已确认的地址契约。完整字段政策、样例、16 组验收及已知缺口见 [地址模型测试方案](../../../Codex/design/nacos-3.3-client-ai-api/MODEL_ENDPOINT_TEST_PLAN.md)。测试计划和实际执行证据分别登记。

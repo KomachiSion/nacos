@@ -45,6 +45,30 @@ public interface ConfigService {
     String getConfig(String dataId, String group, long timeoutMs) throws NacosException;
     
     /**
+     * Get config with extensible request object.
+     *
+     * <p>This method provides a unified entry point for configuration queries,
+     * supporting advanced features such as 304-based conditional GET via
+     * {@link GetConfigRequest#setLocalMd5(String)}. When the local MD5 matches
+     * the server-side MD5, the server returns 304 without content, and the
+     * client uses the locally cached content.</p>
+     *
+     * <p>The returned {@link ConfigQueryResult} contains the config content, MD5,
+     * config type, and encrypted data key. The MD5 can be used for CAS publish
+     * via {@link PublishConfigRequest#setCasMd5(String)}, which is essential for
+     * encrypted configurations.</p>
+     *
+     * @param request {@link GetConfigRequest} containing dataId, group, timeout, and optional localMd5
+     * @return config query result containing content and metadata
+     * @throws NacosException NacosException
+     * @since 3.3.0
+     */
+    @Since("3.3.0")
+    default ConfigQueryResult getConfig(GetConfigRequest request) throws NacosException {
+        return getConfigWithResult(request.getDataId(), request.getGroup(), request.getTimeoutMs());
+    }
+    
+    /**
      * Get config with full result including MD5.
      *
      * <p>This method returns a {@link ConfigQueryResult} containing both
@@ -126,6 +150,42 @@ public interface ConfigService {
         throws NacosException;
     
     /**
+     * Publish config with extensible request object.
+     *
+     * <p>This method provides a unified entry point for configuration publishing,
+     * replacing the multiple overloaded {@code publishConfig} and
+     * {@code publishConfigCas} methods. It supports CAS (Compare-And-Swap)
+     * publish via {@link PublishConfigRequest#setCasMd5(String)}.</p>
+     *
+     * <p>For encrypted configurations, obtain the CAS MD5 from
+     * {@link ConfigQueryResult#getMd5()} returned by
+     * {@link #getConfig(GetConfigRequest)} or {@link #getConfigWithResult},
+     * then set it via {@link PublishConfigRequest#setCasMd5(String)}.</p>
+     *
+     * <p>The returned {@link PublishConfigResult} provides detailed error
+     * information (error code and message) on failure, unlike the legacy
+     * methods that only return a boolean.</p>
+     *
+     * @param request {@link PublishConfigRequest} containing dataId, group, content, type, and optional casMd5
+     * @return publish result with success flag and detailed error info
+     * @throws NacosException NacosException
+     * @since 3.3.0
+     */
+    @Since("3.3.0")
+    default PublishConfigResult publishConfig(PublishConfigRequest request) throws NacosException {
+        boolean result;
+        if (request.getCasMd5() != null) {
+            result = publishConfigCas(request.getDataId(), request.getGroup(),
+                request.getContent(), request.getCasMd5(), request.getType());
+        } else {
+            result = publishConfig(request.getDataId(), request.getGroup(),
+                request.getContent(), request.getType());
+        }
+        return result ? PublishConfigResult.success()
+            : PublishConfigResult.fail(-1, "publish config failed");
+    }
+    
+    /**
      * Cas Publish config.
      *
      * @param dataId  dataId
@@ -165,6 +225,26 @@ public interface ConfigService {
      */
     @Since("0.2.0")
     boolean removeConfig(String dataId, String group) throws NacosException;
+    
+    /**
+     * Remove config with extensible request object.
+     *
+     * <p>This method provides a unified entry point for configuration removal,
+     * replacing the existing {@code removeConfig} method with an extensible
+     * request object. The returned {@link RemoveConfigResult} provides detailed
+     * error information on failure.</p>
+     *
+     * @param request {@link RemoveConfigRequest} containing dataId and group
+     * @return remove result with success flag and detailed error info
+     * @throws NacosException NacosException
+     * @since 3.3.0
+     */
+    @Since("3.3.0")
+    default RemoveConfigResult removeConfig(RemoveConfigRequest request) throws NacosException {
+        boolean result = removeConfig(request.getDataId(), request.getGroup());
+        return result ? RemoveConfigResult.success()
+            : RemoveConfigResult.fail(-1, "remove config failed");
+    }
     
     /**
      * Remove listener.
@@ -254,7 +334,7 @@ public interface ConfigService {
      * @param groupNamePattern The group name pattern representing the group and dataId patterns to subscribe to.
      * @param watcher       The fuzzy watcher to be added.
      * @return CompletableFuture containing collection of configs that match the specified dataId pattern and fixed
-     * group name.
+     * group.
      * @throws NacosException NacosException
      * @since 3.0
      */

@@ -17,8 +17,9 @@
 package com.alibaba.nacos.ai.service.agent.runtime;
 
 import com.alibaba.nacos.ai.service.VisibilityHelper;
-import com.alibaba.nacos.api.ai.model.agent.ClientLivenessInfo;
-import com.alibaba.nacos.api.ai.model.rad.AgentEndpointRegistrationBatch;
+import com.alibaba.nacos.ai.service.runtime.AiHttpClientLifecycleService;
+import com.alibaba.nacos.api.ai.model.ClientLivenessInfo;
+import com.alibaba.nacos.api.ai.model.agent.AgentEndpointRegistrationBatch;
 import com.alibaba.nacos.api.exception.NacosException;
 import com.alibaba.nacos.api.exception.api.NacosApiException;
 import com.alibaba.nacos.api.model.v2.ErrorCode;
@@ -31,6 +32,8 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.mockito.MockedStatic;
+
+import java.util.concurrent.atomic.AtomicReference;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertSame;
@@ -54,6 +57,8 @@ class AgentHttpClientLifecycleServiceTest {
     
     private AgentRuntimeRegistryService runtimeRegistryService;
     
+    private AiHttpClientLifecycleService sharedService;
+    
     private AgentHttpClientLifecycleService service;
     
     private MockedStatic<VisibilityHelper> visibilityHelper;
@@ -62,7 +67,8 @@ class AgentHttpClientLifecycleServiceTest {
     void setUp() {
         clientManager = mock(HttpConnectionBasedClientManager.class);
         runtimeRegistryService = mock(AgentRuntimeRegistryService.class);
-        service = new AgentHttpClientLifecycleService(clientManager, runtimeRegistryService);
+        sharedService = new AiHttpClientLifecycleService(clientManager);
+        service = new AgentHttpClientLifecycleService(sharedService, runtimeRegistryService);
         visibilityHelper = mockStatic(VisibilityHelper.class);
         visibilityHelper.when(VisibilityHelper::resolveCurrentIdentity).thenReturn("alice");
     }
@@ -105,27 +111,61 @@ class AgentHttpClientLifecycleServiceTest {
     }
     
     @Test
+    void testWatchValidatesHeadersAndRenewsExistingClient() throws Exception {
+        when(clientManager.getClient(INTERNAL_CLIENT_ID)).thenReturn(null);
+        service.renewForWatch(EXTERNAL_CLIENT_ID, "ai", "team");
+        verify(clientManager, never()).renewClient(any());
+        
+        when(clientManager.getClient(INTERNAL_CLIENT_ID)).thenReturn(client("alice", "team"));
+        service.renewForWatch(EXTERNAL_CLIENT_ID, "AI", "team");
+        verify(clientManager).renewClient(INTERNAL_CLIENT_ID);
+        
+        assertInvalidWatchHeader(null, "AI", "team");
+        assertInvalidWatchHeader(EXTERNAL_CLIENT_ID, "naming", "team");
+        assertDetailCode(ErrorCode.ACCESS_DENIED,
+            assertThrows(NacosApiException.class,
+                () -> service.renewForWatch(EXTERNAL_CLIENT_ID, "AI", "other")));
+    }
+    
+    @Test
     void testRegisterCreatesAndBindsHttpClient() throws Exception {
         HttpConnectionBasedClient client = client("alice", "team");
         when(clientManager.getClient(INTERNAL_CLIENT_ID)).thenReturn(null, client);
         when(clientManager.clientConnected(eq(INTERNAL_CLIENT_ID), any(ClientAttributes.class)))
             .thenReturn(true);
         when(clientManager.renewPublisher(INTERNAL_CLIENT_ID)).thenReturn(true);
-        AgentEndpointRegistrationBatch batch = batch("team");
+        AgentEndpointRegistrationBatch batch = batch();
         
-        ClientLivenessInfo actual = service.register(EXTERNAL_CLIENT_ID, "ai", batch);
+        ClientLivenessInfo actual = service.register(EXTERNAL_CLIENT_ID, "ai", "team", batch);
         
         assertEquals(5000L, actual.getHeartbeatIntervalMillis());
         assertEquals(15000L, actual.getUnhealthyTimeoutMillis());
         assertEquals(30000L, actual.getExpireTimeoutMillis());
-        verify(runtimeRegistryService).register(INTERNAL_CLIENT_ID, batch);
+        verify(runtimeRegistryService).register(INTERNAL_CLIENT_ID, "team", batch);
         ArgumentCaptor<ClientAttributes> attributes = ArgumentCaptor.forClass(
             ClientAttributes.class);
         verify(clientManager).clientConnected(eq(INTERNAL_CLIENT_ID), attributes.capture());
         assertEquals("alice", attributes.getValue().getClientAttribute(
-            AgentHttpClientLifecycleService.IDENTITY_ATTRIBUTE));
+            "httpClientIdentity"));
         assertEquals("team", attributes.getValue().getClientAttribute(
-            AgentHttpClientLifecycleService.NAMESPACE_ATTRIBUTE));
+            "httpClientNamespace"));
+    }
+    
+    @Test
+    void testAgentAndMcpReuseSameBoundHttpClient() throws Exception {
+        HttpConnectionBasedClient client = client("alice", "team");
+        when(clientManager.getClient(INTERNAL_CLIENT_ID)).thenReturn(null, client, client);
+        when(clientManager.clientConnected(eq(INTERNAL_CLIENT_ID), any(ClientAttributes.class)))
+            .thenReturn(true);
+        when(clientManager.renewPublisher(INTERNAL_CLIENT_ID)).thenReturn(true);
+        AtomicReference<String> mcpPublisher = new AtomicReference<>();
+        
+        service.register(EXTERNAL_CLIENT_ID, "AI", "team", batch());
+        sharedService.register(EXTERNAL_CLIENT_ID, "AI", "team", mcpPublisher::set);
+        
+        assertEquals(INTERNAL_CLIENT_ID, mcpPublisher.get());
+        verify(clientManager).clientConnected(eq(INTERNAL_CLIENT_ID), any(ClientAttributes.class));
+        verify(clientManager, org.mockito.Mockito.times(2)).renewPublisher(INTERNAL_CLIENT_ID);
     }
     
     @Test
@@ -135,12 +175,12 @@ class AgentHttpClientLifecycleServiceTest {
         when(clientManager.getClient(INTERNAL_CLIENT_ID)).thenReturn(client);
         when(clientManager.renewPublisher(INTERNAL_CLIENT_ID)).thenReturn(true);
         
-        service.register(EXTERNAL_CLIENT_ID, "AI", batch("team"));
+        service.register(EXTERNAL_CLIENT_ID, "AI", "team", batch());
         
         assertEquals("alice", client.getClientAttributes().getClientAttribute(
-            AgentHttpClientLifecycleService.IDENTITY_ATTRIBUTE));
+            "httpClientIdentity"));
         assertEquals("team", client.getClientAttributes().getClientAttribute(
-            AgentHttpClientLifecycleService.NAMESPACE_ATTRIBUTE));
+            "httpClientNamespace"));
     }
     
     @Test
@@ -149,12 +189,12 @@ class AgentHttpClientLifecycleServiceTest {
         when(clientManager.clientConnected(eq(INTERNAL_CLIENT_ID), any(ClientAttributes.class)))
             .thenReturn(false);
         assertClientNotFound(assertThrows(NacosApiException.class,
-            () -> service.register(EXTERNAL_CLIENT_ID, "AI", batch("team"))));
+            () -> service.register(EXTERNAL_CLIENT_ID, "AI", "team", batch())));
         
         when(clientManager.clientConnected(eq(INTERNAL_CLIENT_ID), any(ClientAttributes.class)))
             .thenReturn(true);
         assertClientNotFound(assertThrows(NacosApiException.class,
-            () -> service.register(EXTERNAL_CLIENT_ID, "AI", batch("team"))));
+            () -> service.register(EXTERNAL_CLIENT_ID, "AI", "team", batch())));
     }
     
     @Test
@@ -164,7 +204,7 @@ class AgentHttpClientLifecycleServiceTest {
         when(clientManager.getClient(INTERNAL_CLIENT_ID)).thenReturn(client);
         
         assertClientNotFound(assertThrows(NacosApiException.class,
-            () -> service.register(EXTERNAL_CLIENT_ID, "AI", batch("team"))));
+            () -> service.register(EXTERNAL_CLIENT_ID, "AI", "team", batch())));
     }
     
     @Test
@@ -172,11 +212,11 @@ class AgentHttpClientLifecycleServiceTest {
         HttpConnectionBasedClient client = client("alice", "team");
         when(clientManager.getClient(INTERNAL_CLIENT_ID)).thenReturn(client);
         NacosException failure = new NacosException(500, "failed");
-        doThrow(failure).when(runtimeRegistryService).register(eq(INTERNAL_CLIENT_ID),
+        doThrow(failure).when(runtimeRegistryService).register(eq(INTERNAL_CLIENT_ID), eq("team"),
             any(AgentEndpointRegistrationBatch.class));
         
         NacosException actual = assertThrows(NacosException.class,
-            () -> service.register(EXTERNAL_CLIENT_ID, "AI", batch("team")));
+            () -> service.register(EXTERNAL_CLIENT_ID, "AI", "team", batch()));
         
         assertSame(failure, actual);
         verify(clientManager).disconnectIfEmpty(INTERNAL_CLIENT_ID);
@@ -188,7 +228,7 @@ class AgentHttpClientLifecycleServiceTest {
         when(clientManager.renewPublisher(INTERNAL_CLIENT_ID)).thenReturn(false);
         
         assertClientNotFound(assertThrows(NacosApiException.class,
-            () -> service.register(EXTERNAL_CLIENT_ID, "AI", batch("team"))));
+            () -> service.register(EXTERNAL_CLIENT_ID, "AI", "team", batch())));
         verify(clientManager).disconnectIfEmpty(INTERNAL_CLIENT_ID);
     }
     
@@ -237,6 +277,12 @@ class AgentHttpClientLifecycleServiceTest {
                 () -> service.heartbeat(clientId, module)));
     }
     
+    private void assertInvalidWatchHeader(String clientId, String module, String namespaceId) {
+        assertDetailCode(ErrorCode.PARAMETER_VALIDATE_ERROR,
+            assertThrows(NacosApiException.class,
+                () -> service.renewForWatch(clientId, module, namespaceId)));
+    }
+    
     private void assertDetailCode(ErrorCode errorCode, NacosApiException actual) {
         assertEquals(errorCode.getCode(), actual.getDetailErrCode());
     }
@@ -248,16 +294,15 @@ class AgentHttpClientLifecycleServiceTest {
     
     private HttpConnectionBasedClient client(String identity, String namespaceId) {
         ClientAttributes attributes = new ClientAttributes();
-        attributes.addClientAttribute(AgentHttpClientLifecycleService.IDENTITY_ATTRIBUTE,
+        attributes.addClientAttribute("httpClientIdentity",
             identity);
-        attributes.addClientAttribute(AgentHttpClientLifecycleService.NAMESPACE_ATTRIBUTE,
+        attributes.addClientAttribute("httpClientNamespace",
             namespaceId);
         return new HttpConnectionBasedClient(INTERNAL_CLIENT_ID, attributes);
     }
     
-    private AgentEndpointRegistrationBatch batch(String namespaceId) {
+    private AgentEndpointRegistrationBatch batch() {
         AgentEndpointRegistrationBatch result = new AgentEndpointRegistrationBatch();
-        result.setNamespaceId(namespaceId);
         return result;
     }
     

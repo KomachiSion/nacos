@@ -163,24 +163,59 @@ gRPC Endpoint 意图归属于当前 connection id。Reconnect 后，SDK 获取�
 期望分组。HTTP 与 gRPC Publisher record 必须隔离；一种 Transport 不得注销另一种
 Transport 拥有的 Contribution。
 
-### 8.3 本地轮询订阅身份
+AI gRPC Connection 还携带一个仅在当前 SDK 进程生命周期内稳定的不透明 UUID。
+新 Connection Id 在重连后重放一个逻辑 Publication 时，Server 借此重新绑定临时历史 A2A
+物理 Child Publisher。它不修改公开 Redo Key、SDK Intent 的当前 Connection 所有权或粘性
+Transport 所有权；进程重启后会生成新 UUID。
 
-首版 SDK 不创建服务端 Watch，也不保存 Connection 维度 `watchKey`。规范化本地轮询
-订阅 Key 包含：
+当 Agent Transport 为 `AUTO` 时，Publication 首次准备发送前选择并缓存
+`ownerTransport`。同一 `(namespaceId, agentName, protocol)` 后续完整 Batch 替换、部分
+注销、整份注销、HTTP Heartbeat 和 Redo 均使用该 owner。Client 可同时持有由 HTTP 和
+gRPC 分别拥有的不同 Publication，但不得因为连接状态变化迁移一个已存在 Publication 的
+owner，也不得让 HTTP maintenance 处理 gRPC-owned record。
+
+SDK 默认对全部已保留完整 Publication Batch 中的 Runtime Endpoint 条目使用 100 的软水位，
+可通过 `nacosAiAgentEndpointMaxPublications` 配置。一次原子 Register 前的条目数低于
+水位时，SDK 整批保留已校验 Batch，即使完成后越过水位；已达到或超过水位时仍允许等量
+替换或缩容，但拒绝新 Batch 或扩容 Batch，且不发生局部缓存修改。Server 独立执行权威的
+每 Client 软水位。命中本地或远程 Publication 容量限制属于终止性写失败：SDK 从
+Publication Manager 与 gRPC Redo Cache 移除被拒绝的身份，HTTP Maintenance 不再
+Heartbeat 或重试它；其他瞬时 5xx Transport 失败继续使用既有 Rollback 和 Redo 语义。
+
+### 8.3 本地 Watch Manager 与 Wire Intent
+
+Canonical Local Watch Key 包含：
 
 ```text
 (namespaceId, canonicalAgentReference, canonicalFilter, listenerIdentity)
 ```
 
-Reference 规范化保持精确 Version、Label 和 Latest 之间的区别。Filter 的集合和 Map
-内容用于值相等比较，Listener identity 是取消订阅时使用的同一 Listener 实例。SDK 周期
-执行相同 Discover；gRPC reconnect 不增加订阅 redo，因为下一次轮询自然使用新连接。
-目标不存在时保留轮询但不投递空快照。解析 Version、`contentDigest` 或任一
-`sourceRevision` 改变时，SDK 原子替换缓存并投递完整结果。
+Reference 规范化保留 Exact Version、Label、显式 Latest 和未指定 Version 的语义。
+Filter Collection 和 Map 参与 Canonical Value Equality。Listener Identity 是取消时使用的
+同一实例。一个 Record 拥有 Request 防御性副本、Listener、最后完整 Result、Canonical
+Fingerprint、Availability State、所选 Wire Transport、Wire Generation/Key、Dirty/Refresh
+State 和有界 Retry State。Transport Adapter 不得拥有另一份 Listener 或 Result Cache。
 
-[运行时推送与重连规范](runtime-push-reconnect-spec.md)中的服务端 Watch/Push 是独立
-后续契约；实现该契约前必须先更新 Agent API、能力位和传输 Payload，不能从本地轮询
-身份推导 Wire Watch state。
+本地 Watch Manager 默认最多保留 300 个不同的 Canonical Subscription Key，可通过
+`nacosAiAgentDiscoveryMaxSubscriptions` 配置。超限订阅必须在首次 Discover、缓存插入和
+Wire 调度前失败；重复 Subscribe 保持幂等，Unsubscribe 或 Shutdown 释放容量。被本地或
+Server 容量拒绝的注册完整回滚且不进入 Retry。任何 Batch Mutation 都使用操作前软水位，
+在水位以下整批保留规范化结果，或在已达到水位时无局部插入地拒绝增长。
+
+Wire Intent 从本地 Intent 派生，不能取代它：
+
+- gRPC State 保存当前 Connection 范围的 `watchKey`；Disconnect 清除该 Key，并把 Record
+  标记为在新 Connection 下重新订阅；
+- HTTP State 把 Request 与 Fingerprint 加入下一轮完整 List Batch Generation，不保存持久
+  Server Key；
+- 轮询回退调度有界周期 Discover，不改变 Canonical Identity；
+- 已接受 Hint 只标记 Refresh Dirty。一个串行化的 Current-fact Discover 计算完整
+  Fingerprint、原子更新 Cache，并在 Transport I/O 外投递 Listener Event；
+- Unsubscribe 在 Best-effort Wire Cleanup 前先删除 Listener 和 Local Intent，因此迟到的
+  gRPC Hint 与 HTTP Response 不能调用它。
+
+[运行时推送与重连规范](runtime-push-reconnect-spec.md)定义对应 Transport Recovery 和
+面向最终 Projection 的 Push 纪律。
 
 ### 8.4 旧 A2A 兼容恢复
 
@@ -188,6 +223,21 @@ namespace-bound `A2aService` 的旧 Version-specific Endpoint Publication 使用
 `(agentName, exactVersion)` 作为本地 redo 身份；不同精确 Version 不得相互覆盖。Redo record
 保存 Endpoint 集合及其 URI、transport、metadata 等字段的防御性快照，调用方后续修改原始
 `AgentEndpoint` 或 Collection 不得改变重连意图。
+
+临时历史 A2A `AUTO` 迁移期间，Client 仍只持有一条逻辑 Redo Record，并只发送一次旧
+Publication 请求。Server 可以按照
+[历史 A2A 升级迁移规范](../ai/a2a-upgrade-migration-spec.md)把该请求物化为历史主写/标准镜像，
+或标准主写/可选历史 Shadow。Client 不缓存物理 Child Publisher Id、不重复计算本地容量，也不独立
+重试某一 Layout。Reconnect 只在新 Connection 下重放一次完整逻辑 Record，Server 根据当前迁移
+Marker 重建所需 Layout。
+
+对当前 Java SDK，Server 基于进程稳定的 Connection Label 派生这些 Child，并在重放前
+接管匹配的 Distro 副本，避免旧/新 Connection Id 创建重复物理 Contribution。不携带该
+Label 的旧 Client 保持 Connection 范围兼容路径，Owner 重启后依赖常规 Distro 过期收敛。
+
+主写成功时，即使必需 Mirror 或可选 Shadow 进入有界服务端重试，Client 操作仍然成功；主写失败
+继续表现为普通受控 SDK 失败。迁移完成且固化 Shadow 策略关闭时，Server 可以删除历史 Child，
+但不改变 Client 的 Redo Identity 或期望 Batch。
 
 旧 AgentCard 订阅的 exact Version 和 latest 是不同本地身份。服务端返回的 Version 当前是否为
 latest 不能替代调用方订阅身份；一次变化必须通知所有受影响的 exact/latest key。当 latest 指向已
@@ -200,6 +250,9 @@ SDK shutdown 必须清理内存 redo state、停止后台 retry task、关闭 tr
 cache/failover refresh task。除非用户显式调用缓存清理操作，shutdown 不应删除用户维护的 failover
 文件或服务端派生 snapshot。
 
+Agent Shutdown 还要取消 HTTP Batch Long Poll、Best-effort Unsubscribe 当前 gRPC Wire Key、
+拒绝迟到 Generation、停止轮询回退，并在禁止新 Callback 后关闭 Listener Executor。
+
 ## 10. 待处理问题
 
 - Naming redo 当前仍使用独立实现，较新的 AI redo 使用通用 redo 抽象。后续实现应收敛到共享 redo
@@ -207,3 +260,11 @@ cache/failover refresh task。除非用户显式调用缓存清理操作，shutd
 - Config listener recovery、Naming redo、AI redo 和
   [运行时推送与重连规范](runtime-push-reconnect-spec.md)定义的 runtime push recovery 应共享可观测字段。
 - 多语言 SDK 应说明自己支持哪些本地缓存和 redo 行为，以及哪些行为有意与 Java 不同。
+
+### 8.5 A2A 适配后的 Runtime 意图
+
+A2A 使用 RAD 时，publication 状态同时保留各精确版本的引用快照及各 Endpoint 的连续范围。
+这些状态与既有完整 Batch、固定 transport owner 一起提交、回滚、重放和清理，不建立第二套
+redo 缓存。原生 RAD/A2A 写入来源互斥遵循 [A2A Agent 规范](../ai/a2a-agent-spec.md)。
+gRPC 定时任务将受管理 publication 交给同一个串行 owner；核对快照身份以阻止旧工作覆盖
+新写入，完成或拒绝的重放只协调自身仍为当前记录的 redo 状态。
