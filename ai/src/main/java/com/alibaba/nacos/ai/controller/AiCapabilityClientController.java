@@ -16,6 +16,16 @@
 
 package com.alibaba.nacos.ai.controller;
 
+import com.alibaba.nacos.api.remote.RemoteConstants;
+import org.springframework.http.MediaType;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.extensions.ExtensionProperty;
+import io.swagger.v3.oas.annotations.extensions.Extension;
+import io.swagger.v3.oas.annotations.Operation;
 import com.alibaba.nacos.api.ai.constant.AiConstants.Capability;
 import com.alibaba.nacos.api.annotation.NacosApi;
 import com.alibaba.nacos.api.annotation.Since;
@@ -42,6 +52,10 @@ import java.util.Map;
 @NacosApi
 @RestController
 @RequestMapping(Capability.CLIENT_PATH)
+@Tag(name = "nacos.admin.ai.capability.client.api.controller.name",
+    description = "nacos.admin.ai.capability.client.api.controller.description", extensions = {
+        @Extension(name = RemoteConstants.LABEL_MODULE,
+            properties = @ExtensionProperty(name = RemoteConstants.LABEL_MODULE, value = "ai"))})
 public class AiCapabilityClientController {
     
     private static final Map<String, Object> CAPABILITIES = createCapabilities();
@@ -68,6 +82,13 @@ public class AiCapabilityClientController {
     @GetMapping
     @Secured(action = ActionTypes.READ, signType = SignType.AI, apiType = ApiType.OPEN_API,
         tags = Constants.Tag.ONLY_IDENTITY, parser = AiCapabilityHttpResourceParser.class)
+    @Operation(summary = "nacos.admin.ai.capability.client.api.get.summary",
+        description = "nacos.admin.ai.capability.client.api.get.description",
+        security = @SecurityRequirement(name = "nacos"))
+    @ApiResponse(responseCode = "200",
+        content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+            schema = @Schema(implementation = Result.class,
+                example = "nacos.admin.ai.capability.client.api.get.example")))
     public Result<Map<String, Object>> getCapabilities() {
         return Result.success(CAPABILITIES);
     }

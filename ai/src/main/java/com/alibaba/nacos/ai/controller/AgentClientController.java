@@ -89,6 +89,13 @@ import org.springframework.web.context.request.async.DeferredResult;
             properties = @ExtensionProperty(name = RemoteConstants.LABEL_MODULE, value = "ai"))})
 public class AgentClientController {
     
+    private static final String WATCHES_TEXT_EXAMPLE =
+        "\"[{\\\"clientWatchId\\\":\\\"watch-1\\\","
+            + "\\\"discoveryRequest\\\":{\\\"namespaceId\\\":\\\"public\\\","
+            + "\\\"reference\\\":{\\\"agentName\\\":\\\"my-agent\\\",\\\"version\\\":\\\"1.0.0\\\"}},"
+            + "\\\"materializedFingerprint\\\":\\\"sha256-canonical-json-v1:"
+            + "0000000000000000000000000000000000000000000000000000000000000000\\\"}]\"";
+    
     private final AgentClientMigrationGuard migrationGuard;
     
     private final AgentDiscoveryApplicationService discoveryService;
@@ -220,6 +227,29 @@ public class AgentClientController {
     @Since("3.3.0")
     @PostMapping("/watch")
     @Secured(action = ActionTypes.READ, signType = SignType.AI, apiType = ApiType.OPEN_API)
+    @Operation(summary = "nacos.admin.ai.agent.client.api.watch.summary",
+        description = "nacos.admin.ai.agent.client.api.watch.description",
+        security = @SecurityRequirement(name = "nacos"))
+    @ApiResponse(responseCode = "200",
+        content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+            schema = @Schema(implementation = Result.class,
+                example = "nacos.admin.ai.agent.client.api.watch.example")))
+    @Parameters(value = {
+        @Parameter(name = "generation", required = true,
+            schema = @Schema(type = "integer", format = "int64", minimum = "0"), example = "1"),
+        @Parameter(name = "timeoutMillis", required = true,
+            schema = @Schema(type = "integer", format = "int64", minimum = "1000",
+                maximum = "60000"),
+            example = "30000"),
+        @Parameter(name = "watches", required = true,
+            description = "nacos.admin.ai.agent.client.api.watch.watches.description",
+            schema = @Schema(type = "string"), example = WATCHES_TEXT_EXAMPLE),
+        @Parameter(name = "form", hidden = true),
+        @Parameter(name = ClientConstants.HTTP_CLIENT_ID_HEADER, in = ParameterIn.HEADER,
+            required = true,
+            description = "nacos.admin.ai.agent.client.api.watch.client.id.description"),
+        @Parameter(name = HttpHeaderConsts.REQUEST_MODULE, in = ParameterIn.HEADER, required = true,
+            description = "nacos.admin.ai.agent.client.api.watch.module.description")})
     public DeferredResult<Result<AgentWatchBatchResponse>> watch(AgentWatchBatchForm form,
         @RequestHeader(name = ClientConstants.HTTP_CLIENT_ID_HEADER,
             required = false) String clientId,

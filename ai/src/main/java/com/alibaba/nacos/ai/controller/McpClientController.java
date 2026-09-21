@@ -16,6 +16,20 @@
 
 package com.alibaba.nacos.ai.controller;
 
+import com.alibaba.nacos.api.remote.RemoteConstants;
+import org.springframework.http.MediaType;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.ArraySchema;
+import io.swagger.v3.oas.annotations.extensions.ExtensionProperty;
+import io.swagger.v3.oas.annotations.extensions.Extension;
+import io.swagger.v3.oas.annotations.enums.ParameterIn;
+import io.swagger.v3.oas.annotations.Parameters;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.Operation;
 import com.alibaba.nacos.ai.constant.Constants;
 import com.alibaba.nacos.ai.form.mcp.client.McpEndpointForm;
 import com.alibaba.nacos.ai.form.mcp.client.McpQueryForm;
@@ -64,7 +78,16 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping(Constants.MCP_CLIENT_PATH)
 @ExtractorManager.Extractor(httpExtractor = McpHttpParamExtractor.class)
+@Tag(name = "nacos.admin.ai.mcp.client.api.controller.name",
+    description = "nacos.admin.ai.mcp.client.api.controller.description", extensions = {
+        @Extension(name = RemoteConstants.LABEL_MODULE,
+            properties = @ExtensionProperty(name = RemoteConstants.LABEL_MODULE, value = "ai"))})
 public class McpClientController {
+    
+    private static final String MCP_RELEASE_TEXT_EXAMPLE =
+        "\"{\\\"protocol\\\":\\\"stdio\\\",\\\"frontProtocol\\\":\\\"std"
+            + "io\\\",\\\"name\\\":\\\"my-mcp\\\",\\\"versionDetail\\\":{\\\"ve"
+            + "rsion\\\":\\\"1.0.0\\\"}}\"";
     
     private final AiResourceSearchApplicationService searchService;
     
@@ -86,6 +109,19 @@ public class McpClientController {
     @Since("3.3.0")
     @GetMapping
     @Secured(action = ActionTypes.READ, signType = SignType.AI, apiType = ApiType.OPEN_API)
+    @Operation(summary = "nacos.admin.ai.mcp.client.api.get.summary",
+        description = "nacos.admin.ai.mcp.client.api.get.description",
+        security = @SecurityRequirement(name = "nacos"))
+    @ApiResponse(responseCode = "200",
+        content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+            schema = @Schema(implementation = Result.class,
+                example = "nacos.admin.ai.mcp.client.api.get.example")))
+    @Parameters(value = {@Parameter(name = "namespaceId", example = "public"),
+        @Parameter(name = "mcpName", required = true, example = "my-mcp"),
+        @Parameter(name = "version", example = "1.0.0"),
+        @Parameter(name = "form", hidden = true),
+        @Parameter(name = ClientConstants.HTTP_CLIENT_ID_HEADER, in = ParameterIn.HEADER,
+            description = "nacos.admin.ai.mcp.client.api.http.client.id.query.header.description")})
     public Result<McpServerDetailInfo> query(McpQueryForm form,
         @RequestHeader(name = ClientConstants.HTTP_CLIENT_ID_HEADER,
             required = false) String clientId)
@@ -102,6 +138,32 @@ public class McpClientController {
     @Since("3.3.0")
     @PostMapping
     @Secured(action = ActionTypes.WRITE, signType = SignType.AI, apiType = ApiType.OPEN_API)
+    @Operation(summary = "nacos.admin.ai.mcp.client.api.release.summary",
+        description = "nacos.admin.ai.mcp.client.api.release.description",
+        security = @SecurityRequirement(name = "nacos"))
+    @ApiResponse(responseCode = "200",
+        content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+            schema = @Schema(implementation = Result.class,
+                example = "nacos.admin.ai.mcp.client.api.release.example")))
+    @Parameters(value = {@Parameter(name = "namespaceId", example = "public"),
+        @Parameter(name = "mcpName", example = "my-mcp"),
+        @Parameter(name = "serverSpecification", required = true,
+            description = "nacos.admin.ai.mcp.client.api.release.serverSpecification.description",
+            schema = @Schema(type = "string"), example = MCP_RELEASE_TEXT_EXAMPLE),
+        @Parameter(name = "toolSpecification",
+            description = "nacos.admin.ai.mcp.client.api.release.toolSpecification.description",
+            schema = @Schema(type = "string")),
+        @Parameter(name = "resourceSpecification",
+            description = "nacos.admin.ai.mcp.client.api.release.resourceSpecification.description",
+            schema = @Schema(type = "string")),
+        @Parameter(name = "endpointSpecification",
+            description = "nacos.admin.ai.mcp.client.api.release.endpointSpecification.description",
+            schema = @Schema(type = "string")),
+        @Parameter(name = "createDraft",
+            schema = @Schema(type = "string", allowableValues = {"true", "false"},
+                defaultValue = "false"),
+            example = "false"),
+        @Parameter(name = "form", hidden = true)})
     public Result<String> release(McpReleaseForm form) throws NacosException {
         ReleaseMcpServerRequest request = form.toRequest();
         return Result.success(applicationService.release(request, "HTTP Client"));
@@ -113,6 +175,26 @@ public class McpClientController {
     @Since("3.3.0")
     @PostMapping("/endpoints")
     @Secured(action = ActionTypes.WRITE, signType = SignType.AI, apiType = ApiType.OPEN_API)
+    @Operation(summary = "nacos.admin.ai.mcp.client.api.endpoints.register.summary",
+        description = "nacos.admin.ai.mcp.client.api.endpoints.register.description",
+        security = @SecurityRequirement(name = "nacos"))
+    @ApiResponse(responseCode = "200",
+        content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+            schema = @Schema(implementation = Result.class,
+                example = "nacos.admin.ai.mcp.client.api.endpoints.register.example")))
+    @Parameters(value = {@Parameter(name = "namespaceId", example = "public"),
+        @Parameter(name = "mcpName", required = true, example = "my-mcp"),
+        @Parameter(name = "address", required = true, example = "127.0.0.1"),
+        @Parameter(name = "port", required = true, schema = @Schema(type = "integer"),
+            example = "8080"),
+        @Parameter(name = "version", example = "1.0.0"),
+        @Parameter(name = "form", hidden = true),
+        @Parameter(name = "httpRequest", hidden = true),
+        @Parameter(name = ClientConstants.HTTP_CLIENT_ID_HEADER, in = ParameterIn.HEADER,
+            required = true,
+            description = "nacos.admin.ai.mcp.client.api.http.client.id.publisher.header.description"),
+        @Parameter(name = HttpHeaderConsts.REQUEST_MODULE, in = ParameterIn.HEADER, required = true,
+            description = "nacos.admin.ai.mcp.client.api.request.module.header.description")})
     public Result<ClientLivenessInfo> registerEndpoint(McpEndpointForm form,
         @RequestHeader(name = ClientConstants.HTTP_CLIENT_ID_HEADER,
             required = false) String clientId,
@@ -133,6 +215,26 @@ public class McpClientController {
     @Since("3.3.0")
     @DeleteMapping("/endpoints")
     @Secured(action = ActionTypes.WRITE, signType = SignType.AI, apiType = ApiType.OPEN_API)
+    @Operation(summary = "nacos.admin.ai.mcp.client.api.endpoints.deregister.summary",
+        description = "nacos.admin.ai.mcp.client.api.endpoints.deregister.description",
+        security = @SecurityRequirement(name = "nacos"))
+    @ApiResponse(responseCode = "200",
+        content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+            schema = @Schema(implementation = Result.class,
+                example = "nacos.admin.ai.mcp.client.api.endpoints.deregister.example")))
+    @Parameters(value = {@Parameter(name = "namespaceId", example = "public"),
+        @Parameter(name = "mcpName", required = true, example = "my-mcp"),
+        @Parameter(name = "address", required = true, example = "127.0.0.1"),
+        @Parameter(name = "port", required = true, schema = @Schema(type = "integer"),
+            example = "8080"),
+        @Parameter(name = "version", example = "1.0.0"),
+        @Parameter(name = "form", hidden = true),
+        @Parameter(name = "httpRequest", hidden = true),
+        @Parameter(name = ClientConstants.HTTP_CLIENT_ID_HEADER, in = ParameterIn.HEADER,
+            required = true,
+            description = "nacos.admin.ai.mcp.client.api.http.client.id.publisher.header.description"),
+        @Parameter(name = HttpHeaderConsts.REQUEST_MODULE, in = ParameterIn.HEADER, required = true,
+            description = "nacos.admin.ai.mcp.client.api.request.module.header.description")})
     public Result<Void> deregisterEndpoint(McpEndpointForm form,
         @RequestHeader(name = ClientConstants.HTTP_CLIENT_ID_HEADER,
             required = false) String clientId,
@@ -154,6 +256,18 @@ public class McpClientController {
     @Since("3.3.0")
     @PutMapping("/endpoints/heartbeat")
     @Secured(action = ActionTypes.WRITE, signType = SignType.AI, apiType = ApiType.OPEN_API)
+    @Operation(summary = "nacos.admin.ai.mcp.client.api.endpoints.heartbeat.summary",
+        description = "nacos.admin.ai.mcp.client.api.endpoints.heartbeat.description",
+        security = @SecurityRequirement(name = "nacos"))
+    @ApiResponse(responseCode = "200",
+        content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+            schema = @Schema(implementation = Result.class,
+                example = "nacos.admin.ai.mcp.client.api.endpoints.heartbeat.example")))
+    @Parameters(value = {@Parameter(name = ClientConstants.HTTP_CLIENT_ID_HEADER,
+        in = ParameterIn.HEADER, required = true,
+        description = "nacos.admin.ai.mcp.client.api.http.client.id.publisher.header.description"),
+        @Parameter(name = HttpHeaderConsts.REQUEST_MODULE, in = ParameterIn.HEADER, required = true,
+            description = "nacos.admin.ai.mcp.client.api.request.module.header.description")})
     public Result<ClientLivenessInfo> heartbeat(
         @RequestHeader(name = ClientConstants.HTTP_CLIENT_ID_HEADER,
             required = false) String clientId,
@@ -169,6 +283,26 @@ public class McpClientController {
     @Since("3.3.0")
     @GetMapping("/search")
     @Secured(action = ActionTypes.READ, signType = SignType.AI, apiType = ApiType.OPEN_API)
+    @Operation(summary = "nacos.admin.ai.mcp.client.api.search.summary",
+        description = "nacos.admin.ai.mcp.client.api.search.description",
+        security = @SecurityRequirement(name = "nacos"))
+    @ApiResponse(responseCode = "200",
+        content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+            schema = @Schema(implementation = Result.class,
+                example = "nacos.admin.ai.mcp.client.api.search.example")))
+    @Parameters(value = {@Parameter(name = "namespaceId", example = "public"),
+        @Parameter(name = "query", schema = @Schema(type = "string", maxLength = 1024)),
+        @Parameter(name = "tagsAll", array = @ArraySchema(schema = @Schema(type = "string"))),
+        @Parameter(name = "protocolsAny", array = @ArraySchema(schema = @Schema(type = "string"))),
+        @Parameter(name = "capabilitiesAny",
+            array = @ArraySchema(schema = @Schema(type = "string"))),
+        @Parameter(name = "pageNo",
+            schema = @Schema(type = "integer", defaultValue = "1", minimum = "1"), example = "1"),
+        @Parameter(name = "pageSize",
+            schema = @Schema(type = "integer", defaultValue = "100", minimum = "1"),
+            example = "100"),
+        @Parameter(name = "form", hidden = true),
+        @Parameter(name = "pageForm", hidden = true)})
     public Result<Page<McpServerBasicInfo>> search(McpSearchForm form, PageForm pageForm)
         throws NacosException {
         form.validate();

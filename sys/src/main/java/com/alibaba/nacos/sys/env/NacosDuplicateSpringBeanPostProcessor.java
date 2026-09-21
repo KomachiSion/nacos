@@ -18,6 +18,7 @@ package com.alibaba.nacos.sys.env;
 
 import org.springframework.beans.factory.config.BeanDefinition;
 import org.springframework.beans.factory.config.InstantiationAwareBeanPostProcessor;
+import org.springframework.boot.autoconfigure.context.MessageSourceProperties;
 import org.springframework.context.ConfigurableApplicationContext;
 
 /**
@@ -38,7 +39,9 @@ public class NacosDuplicateSpringBeanPostProcessor extends AbstractNacosDuplicat
     @Override
     protected boolean isReUsingBean(Class<?> beanClass, String beanName,
         BeanDefinition beanDefinition) {
-        return !isContextBean(beanClass);
+        // Bind message bundles to each context's own spring.messages settings.
+        return !isContextBean(beanClass)
+            && !MessageSourceProperties.class.isAssignableFrom(beanClass);
     }
     
     private boolean isContextBean(Class<?> beanClass) {

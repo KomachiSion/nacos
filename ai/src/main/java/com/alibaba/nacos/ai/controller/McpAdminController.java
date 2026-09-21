@@ -136,9 +136,11 @@ public class McpAdminController {
             schema = @Schema(implementation = Result.class,
                 example = "nacos.admin.ai.mcp.api.list.example")))
     @Parameters(value = {
-        @Parameter(name = "pageNo", required = true, schema = @Schema(type = "integer"),
+        @Parameter(name = "pageNo",
+            schema = @Schema(type = "integer", defaultValue = "1", minimum = "1"),
             example = "1"),
-        @Parameter(name = "pageSize", required = true, schema = @Schema(type = "integer"),
+        @Parameter(name = "pageSize",
+            schema = @Schema(type = "integer", defaultValue = "100", minimum = "1"),
             example = "100"),
         @Parameter(name = "namespaceId", example = "public"), @Parameter(name = "mcpName"),
         @Parameter(name = "search", example = "blur", description = "blur or accurate"),
@@ -201,6 +203,10 @@ public class McpAdminController {
             schema = @Schema(implementation = Result.class,
                 example = "nacos.admin.ai.mcp.api.create.example")))
     @Parameters(value = {@Parameter(name = "namespaceId", example = "public"),
+        @Parameter(name = "mcpName",
+            description = "nacos.admin.ai.mcp.api.mcpName.fallback.description"),
+        @Parameter(name = "mcpId", deprecated = true,
+            description = "nacos.admin.ai.mcp.api.mcpId.fallback.description"),
         @Parameter(name = "serverSpecification", required = true,
             schema = @Schema(type = "string",
                 description = "JSON object string parsed as McpServerBasicInfo"),
@@ -251,6 +257,10 @@ public class McpAdminController {
             schema = @Schema(implementation = Result.class,
                 example = "nacos.admin.ai.mcp.api.update.example")))
     @Parameters(value = {@Parameter(name = "namespaceId", example = "public"),
+        @Parameter(name = "mcpName",
+            description = "nacos.admin.ai.mcp.api.mcpName.fallback.description"),
+        @Parameter(name = "mcpId", deprecated = true,
+            description = "nacos.admin.ai.mcp.api.mcpId.fallback.description"),
         @Parameter(name = "latest", schema = @Schema(type = "boolean"), example = "true"),
         @Parameter(name = "overrideExisting", schema = @Schema(type = "boolean"),
             example = "false"),
@@ -317,6 +327,25 @@ public class McpAdminController {
     @Since("3.3.0")
     @GetMapping("/versions")
     @Secured(action = ActionTypes.READ, signType = SignType.AI, apiType = ApiType.ADMIN_API)
+    @Operation(summary = "nacos.admin.ai.mcp.api.versions.summary",
+        description = "nacos.admin.ai.mcp.api.versions.description",
+        security = @SecurityRequirement(name = "nacos"))
+    @ApiResponse(responseCode = "200",
+        content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+            schema = @Schema(implementation = Result.class,
+                example = "nacos.admin.ai.mcp.api.versions.example")))
+    @Parameters(value = {@Parameter(name = "namespaceId", example = "public"),
+        @Parameter(name = "mcpName", required = true, example = "my-mcp"),
+        @Parameter(name = "status",
+            schema = @Schema(type = "string",
+                allowableValues = {"draft", "reviewing", "reviewed", "online", "offline"})),
+        @Parameter(name = "pageNo",
+            schema = @Schema(type = "integer", defaultValue = "1", minimum = "1"), example = "1"),
+        @Parameter(name = "pageSize",
+            schema = @Schema(type = "integer", defaultValue = "100", minimum = "1"),
+            example = "100"),
+        @Parameter(name = "form", hidden = true),
+        @Parameter(name = "pageForm", hidden = true)})
     public Result<Page<McpServerVersionSummary>> listMcpServerVersions(
         McpServerVersionListForm form, PageForm pageForm) throws NacosException {
         form.validate();
@@ -332,6 +361,17 @@ public class McpAdminController {
     @Since("3.3.0")
     @GetMapping("/version")
     @Secured(action = ActionTypes.READ, signType = SignType.AI, apiType = ApiType.ADMIN_API)
+    @Operation(summary = "nacos.admin.ai.mcp.api.version.summary",
+        description = "nacos.admin.ai.mcp.api.version.description",
+        security = @SecurityRequirement(name = "nacos"))
+    @ApiResponse(responseCode = "200",
+        content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+            schema = @Schema(implementation = Result.class,
+                example = "nacos.admin.ai.mcp.api.version.example")))
+    @Parameters(value = {@Parameter(name = "namespaceId", example = "public"),
+        @Parameter(name = "mcpName", required = true, example = "my-mcp"),
+        @Parameter(name = "version", required = true, example = "1.0.0"),
+        @Parameter(name = "form", hidden = true)})
     public Result<McpServerVersionDetail> getMcpServerVersion(
         McpServerVersionForm form) throws NacosException {
         form.validate();
@@ -345,6 +385,30 @@ public class McpAdminController {
     @Since("3.3.0")
     @PostMapping("/draft")
     @Secured(action = ActionTypes.WRITE, signType = SignType.AI, apiType = ApiType.ADMIN_API)
+    @Operation(summary = "nacos.admin.ai.mcp.api.draft.create.summary",
+        description = "nacos.admin.ai.mcp.api.draft.create.description",
+        security = @SecurityRequirement(name = "nacos"))
+    @ApiResponse(responseCode = "200",
+        content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+            schema = @Schema(implementation = Result.class,
+                example = "nacos.admin.ai.mcp.api.draft.create.example")))
+    @Parameters(value = {@Parameter(name = "namespaceId", example = "public"),
+        @Parameter(name = "mcpName", required = true, example = "my-mcp"),
+        @Parameter(name = "version", required = true, example = "1.0.0"),
+        @Parameter(name = "serverSpecification", required = true,
+            description = "nacos.admin.ai.mcp.api.draft.serverSpecification.description",
+            schema = @Schema(type = "string"),
+            example = "\"{\\\"protocol\\\":\\\"stdio\\\",\\\"frontProtocol\\\":\\\"stdio\\\"}\""),
+        @Parameter(name = "toolSpecification",
+            description = "nacos.admin.ai.mcp.api.draft.toolSpecification.description",
+            schema = @Schema(type = "string")),
+        @Parameter(name = "resourceSpecification",
+            description = "nacos.admin.ai.mcp.api.draft.resourceSpecification.description",
+            schema = @Schema(type = "string")),
+        @Parameter(name = "endpointSpecification",
+            description = "nacos.admin.ai.mcp.api.draft.endpointSpecification.description",
+            schema = @Schema(type = "string")),
+        @Parameter(name = "form", hidden = true)})
     public Result<McpServerVersionDetail> createMcpServerDraft(
         McpServerDraftForm form) throws NacosException {
         form.validate();
@@ -361,6 +425,30 @@ public class McpAdminController {
     @Since("3.3.0")
     @PutMapping("/draft")
     @Secured(action = ActionTypes.WRITE, signType = SignType.AI, apiType = ApiType.ADMIN_API)
+    @Operation(summary = "nacos.admin.ai.mcp.api.draft.update.summary",
+        description = "nacos.admin.ai.mcp.api.draft.update.description",
+        security = @SecurityRequirement(name = "nacos"))
+    @ApiResponse(responseCode = "200",
+        content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+            schema = @Schema(implementation = Result.class,
+                example = "nacos.admin.ai.mcp.api.draft.update.example")))
+    @Parameters(value = {@Parameter(name = "namespaceId", example = "public"),
+        @Parameter(name = "mcpName", required = true, example = "my-mcp"),
+        @Parameter(name = "version", required = true, example = "1.0.0"),
+        @Parameter(name = "serverSpecification", required = true,
+            description = "nacos.admin.ai.mcp.api.draft.serverSpecification.description",
+            schema = @Schema(type = "string"),
+            example = "\"{\\\"protocol\\\":\\\"stdio\\\",\\\"frontProtocol\\\":\\\"stdio\\\"}\""),
+        @Parameter(name = "toolSpecification",
+            description = "nacos.admin.ai.mcp.api.draft.toolSpecification.description",
+            schema = @Schema(type = "string")),
+        @Parameter(name = "resourceSpecification",
+            description = "nacos.admin.ai.mcp.api.draft.resourceSpecification.description",
+            schema = @Schema(type = "string")),
+        @Parameter(name = "endpointSpecification",
+            description = "nacos.admin.ai.mcp.api.draft.endpointSpecification.description",
+            schema = @Schema(type = "string")),
+        @Parameter(name = "form", hidden = true)})
     public Result<McpServerVersionDetail> updateMcpServerDraft(
         McpServerDraftForm form) throws NacosException {
         form.validate();
@@ -377,6 +465,17 @@ public class McpAdminController {
     @Since("3.3.0")
     @DeleteMapping("/draft")
     @Secured(action = ActionTypes.WRITE, signType = SignType.AI, apiType = ApiType.ADMIN_API)
+    @Operation(summary = "nacos.admin.ai.mcp.api.draft.delete.summary",
+        description = "nacos.admin.ai.mcp.api.draft.delete.description",
+        security = @SecurityRequirement(name = "nacos"))
+    @ApiResponse(responseCode = "200",
+        content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+            schema = @Schema(implementation = Result.class,
+                example = "nacos.admin.ai.mcp.api.draft.delete.example")))
+    @Parameters(value = {@Parameter(name = "namespaceId", example = "public"),
+        @Parameter(name = "mcpName", required = true, example = "my-mcp"),
+        @Parameter(name = "version", required = true, example = "1.0.0"),
+        @Parameter(name = "form", hidden = true)})
     public Result<Void> deleteMcpServerDraft(McpServerVersionForm form)
         throws NacosException {
         form.validate();
@@ -391,6 +490,17 @@ public class McpAdminController {
     @Since("3.3.0")
     @PostMapping("/submit")
     @Secured(action = ActionTypes.WRITE, signType = SignType.AI, apiType = ApiType.ADMIN_API)
+    @Operation(summary = "nacos.admin.ai.mcp.api.submit.summary",
+        description = "nacos.admin.ai.mcp.api.submit.description",
+        security = @SecurityRequirement(name = "nacos"))
+    @ApiResponse(responseCode = "200",
+        content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+            schema = @Schema(implementation = Result.class,
+                example = "nacos.admin.ai.mcp.api.submit.example")))
+    @Parameters(value = {@Parameter(name = "namespaceId", example = "public"),
+        @Parameter(name = "mcpName", required = true, example = "my-mcp"),
+        @Parameter(name = "version", required = true, example = "1.0.0"),
+        @Parameter(name = "form", hidden = true)})
     public Result<McpServerVersionSummary> submitMcpServerVersion(
         McpServerVersionForm form) throws NacosException {
         form.validate();
@@ -404,6 +514,17 @@ public class McpAdminController {
     @Since("3.3.0")
     @PostMapping("/publish")
     @Secured(action = ActionTypes.WRITE, signType = SignType.AI, apiType = ApiType.ADMIN_API)
+    @Operation(summary = "nacos.admin.ai.mcp.api.publish.summary",
+        description = "nacos.admin.ai.mcp.api.publish.description",
+        security = @SecurityRequirement(name = "nacos"))
+    @ApiResponse(responseCode = "200",
+        content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+            schema = @Schema(implementation = Result.class,
+                example = "nacos.admin.ai.mcp.api.publish.example")))
+    @Parameters(value = {@Parameter(name = "namespaceId", example = "public"),
+        @Parameter(name = "mcpName", required = true, example = "my-mcp"),
+        @Parameter(name = "version", required = true, example = "1.0.0"),
+        @Parameter(name = "form", hidden = true)})
     public Result<McpServerVersionSummary> publishMcpServerVersion(
         McpServerVersionForm form) throws NacosException {
         form.validate();
@@ -418,6 +539,17 @@ public class McpAdminController {
     @PostMapping("/force-publish")
     @Secured(resource = Constants.MCP_ADMIN_PATH + "/force-publish",
         action = ActionTypes.WRITE, signType = SignType.AI, apiType = ApiType.ADMIN_API)
+    @Operation(summary = "nacos.admin.ai.mcp.api.force.publish.summary",
+        description = "nacos.admin.ai.mcp.api.force.publish.description",
+        security = @SecurityRequirement(name = "nacos"))
+    @ApiResponse(responseCode = "200",
+        content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+            schema = @Schema(implementation = Result.class,
+                example = "nacos.admin.ai.mcp.api.force.publish.example")))
+    @Parameters(value = {@Parameter(name = "namespaceId", example = "public"),
+        @Parameter(name = "mcpName", required = true, example = "my-mcp"),
+        @Parameter(name = "version", required = true, example = "1.0.0"),
+        @Parameter(name = "form", hidden = true)})
     public Result<McpServerVersionSummary> forcePublishMcpServerVersion(
         McpServerVersionForm form) throws NacosException {
         form.validate();
@@ -431,6 +563,17 @@ public class McpAdminController {
     @Since("3.3.0")
     @PostMapping("/redraft")
     @Secured(action = ActionTypes.WRITE, signType = SignType.AI, apiType = ApiType.ADMIN_API)
+    @Operation(summary = "nacos.admin.ai.mcp.api.redraft.summary",
+        description = "nacos.admin.ai.mcp.api.redraft.description",
+        security = @SecurityRequirement(name = "nacos"))
+    @ApiResponse(responseCode = "200",
+        content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+            schema = @Schema(implementation = Result.class,
+                example = "nacos.admin.ai.mcp.api.redraft.example")))
+    @Parameters(value = {@Parameter(name = "namespaceId", example = "public"),
+        @Parameter(name = "mcpName", required = true, example = "my-mcp"),
+        @Parameter(name = "version", required = true, example = "1.0.0"),
+        @Parameter(name = "form", hidden = true)})
     public Result<McpServerVersionSummary> redraftMcpServerVersion(
         McpServerVersionForm form) throws NacosException {
         form.validate();
@@ -444,6 +587,17 @@ public class McpAdminController {
     @Since("3.3.0")
     @PostMapping("/online")
     @Secured(action = ActionTypes.WRITE, signType = SignType.AI, apiType = ApiType.ADMIN_API)
+    @Operation(summary = "nacos.admin.ai.mcp.api.online.summary",
+        description = "nacos.admin.ai.mcp.api.online.description",
+        security = @SecurityRequirement(name = "nacos"))
+    @ApiResponse(responseCode = "200",
+        content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+            schema = @Schema(implementation = Result.class,
+                example = "nacos.admin.ai.mcp.api.online.example")))
+    @Parameters(value = {@Parameter(name = "namespaceId", example = "public"),
+        @Parameter(name = "mcpName", required = true, example = "my-mcp"),
+        @Parameter(name = "version", required = true, example = "1.0.0"),
+        @Parameter(name = "form", hidden = true)})
     public Result<McpServerVersionSummary> onlineMcpServerVersion(
         McpServerVersionForm form) throws NacosException {
         form.validate();
@@ -457,6 +611,17 @@ public class McpAdminController {
     @Since("3.3.0")
     @PostMapping("/offline")
     @Secured(action = ActionTypes.WRITE, signType = SignType.AI, apiType = ApiType.ADMIN_API)
+    @Operation(summary = "nacos.admin.ai.mcp.api.offline.summary",
+        description = "nacos.admin.ai.mcp.api.offline.description",
+        security = @SecurityRequirement(name = "nacos"))
+    @ApiResponse(responseCode = "200",
+        content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+            schema = @Schema(implementation = Result.class,
+                example = "nacos.admin.ai.mcp.api.offline.example")))
+    @Parameters(value = {@Parameter(name = "namespaceId", example = "public"),
+        @Parameter(name = "mcpName", required = true, example = "my-mcp"),
+        @Parameter(name = "version", required = true, example = "1.0.0"),
+        @Parameter(name = "form", hidden = true)})
     public Result<McpServerVersionSummary> offlineMcpServerVersion(
         McpServerVersionForm form) throws NacosException {
         form.validate();
@@ -470,6 +635,18 @@ public class McpAdminController {
     @Since("3.3.0")
     @PutMapping("/labels")
     @Secured(action = ActionTypes.WRITE, signType = SignType.AI, apiType = ApiType.ADMIN_API)
+    @Operation(summary = "nacos.admin.ai.mcp.api.labels.summary",
+        description = "nacos.admin.ai.mcp.api.labels.description",
+        security = @SecurityRequirement(name = "nacos"))
+    @ApiResponse(responseCode = "200",
+        content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+            schema = @Schema(implementation = Result.class,
+                example = "nacos.admin.ai.mcp.api.labels.example")))
+    @Parameters(value = {@Parameter(name = "namespaceId", example = "public"),
+        @Parameter(name = "mcpName", required = true, example = "my-mcp"),
+        @Parameter(name = "labels", schema = @Schema(type = "string"),
+            example = "\"{\\\"stable\\\":\\\"1.0.0\\\"}\""),
+        @Parameter(name = "form", hidden = true)})
     public Result<Map<String, String>> updateMcpServerLabels(McpServerLabelsForm form)
         throws NacosException {
         form.validate();
@@ -484,6 +661,18 @@ public class McpAdminController {
     @Since("3.3.0")
     @PutMapping("/status")
     @Secured(action = ActionTypes.WRITE, signType = SignType.AI, apiType = ApiType.ADMIN_API)
+    @Operation(summary = "nacos.admin.ai.mcp.api.status.summary",
+        description = "nacos.admin.ai.mcp.api.status.description",
+        security = @SecurityRequirement(name = "nacos"))
+    @ApiResponse(responseCode = "200",
+        content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+            schema = @Schema(implementation = Result.class,
+                example = "nacos.admin.ai.mcp.api.status.example")))
+    @Parameters(value = {@Parameter(name = "namespaceId", example = "public"),
+        @Parameter(name = "mcpName", required = true, example = "my-mcp"),
+        @Parameter(name = "enabled", required = true, schema = @Schema(type = "boolean"),
+            example = "true"),
+        @Parameter(name = "form", hidden = true)})
     public Result<String> updateMcpServerStatus(McpServerStatusForm form)
         throws NacosException {
         form.validate();
@@ -498,6 +687,19 @@ public class McpAdminController {
     @Since("3.3.0")
     @PutMapping("/scope")
     @Secured(action = ActionTypes.WRITE, signType = SignType.AI, apiType = ApiType.ADMIN_API)
+    @Operation(summary = "nacos.admin.ai.mcp.api.scope.summary",
+        description = "nacos.admin.ai.mcp.api.scope.description",
+        security = @SecurityRequirement(name = "nacos"))
+    @ApiResponse(responseCode = "200",
+        content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+            schema = @Schema(implementation = Result.class,
+                example = "nacos.admin.ai.mcp.api.scope.example")))
+    @Parameters(value = {@Parameter(name = "namespaceId", example = "public"),
+        @Parameter(name = "mcpName", required = true, example = "my-mcp"),
+        @Parameter(name = "scope", required = true,
+            schema = @Schema(type = "string", allowableValues = {"PUBLIC", "PRIVATE"}),
+            example = "PUBLIC"),
+        @Parameter(name = "form", hidden = true)})
     public Result<String> updateMcpServerScope(McpServerScopeForm form)
         throws NacosException {
         form.validate();

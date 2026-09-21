@@ -241,9 +241,11 @@ public class ConsoleServiceController {
             schema = @Schema(implementation = Result.class,
                 example = "nacos.console.naming.service.api.subscribers.example")))
     @Parameters(value = {
-        @Parameter(name = "pageNo", required = true, schema = @Schema(type = "integer"),
+        @Parameter(name = "pageNo",
+            schema = @Schema(type = "integer", defaultValue = "1", minimum = "1"),
             example = "1"),
-        @Parameter(name = "pageSize", required = true, schema = @Schema(type = "integer"),
+        @Parameter(name = "pageSize",
+            schema = @Schema(type = "integer", defaultValue = "100", minimum = "1"),
             example = "10"),
         @Parameter(name = "namespaceId", example = "public"),
         @Parameter(name = "groupName", example = "DEFAULT_GROUP"),
@@ -286,9 +288,11 @@ public class ConsoleServiceController {
             schema = @Schema(implementation = Result.class,
                 example = "nacos.console.naming.service.api.list.example")))
     @Parameters(value = {
-        @Parameter(name = "pageNo", required = true, schema = @Schema(type = "integer"),
+        @Parameter(name = "pageNo",
+            schema = @Schema(type = "integer", defaultValue = "1", minimum = "1"),
             example = "1"),
-        @Parameter(name = "pageSize", required = true, schema = @Schema(type = "integer"),
+        @Parameter(name = "pageSize",
+            schema = @Schema(type = "integer", defaultValue = "100", minimum = "1"),
             example = "10"),
         @Parameter(name = "namespaceId", example = "public"),
         @Parameter(name = "groupNameParam"),

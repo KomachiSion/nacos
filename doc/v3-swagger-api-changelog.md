@@ -1,5 +1,30 @@
 # V3 Swagger API Changelog
 
+## 2026-09-21
+
+### Current Branch Annotation Audit
+
+- Completed annotation checks for 54 controllers and 392 v3 operations across core, config, naming, AI and console; excluded ai-registry-adaptor and DNS as requested. The default auth plugin remains pending its Tag/i18n naming decision.
+- Added missing Swagger annotations for 41 AI operations, including MCP lifecycle/client APIs, resource search, capabilities, Agent scope and Agent watch.
+- Corrected defaulted pagination requirements, inherited and helper-consumed form fields, Skill upload parts, shared publisher headers, JSON string examples and localized response examples.
+- Unwrapped DeferredResult<Result<T>> during response schema generation and verified that generated references remain resolvable.
+- Corrected Copilot config JSON binding by using Spring RequestBody on the parameter while retaining Swagger RequestBody on the method; updated controller regression checks and standalone API IT coverage.
+- Verified Swagger and Copilot tests, reactor compilation, Spotless, i18n key coverage, JSON parsing and 367 response examples against compiled return models. Standalone business API IT remains unexecuted.
+
+### Agent Watch Request Example Correction
+
+- Moved `agentName` and `version` into `discoveryRequest.reference` in the `watches` parameter example and supplied the required `materializedFingerprint`.
+- Corrected the default, English and Chinese parameter descriptions: the fingerprint is mandatory, uses `sha256-canonical-json-v1:<64-lowercase-hex>`, and must be computed from the last materialized Discover result. The all-zero sample demonstrates the format and must be replaced for real requests.
+- Verified the annotation example against the actual `AgentWatchBatchForm.toRequest()` parser and validator; the previous example fails because `AgentReference` is missing. All 20 Agent Client controller/form tests, reactor compilation and Spotless checks pass.
+
+### Swagger Message Source Isolation Fix
+
+- Reproduced untranslated titles, tags, summaries and examples in all three OpenAPI groups under merged deployment.
+- The core context auto-configures a default `messages` bundle because the `dnsjava` dependency contains `messages.properties`. Nacos then reused the parent's `MessageSourceProperties` in the server and console contexts, overriding their intended `i18n/server_messages` and `i18n/console_messages` basenames.
+- Excluded `MessageSourceProperties` from parent bean reuse so each child binds its own message configuration; no DNS or AI registry adaptor code changes were needed.
+- Added regression coverage using real parent, server and console Spring contexts with separate resource bundles. All 10 duplicate-bean processor tests and Spotless checks pass.
+- Started an isolated merged instance and verified English and Chinese responses from `client-api`, `admin-api` and `console-api`. All six OpenAPI documents contain no unresolved Nacos i18n keys (25, 195 and 160 operations respectively in this instance).
+
 ## 2026-08-05
 
 ### Client API Document Generation Fix

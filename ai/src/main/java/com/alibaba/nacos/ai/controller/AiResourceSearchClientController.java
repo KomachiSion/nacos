@@ -16,6 +16,19 @@
 
 package com.alibaba.nacos.ai.controller;
 
+import com.alibaba.nacos.api.remote.RemoteConstants;
+import org.springframework.http.MediaType;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.ArraySchema;
+import io.swagger.v3.oas.annotations.extensions.ExtensionProperty;
+import io.swagger.v3.oas.annotations.extensions.Extension;
+import io.swagger.v3.oas.annotations.Parameters;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.Operation;
 import com.alibaba.nacos.ai.constant.Constants;
 import com.alibaba.nacos.ai.form.search.client.AiResourceSearchForm;
 import com.alibaba.nacos.ai.param.AiResourceSearchHttpParamExtractor;
@@ -43,6 +56,10 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping(Constants.AI_RESOURCE_SEARCH_CLIENT_PATH)
 @ExtractorManager.Extractor(httpExtractor = AiResourceSearchHttpParamExtractor.class)
+@Tag(name = "nacos.admin.ai.resource.search.client.api.controller.name",
+    description = "nacos.admin.ai.resource.search.client.api.controller.description", extensions = {
+        @Extension(name = RemoteConstants.LABEL_MODULE,
+            properties = @ExtensionProperty(name = RemoteConstants.LABEL_MODULE, value = "ai"))})
 public class AiResourceSearchClientController {
     
     private final AiResourceSearchApplicationService searchService;
@@ -57,6 +74,24 @@ public class AiResourceSearchClientController {
     @Since("3.3.0")
     @GetMapping
     @Secured(action = ActionTypes.READ, signType = SignType.AI, apiType = ApiType.OPEN_API)
+    @Operation(summary = "nacos.admin.ai.resource.search.client.api.search.summary",
+        description = "nacos.admin.ai.resource.search.client.api.search.description",
+        security = @SecurityRequirement(name = "nacos"))
+    @ApiResponse(responseCode = "200",
+        content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+            schema = @Schema(implementation = Result.class,
+                example = "nacos.admin.ai.resource.search.client.api.search.example")))
+    @Parameters(value = {@Parameter(name = "namespaceId", example = "public"),
+        @Parameter(name = "query", schema = @Schema(type = "string", maxLength = 1024)),
+        @Parameter(name = "resourceTypes", array = @ArraySchema(schema = @Schema(type = "string"))),
+        @Parameter(name = "tagsAll", array = @ArraySchema(schema = @Schema(type = "string"))),
+        @Parameter(name = "capabilitiesAny",
+            array = @ArraySchema(schema = @Schema(type = "string"))),
+        @Parameter(name = "cursor", schema = @Schema(type = "string", maxLength = 2048)),
+        @Parameter(name = "limit",
+            schema = @Schema(type = "integer", defaultValue = "20", minimum = "1", maximum = "100"),
+            example = "20"),
+        @Parameter(name = "form", hidden = true)})
     public Result<AiResourceSearchResponse> search(AiResourceSearchForm form)
         throws NacosException {
         form.validate();

@@ -35,7 +35,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  *     <li>Boundary/validation: SSE skill/prompt generation, optimization, and debug endpoints accept empty request
  *     bodies as a controlled error event and validate required JSON fields before invoking any LLM provider; config
  *     fields outside the four editable fields are accepted but ignored by the save path.</li>
- *     <li>Exception/error handling: malformed config bodies return HTTP 400, and Copilot SSE validation failures
+ *     <li>Exception/error handling: malformed or missing config bodies return HTTP 400, and Copilot SSE validation failures
  *     complete with an {@code error} event instead of surfacing an HTTP 500 or hanging stream.</li>
  * </ul>
  *
@@ -76,6 +76,12 @@ public class CopilotConsoleApiOpenApiITCase extends AiConsoleApiBaseITCase {
     public void testCopilotConfigMalformedJsonReturnsBadRequest() throws Exception {
         assertError(postJsonRaw(CONSOLE_COPILOT_CONFIG_PATH, Query.EMPTY, "{"), 400,
                 ErrorCode.PARAMETER_MISSING, "JSON parse error");
+    }
+
+    @Test
+    public void testCopilotConfigMissingJsonReturnsBadRequest() throws Exception {
+        assertError(postJsonRaw(CONSOLE_COPILOT_CONFIG_PATH, Query.EMPTY, ""), 400,
+                ErrorCode.PARAMETER_MISSING, "Required request body is missing");
     }
 
     @Test

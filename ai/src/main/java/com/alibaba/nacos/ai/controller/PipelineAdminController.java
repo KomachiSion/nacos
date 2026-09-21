@@ -87,9 +87,11 @@ public class PipelineAdminController {
         @Parameter(name = "resourceName", example = "my-skill"),
         @Parameter(name = "namespaceId", example = "public"),
         @Parameter(name = "version", example = "1.0.0"),
-        @Parameter(name = "pageNo", required = true, schema = @Schema(type = "integer"),
+        @Parameter(name = "pageNo",
+            schema = @Schema(type = "integer", defaultValue = "1", minimum = "1"),
             example = "1"),
-        @Parameter(name = "pageSize", required = true, schema = @Schema(type = "integer"),
+        @Parameter(name = "pageSize",
+            schema = @Schema(type = "integer", defaultValue = "100", minimum = "1"),
             example = "100"),
         @Parameter(name = "form", hidden = true), @Parameter(name = "pageForm", hidden = true)})
     public Result<Page<PipelineExecution>> listPipelines(PipelineListForm form, PageForm pageForm)
@@ -168,9 +170,11 @@ public class PipelineAdminController {
         @Parameter(name = "resourceName", example = "my-skill"),
         @Parameter(name = "namespaceId", example = "public"),
         @Parameter(name = "version", example = "1.0.0"),
-        @Parameter(name = "pageNo", required = true, schema = @Schema(type = "integer"),
+        @Parameter(name = "pageNo",
+            schema = @Schema(type = "integer", defaultValue = "1", minimum = "1"),
             example = "1"),
-        @Parameter(name = "pageSize", required = true, schema = @Schema(type = "integer"),
+        @Parameter(name = "pageSize",
+            schema = @Schema(type = "integer", defaultValue = "100", minimum = "1"),
             example = "100"),
         @Parameter(name = "form", hidden = true), @Parameter(name = "pageForm", hidden = true)})
     public Result<Page<PipelineExecution>> listPipelinesLegacy(PipelineListForm form,

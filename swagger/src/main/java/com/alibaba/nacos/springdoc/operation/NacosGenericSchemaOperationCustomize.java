@@ -31,6 +31,7 @@ import io.swagger.v3.oas.models.responses.ApiResponse;
 import io.swagger.v3.oas.models.responses.ApiResponses;
 import org.springdoc.core.customizers.GlobalOperationCustomizer;
 import org.springframework.http.HttpEntity;
+import org.springframework.web.context.request.async.DeferredResult;
 import org.springframework.web.method.HandlerMethod;
 
 import java.lang.reflect.ParameterizedType;
@@ -103,7 +104,8 @@ public class NacosGenericSchemaOperationCustomize implements GlobalOperationCust
         if (Result.class.equals(rawType)) {
             return parameterizedType;
         }
-        if (rawType instanceof Class && HttpEntity.class.isAssignableFrom((Class<?>) rawType)) {
+        if (rawType instanceof Class && (HttpEntity.class.isAssignableFrom((Class<?>) rawType)
+            || DeferredResult.class.isAssignableFrom((Class<?>) rawType))) {
             return getResultType(getGenericType(parameterizedType, 0));
         }
         return null;

@@ -138,6 +138,12 @@ class ConsoleCopilotConfigControllerTest {
         ArgumentCaptor<ConfigRequestInfo> requestInfoCaptor =
             ArgumentCaptor.forClass(ConfigRequestInfo.class);
         verify(configProxy).publishConfig(configFormCaptor.capture(), requestInfoCaptor.capture());
+        CopilotProperties saved = JacksonUtils.toObj(configFormCaptor.getValue().getContent(),
+            CopilotProperties.class);
+        assertEquals("new-key", saved.getApiKey());
+        assertEquals("qwen-max", saved.getModel());
+        assertEquals("http://new.url", saved.getStudioUrl());
+        assertEquals("Proj", saved.getStudioProject());
         assertEquals(DATA_ID, configFormCaptor.getValue().getDataId());
         assertEquals(GROUP, configFormCaptor.getValue().getGroup());
         assertEquals(NAMESPACE, configFormCaptor.getValue().getNamespaceId());
@@ -146,6 +152,16 @@ class ConsoleCopilotConfigControllerTest {
         assertEquals("Copilot configuration", configFormCaptor.getValue().getDesc());
         assertEquals("json", configFormCaptor.getValue().getType());
         assertEquals("http", requestInfoCaptor.getValue().getSrcType());
+    }
+    
+    @Test
+    void testSaveConfigRejectsMalformedJson() throws Exception {
+        mockMvc.perform(post("/v3/console/copilot/config")
+            .contentType(MediaType.APPLICATION_JSON).content("{"))
+            .andExpect(status().isBadRequest());
+        
+        verify(configProxy, never()).publishConfig(any(), any());
+        verify(agentManager, never()).refreshConfig();
     }
     
     @Test

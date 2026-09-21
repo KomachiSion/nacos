@@ -40,7 +40,8 @@ public abstract class AbstractNacosDuplicateBeanPostProcessor
     @Override
     public Object postProcessBeforeInstantiation(Class<?> beanClass, String beanName)
         throws BeansException {
-        if (!coreContext.containsBean(beanName) || AbstractApplicationContext.MESSAGE_SOURCE_BEAN_NAME.equals(beanName)) {
+        if (!coreContext.containsBean(beanName)
+            || AbstractApplicationContext.MESSAGE_SOURCE_BEAN_NAME.equals(beanName)) {
             return null;
         }
         BeanDefinition beanDefinition = coreContext.getBeanFactory().getBeanDefinition(beanName);

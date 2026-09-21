@@ -1,61 +1,62 @@
 # Nacos v3 HTTP API Swagger 注解覆盖扫描
 
-扫描日期：2026-08-04
+扫描日期：2026-09-21
 
-运行时复核：2026-08-05
+扫描基线：当前分支 `v3.0-develop-swagger-generator` 工作树（基于 `eff78af90`）。
 
-扫描基线：当前工作树
+目标：核对 v3 HTTP API 的注解覆盖、实际参数与默认值、请求/响应类型、多语言文案、响应示例和 `@Since`。
 
-目标：校验 v3 HTTP API 的 Swagger/OpenAPI 注解覆盖、参数语义、响应示例、i18n 引用和 `@Since` 元数据。
+## 扫描范围与结果
 
-## 扫描范围
+| 模块 | Controller | HTTP 映射 | 状态 |
+|---|---:|---:|---|
+| core | 6 | 25 | 已完成 |
+| config | 7 | 29 | 已完成 |
+| naming | 7 | 32 | 已完成 |
+| ai | 15 | 134 | 已完成 |
+| console | 19 | 172 | 已完成 |
+| 默认鉴权插件 v3 | 4 | 17 | 待确认命名约定 |
+| **合计** | **58** | **409** | **392 个接口已完成，17 个待确认** |
 
-| 模块 | Controller | HTTP 映射 |
-|---|---:|---:|
-| core | 6 | 25 |
-| config | 7 | 29 |
-| naming | 7 | 32 |
-| ai | 12 | 108 |
-| console | 19 | 145 |
-| **合计** | **51** | **339** |
+按用户要求排除 `ai-registry-adaptor` 与 `dns`。v1 API 和没有 HTTP 映射的 ExceptionHandler 不计入 v3 API 数量。
 
-以下内容按任务约定排除：
+已完成的 54 个 Controller 均有 `@Tag`；392 个方法均有 `@Operation`、响应注解和方法级 `@Since`。
+本轮没有新增 HTTP 路由或推断新版本号；保留已有 `@Since`（新增注解所对应的方法已有 `3.3.0`）。
 
-- `ai-registry-adaptor`
-- 默认鉴权插件的 User、Role、Permission API
-- 默认 Visibility 插件 API
+## 本轮修正
 
-## 扫描结果
+- 补全 41 个接口：MCP Admin/Console 生命周期各 14 个，MCP Client 6 个，Agent Admin/Console scope 各 1 个，Agent watch、AI capability、跨资源 search、Prompt search、Skill search 各 1 个。
+- 为 3 个尚未进入 Swagger 的 Client Controller 添加同模块风格的 Tag 和模块扩展。
+- 根据 Form 继承、validate/toRequest 和辅助解析方法核对字段，补齐 MCP 兼容接口的 mcpName/mcpId 回退参数、AgentSpec 的 tagsAll 和仅校验长度的继承 query 字段，以及 Skill Admin 上传的 autoPublishIfNew。
+- 修正 27 个接口共 54 个 PageForm 分页参数的必填标记，声明默认 pageNo=1、pageSize=100 和正数边界；直接由 RequestParam 要求必填的分页参数保持原契约。
+- 补齐 Watch 的 generation、timeoutMillis、JSON 字符串 watches 和两个必填 Header，声明 MCP Client 的共享活性 Header、端口类型、JSON 字符串字段及 search 数组参数。
+- 修正 Agent Watch 的 watches 示例：agentName/version 置于 discoveryRequest.reference 内，补充必填 materializedFingerprint；默认、中英文描述同步明确指纹格式、最近物化 Discover 结果的来源及格式示例需替换。通过实际 Form 解析校验，避免只检查 JSON 语法而漏掉嵌套请求契约。
+- 同步 server/console 默认、英文、中文资源；修正 Agent、AgentSpec、Skill、MCP、Pipeline、AI Import、Console Plugin/Cluster、Naming Instance/Ops 的过时响应示例，包括字段名、枚举状态和列表/分页形态。
+- 支持 `DeferredResult<Result<T>>` 的 Swagger 泛型响应解析，避免 Watch 响应引用在全局 Schema 清理后悬空。
+- 修复 Copilot config 参数误用 Swagger `@RequestBody` 导致 JSON 未绑定的问题：方法级保留文档注解，参数级恢复 Spring 注解。补强保存字段和非法 JSON 的 MockMvc 验证，并补充独立 OpenAPI IT 的缺失 JSON body 场景、矩阵和覆盖登记；既有 Partial 分类保持不变。
 
-当前纳入范围的 51 个 Controller 均有 `@Tag`，339 个 HTTP 映射均有：
+## 验证
 
-- `@Operation`
-- 至少一个 `@ApiResponse`
-- `@Since`
-- 与实际请求形态对应的参数或 RequestBody 描述
+- 54 个 Controller / 392 个映射的 Tag、Operation、ApiResponse、Since 静态覆盖核对。
+- 非 String 基础参数 schema、Form getter 与绑定参数、JSON/multipart media type 的交叉扫描及人工复核。扫描中的 group/getGroupName 别名、派生 getter、导入的 Swagger RequestBody 已人工排除误报。
+- 中英文资源引用可解析，无重复 key；按 Java Properties 转义规则还原后的 JSON 响应示例均可解析。
+- 使用编译后的 Controller 返回泛型及 Jackson 序列化属性，核对 367 个 Result 响应示例；按实际 Capacity/HealthChecker 子类处理多态后，无未知字段、集合形态或枚举错误。该检查不等同于部署后的真实响应验证。
+- Spotless apply/check 通过；43 个模块的 reactor 编译和目标测试通过。
+- Swagger 定制器测试 12 个通过，含新增 DeferredResult 引用解析及非 Result 回归场景。
+- Copilot Controller 测试 8 个通过；OpenAPI IT 编译通过。
+- Agent Client Controller/Form 测试 20 个通过；编译后的 Watch 注解示例通过真实 AgentWatchBatchForm.toRequest() 校验，AI 模块 Spotless apply/check 通过。
+- 独立业务 HTTP IT 尚未执行；本次 i18n 排查已在临时目录、独立端口启动完整 merged 实例，对 client/admin/console 三组 `/v3/api-docs` 分别请求 en-US、zh-CN，共 6 份文档均无未解析的 Nacos i18n key。该实例实际生成 25/195/160 个操作，静态覆盖计数仍按全部 Controller 映射统计。
+- Bean 复用相关测试 10 个通过，包含新增父子容器消息配置隔离和 MessageSourceProperties 禁止复用场景；sys 模块 Spotless apply/check 通过。
 
-Swagger i18n 引用已在对应的 server/console 三份资源中补齐；中英文 key 集一致，资源内无重复 key。默认资源中的新增响应示例均为合法 JSON。
+## 运行时 i18n 排查与修复
 
-## 本轮主要修正
+- 现象：原运行实例的三组 Swagger 文档均直接输出 title、Tag、summary、example 的 key，中英文请求表现一致。
+- 根因：父容器因依赖 `dnsjava` 自带的 `messages.properties` 创建默认消息配置。`NacosDuplicateSpringBeanPostProcessor` 在子容器中复用父容器的 `MessageSourceProperties`，使子容器实际 basename 仍为 `messages`，未采用 server/console 各自的配置。
+- 修复：将 `MessageSourceProperties` 排除在父容器 Bean 复用范围外，由各容器独立绑定本地消息配置。继续保持 `ai-registry-adaptor` 和 `dns` 源码不变。
+- 验证：完整 merged 实例中，父容器仍使用 `messages`，server 使用 `i18n/server_messages`，console 使用 `i18n/console_messages`；中英文 HTTP 文档标题、摘要、Tag 和响应示例恢复。原运行进程需重启加载新代码。
 
-- 为 Agent Admin、Agent Client、Console Agent 共 40 个接口补齐整套 Swagger 注解。
-- 细化 Agent Client 的 `X-Nacos-Client-Id` 配置、身份绑定和归属语义，并明确按 Client ID 而非 Endpoint 维度调度心跳及动态采用服务端返回间隔。
-- 为 Admin/Console Skill 上传预检 2 个 multipart 接口补齐注解、二进制文件 schema、响应示例和 i18n。
-- 修正 Config 发布、灰度发布、删除、批量删除、查询、导出、克隆和 Derby 导入的参数、binary schema 与 RequestBody 描述。
-- 修正 Naming Service、Instance、Cluster 的实际参数、必填状态和响应示例类型。
-- 修正 Skill、AgentSpec、MCP、Prompt、A2A、Console Plugin/Cluster 等接口中缺失或无效的参数，以及 Prompt 的 304 响应。
-- 修复 `ResponseEntity<Result<T>>` 未被泛型 Schema 定制器识别而产生的 `Result`/`ResultAgentSpec` 悬空引用，并将 AgentSpec、Prompt、Skill 的 304 响应显式声明为无响应体。
-- 修复 Example i18n 定制器遍历无响应体 304 时的空指针，避免 `/v3/api-docs/client-api` 返回 HTTP 500。
-- 修正 Core ServerState、Namespace、Config History、Naming 等响应示例，使其与 `Result<T>` 和实际返回类型一致。
-- 依据最早可用 3.x git tag，将 Admin/Console 的 AgentSpec list、Skill list、Skill upload 共 6 处 `@Since` 归一为 `3.2.0`。
+## 待确认项
 
-当前代码版本为 `3.3.0-SNAPSHOT`。本地尚无 3.3.x tag，因此新增 Agent API 和 Skill 上传预检保留代码已有的 `@Since("3.3.0")`，待正式 3.3.x tag 发布后可再次追溯确认。
+默认鉴权插件的 User、Role、Permission、Visibility 四个 v3 Controller 共 17 个接口目前均无 Swagger 注解，同模块没有可归纳的 Tag/i18n 参考。已询问是否采用 `nacos.auth.<资源>.api.*` 或本轮排除该插件，等待用户选择后补齐。本轮尚未修改这四个 Controller。
 
-## 验证方式
-
-- Controller 映射、`@Operation`、`@ApiResponse`、`@Since` 和 `@Tag` 静态计数及逐文件缺失扫描。
-- Java 注解引用与 server/console i18n key 的交叉校验。
-- i18n 重复 key 与新增 JSON example 校验。
-- Swagger 定制器共 10 个单元测试，覆盖直接/包装 Result、非 Result、空 content、example i18n 空值防护、定制器组合链路及最终 `$ref` 可解析性。
-- AgentSpec、Prompt、Skill Client Controller 目标单元测试共 12 个。
-- 受影响 Maven 模块的 Spotless 和编译检查。
+此前 2026-08-04/05 扫描记录保留在 `doc/v3-swagger-api-changelog.md`。

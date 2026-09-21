@@ -27,6 +27,10 @@ Its rows strengthen the existing A2A, Agent, Search, Console, and RAD surface
 coverage rather than creating new HTTP operations, so their status does not
 change the API-surface totals below.
 
+The Copilot console config surface retains its existing `Partial` status. Its JSON
+request binding regression coverage now includes persisted editable fields and
+malformed/missing request bodies; the API-surface totals are unchanged.
+
 ## Maintenance Rules
 
 - Update the matching scenario document whenever an OpenAPI/AdminAPI/ConsoleAPI

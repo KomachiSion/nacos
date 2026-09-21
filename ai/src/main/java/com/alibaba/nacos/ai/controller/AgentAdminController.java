@@ -157,6 +157,19 @@ public class AgentAdminController {
     @Since("3.3.0")
     @PutMapping("/scope")
     @Secured(action = ActionTypes.WRITE, signType = SignType.AI, apiType = ApiType.ADMIN_API)
+    @Operation(summary = "nacos.admin.ai.agent.api.scope.summary",
+        description = "nacos.admin.ai.agent.api.scope.description",
+        security = @SecurityRequirement(name = "nacos"))
+    @ApiResponse(responseCode = "200",
+        content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+            schema = @Schema(implementation = Result.class,
+                example = "nacos.admin.ai.agent.api.scope.example")))
+    @Parameters(value = {@Parameter(name = "namespaceId", example = "public"),
+        @Parameter(name = "agentName", required = true, example = "my-agent"),
+        @Parameter(name = "scope", required = true,
+            schema = @Schema(type = "string", allowableValues = {"PUBLIC", "PRIVATE"}),
+            example = "PUBLIC"),
+        @Parameter(name = "form", hidden = true)})
     public Result<String> updateScope(AgentScopeForm form) throws NacosException {
         form.validate();
         agentOperationService.updateScope(form.getNamespaceId(), form.getAgentName(),
@@ -205,9 +218,11 @@ public class AgentAdminController {
         @Parameter(name = "bizTag", example = "production"),
         @Parameter(name = "scope", example = "PUBLIC"),
         @Parameter(name = "owner", example = "nacos"),
-        @Parameter(name = "pageNo", required = true, schema = @Schema(type = "integer"),
+        @Parameter(name = "pageNo",
+            schema = @Schema(type = "integer", defaultValue = "1", minimum = "1"),
             example = "1"),
-        @Parameter(name = "pageSize", required = true, schema = @Schema(type = "integer"),
+        @Parameter(name = "pageSize",
+            schema = @Schema(type = "integer", defaultValue = "100", minimum = "1"),
             example = "20"),
         @Parameter(name = "form", hidden = true),
         @Parameter(name = "filterableForm", hidden = true),
@@ -240,9 +255,11 @@ public class AgentAdminController {
     @Parameters(value = {@Parameter(name = "namespaceId", example = "public"),
         @Parameter(name = "agentName", required = true, example = "my-agent"),
         @Parameter(name = "status", example = "online"),
-        @Parameter(name = "pageNo", required = true, schema = @Schema(type = "integer"),
+        @Parameter(name = "pageNo",
+            schema = @Schema(type = "integer", defaultValue = "1", minimum = "1"),
             example = "1"),
-        @Parameter(name = "pageSize", required = true, schema = @Schema(type = "integer"),
+        @Parameter(name = "pageSize",
+            schema = @Schema(type = "integer", defaultValue = "100", minimum = "1"),
             example = "20"),
         @Parameter(name = "form", hidden = true),
         @Parameter(name = "pageForm", hidden = true)})

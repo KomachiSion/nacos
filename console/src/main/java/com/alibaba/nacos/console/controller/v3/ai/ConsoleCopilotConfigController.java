@@ -152,7 +152,7 @@ public class ConsoleCopilotConfigController {
         content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
             schema = @Schema(implementation = CopilotProperties.class)))
     public Result<Boolean> saveConfig(HttpServletRequest request,
-        @RequestBody CopilotProperties config)
+        @org.springframework.web.bind.annotation.RequestBody CopilotProperties config)
         throws NacosException {
         if (config == null) {
             throw new NacosException(NacosException.INVALID_PARAM, "Configuration cannot be null");

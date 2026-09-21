@@ -229,9 +229,11 @@ public class A2aAdminController {
             schema = @Schema(implementation = Result.class,
                 example = "nacos.admin.ai.a2a.api.list.example")))
     @Parameters(value = {
-        @Parameter(name = "pageNo", required = true, schema = @Schema(type = "integer"),
+        @Parameter(name = "pageNo",
+            schema = @Schema(type = "integer", defaultValue = "1", minimum = "1"),
             example = "1"),
-        @Parameter(name = "pageSize", required = true, schema = @Schema(type = "integer"),
+        @Parameter(name = "pageSize",
+            schema = @Schema(type = "integer", defaultValue = "100", minimum = "1"),
             example = "100"),
         @Parameter(name = "namespaceId", example = "public"), @Parameter(name = "agentName"),
         @Parameter(name = "search", required = true, example = "blur",

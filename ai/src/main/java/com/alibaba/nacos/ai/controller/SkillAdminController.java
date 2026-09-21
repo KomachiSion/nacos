@@ -232,9 +232,11 @@ public class SkillAdminController {
             schema = @Schema(implementation = Result.class,
                 example = "nacos.admin.ai.skill.api.list.example")))
     @Parameters(value = {
-        @Parameter(name = "pageNo", required = true, schema = @Schema(type = "integer"),
+        @Parameter(name = "pageNo",
+            schema = @Schema(type = "integer", defaultValue = "1", minimum = "1"),
             example = "1"),
-        @Parameter(name = "pageSize", required = true, schema = @Schema(type = "integer"),
+        @Parameter(name = "pageSize",
+            schema = @Schema(type = "integer", defaultValue = "100", minimum = "1"),
             example = "100"),
         @Parameter(name = "namespaceId", example = "public"),
         @Parameter(name = "skillName", example = "my-skill"),
@@ -295,6 +297,8 @@ public class SkillAdminController {
                 schema = @Schema(type = "string", example = "Initial version")),
             @SchemaProperty(name = "uploadAction",
                 schema = @Schema(type = "string", example = "CREATE_DRAFT")),
+            @SchemaProperty(name = "autoPublishIfNew",
+                schema = @Schema(type = "boolean", defaultValue = "false", example = "false")),
             @SchemaProperty(name = "file", schema = @Schema(type = "string", format = "binary",
                 description = "ZIP file containing skill package"))}))
     public Result<String> uploadSkill(HttpServletRequest request,

@@ -32,6 +32,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springdoc.core.utils.PropertyResolverUtils;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.context.request.async.DeferredResult;
 import org.springframework.web.method.HandlerMethod;
 
 import java.lang.reflect.Method;
@@ -100,6 +101,33 @@ class NacosGenericSchemaOperationCustomizeTest {
     }
     
     @Test
+    void shouldKeepDeferredResultResponseReferenceResolvable() throws NoSuchMethodException {
+        Operation operation = operationWithResponse("#/components/schemas/Result");
+        customizer.customize(operation, handlerMethod("deferredResult"));
+        OpenAPI openApi = new OpenAPI().components(new Components()
+            .addSchemas("Result", new ObjectSchema()));
+        
+        new NacosGenericSchemaOpenApiCustomizer(schemaCache).customise(openApi);
+        
+        assertEquals("#/components/schemas/Result<TestModel>", getResponseSchemaRef(operation));
+        Schema<?> resultSchema = openApi.getComponents().getSchemas().get("Result<TestModel>");
+        assertEquals("#/components/schemas/TestModel",
+            ((Schema<?>) resultSchema.getProperties().get("data")).get$ref());
+        assertTrue(openApi.getComponents().getSchemas().containsKey("TestModel"));
+        assertFalse(openApi.getComponents().getSchemas().containsKey("Result"));
+    }
+    
+    @Test
+    void shouldIgnoreDeferredResultWithoutResult() throws NoSuchMethodException {
+        Operation operation = operationWithResponse("#/components/schemas/TestModel");
+        
+        customizer.customize(operation, handlerMethod("deferredModel"));
+        
+        assertEquals("#/components/schemas/TestModel", getResponseSchemaRef(operation));
+        assertTrue(schemaCache.getAllSchemas().isEmpty());
+    }
+    
+    @Test
     void shouldIgnoreResponseEntityWithoutResult() throws NoSuchMethodException {
         Operation operation = operationWithResponse("#/components/schemas/ByteArray");
         
@@ -163,6 +191,14 @@ class NacosGenericSchemaOperationCustomizeTest {
         }
         
         public ResponseEntity<byte[]> responseEntityBytes() {
+            return null;
+        }
+        
+        public DeferredResult<Result<TestModel>> deferredResult() {
+            return null;
+        }
+        
+        public DeferredResult<TestModel> deferredModel() {
             return null;
         }
     }

@@ -147,6 +147,19 @@ public class ConsoleAgentController {
     @Since("3.3.0")
     @PutMapping("/scope")
     @Secured(action = ActionTypes.WRITE, signType = SignType.AI, apiType = ApiType.CONSOLE_API)
+    @Operation(summary = "nacos.console.ai.agent.api.scope.summary",
+        description = "nacos.console.ai.agent.api.scope.description",
+        security = @SecurityRequirement(name = "nacos"))
+    @ApiResponse(responseCode = "200",
+        content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+            schema = @Schema(implementation = Result.class,
+                example = "nacos.console.ai.agent.api.scope.example")))
+    @Parameters(value = {@Parameter(name = "namespaceId", example = "public"),
+        @Parameter(name = "agentName", required = true, example = "my-agent"),
+        @Parameter(name = "scope", required = true,
+            schema = @Schema(type = "string", allowableValues = {"PUBLIC", "PRIVATE"}),
+            example = "PUBLIC"),
+        @Parameter(name = "form", hidden = true)})
     public Result<String> updateScope(AgentScopeForm form) throws NacosException {
         form.validate();
         agentProxy.updateScope(form.getNamespaceId(), form.getAgentName(), form.getScope());
@@ -189,9 +202,11 @@ public class ConsoleAgentController {
             schema = @Schema(implementation = Result.class,
                 example = "nacos.console.ai.agent.api.list.example")))
     @Parameters(value = {
-        @Parameter(name = "pageNo", required = true, schema = @Schema(type = "integer"),
+        @Parameter(name = "pageNo",
+            schema = @Schema(type = "integer", defaultValue = "1", minimum = "1"),
             example = "1"),
-        @Parameter(name = "pageSize", required = true, schema = @Schema(type = "integer"),
+        @Parameter(name = "pageSize",
+            schema = @Schema(type = "integer", defaultValue = "100", minimum = "1"),
             example = "100"),
         @Parameter(name = "namespaceId", example = "public"),
         @Parameter(name = "agentName", example = "my-agent"),
@@ -228,9 +243,11 @@ public class ConsoleAgentController {
             schema = @Schema(implementation = Result.class,
                 example = "nacos.console.ai.agent.api.versions.example")))
     @Parameters(value = {
-        @Parameter(name = "pageNo", required = true, schema = @Schema(type = "integer"),
+        @Parameter(name = "pageNo",
+            schema = @Schema(type = "integer", defaultValue = "1", minimum = "1"),
             example = "1"),
-        @Parameter(name = "pageSize", required = true, schema = @Schema(type = "integer"),
+        @Parameter(name = "pageSize",
+            schema = @Schema(type = "integer", defaultValue = "100", minimum = "1"),
             example = "100"),
         @Parameter(name = "namespaceId", example = "public"),
         @Parameter(name = "agentName", required = true, example = "my-agent"),

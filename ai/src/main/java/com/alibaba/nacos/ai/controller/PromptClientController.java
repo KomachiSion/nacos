@@ -16,6 +16,7 @@
 
 package com.alibaba.nacos.ai.controller;
 
+import io.swagger.v3.oas.annotations.media.ArraySchema;
 import com.alibaba.nacos.api.annotation.Since;
 import com.alibaba.nacos.ai.constant.Constants;
 import com.alibaba.nacos.ai.form.prompt.PromptQueryForm;
@@ -86,6 +87,23 @@ public class PromptClientController {
     @Since("3.3.0")
     @GetMapping("/search")
     @Secured(action = ActionTypes.READ, signType = SignType.AI, apiType = ApiType.OPEN_API)
+    @Operation(summary = "nacos.admin.ai.prompt.client.api.search.summary",
+        description = "nacos.admin.ai.prompt.client.api.search.description",
+        security = @SecurityRequirement(name = "nacos"))
+    @ApiResponse(responseCode = "200",
+        content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+            schema = @Schema(implementation = Result.class,
+                example = "nacos.admin.ai.prompt.client.api.search.example")))
+    @Parameters(value = {@Parameter(name = "namespaceId", example = "public"),
+        @Parameter(name = "query", schema = @Schema(type = "string", maxLength = 1024)),
+        @Parameter(name = "tagsAll", array = @ArraySchema(schema = @Schema(type = "string"))),
+        @Parameter(name = "pageNo",
+            schema = @Schema(type = "integer", defaultValue = "1", minimum = "1"), example = "1"),
+        @Parameter(name = "pageSize",
+            schema = @Schema(type = "integer", defaultValue = "100", minimum = "1"),
+            example = "100"),
+        @Parameter(name = "form", hidden = true),
+        @Parameter(name = "pageForm", hidden = true)})
     public Result<Page<PromptMetaSummary>> search(AiResourcePageSearchForm form,
         PageForm pageForm) throws NacosException {
         form.validate();

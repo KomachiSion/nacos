@@ -43,6 +43,7 @@ import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.Parameters;
 import io.swagger.v3.oas.annotations.extensions.Extension;
 import io.swagger.v3.oas.annotations.extensions.ExtensionProperty;
+import io.swagger.v3.oas.annotations.media.ArraySchema;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.headers.Header;
@@ -98,9 +99,15 @@ public class AgentSpecClientController {
                 example = "nacos.admin.ai.agentspec.client.api.search.example")))
     @Parameters(value = {@Parameter(name = "namespaceId", example = "public"),
         @Parameter(name = "keyword", example = "my-agentspec"),
-        @Parameter(name = "pageNo", required = true, schema = @Schema(type = "integer"),
+        @Parameter(name = "query",
+            description = "nacos.admin.ai.agentspec.client.api.search.query.description",
+            schema = @Schema(type = "string", maxLength = 1024)),
+        @Parameter(name = "tagsAll", array = @ArraySchema(schema = @Schema(type = "string"))),
+        @Parameter(name = "pageNo",
+            schema = @Schema(type = "integer", defaultValue = "1", minimum = "1"),
             example = "1"),
-        @Parameter(name = "pageSize", required = true, schema = @Schema(type = "integer"),
+        @Parameter(name = "pageSize",
+            schema = @Schema(type = "integer", defaultValue = "100", minimum = "1"),
             example = "100"),
         @Parameter(name = "form", hidden = true), @Parameter(name = "pageForm", hidden = true)})
     public Result<Page<AgentSpecBasicInfo>> search(AgentSpecSearchForm form, PageForm pageForm)
