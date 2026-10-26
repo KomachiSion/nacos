@@ -139,10 +139,14 @@ public class AgentClientController {
         @Parameter(name = "displayName", example = "My Agent"),
         @Parameter(name = "description", example = "Agent description"),
         @Parameter(name = "iconUrl", example = "https://example.com/agent.png"),
-        @Parameter(name = "provider", description = "Agent provider JSON object"),
-        @Parameter(name = "tags", description = "Agent tag JSON array"),
-        @Parameter(name = "extensions", description = "Agent extension JSON object"),
-        @Parameter(name = "callInterfaces", description = "Call interface JSON array"),
+        @Parameter(name = "provider",
+            description = "nacos.admin.ai.agent.client.api.publish.provider.description"),
+        @Parameter(name = "tags",
+            description = "nacos.admin.ai.agent.client.api.publish.tags.description"),
+        @Parameter(name = "extensions",
+            description = "nacos.admin.ai.agent.client.api.publish.extensions.description"),
+        @Parameter(name = "callInterfaces",
+            description = "nacos.admin.ai.agent.client.api.publish.callInterfaces.description"),
         @Parameter(name = "author", example = "nacos"),
         @Parameter(name = "changeDescription", example = "Initial version"),
         @Parameter(name = "basedOnVersion", example = "0.9.0"),
@@ -173,8 +177,11 @@ public class AgentClientController {
         @Parameter(name = "tagsAll", array = @ArraySchema(schema = @Schema(type = "string"))),
         @Parameter(name = "protocolsAny",
             array = @ArraySchema(schema = @Schema(type = "string"))),
-        @Parameter(name = "pageNo", schema = @Schema(type = "integer"), example = "1"),
-        @Parameter(name = "pageSize", schema = @Schema(type = "integer"), example = "20"),
+        @Parameter(name = "pageNo",
+            schema = @Schema(type = "integer", defaultValue = "1", minimum = "1"), example = "1"),
+        @Parameter(name = "pageSize",
+            schema = @Schema(type = "integer", defaultValue = "20", minimum = "1", maximum = "100"),
+            example = "20"),
         @Parameter(name = "form", hidden = true)})
     public Result<Page<AgentSummary>> search(AgentSearchForm form,
         @Parameter(name = ClientConstants.HTTP_CLIENT_ID_HEADER,
@@ -210,15 +217,19 @@ public class AgentClientController {
         @Parameter(name = "transport", array = @ArraySchema(schema = @Schema(type = "string"))),
         @Parameter(name = "endpointSource",
             array = @ArraySchema(schema = @Schema(type = "string"))),
-        @Parameter(name = "metadataSelector", description = "Metadata selector JSON object"),
+        @Parameter(name = "metadataSelector",
+            description = "nacos.admin.ai.agent.client.api.discover.metadataSelector.description"),
         @Parameter(name = "form", hidden = true)})
     public Result<AgentDiscoveryResult> discover(AgentDiscoveryForm form,
         @Parameter(name = ClientConstants.HTTP_CLIENT_ID_HEADER,
             description = "nacos.admin.ai.agent.client.api.http.client.id.query.header.description",
             in = ParameterIn.HEADER) @RequestHeader(name = ClientConstants.HTTP_CLIENT_ID_HEADER,
                 required = false) String clientId,
-        @RequestHeader(name = AiConstants.Agent.DISCOVERY_TRIGGER_HEADER,
-            required = false) String discoveryTrigger)
+        @Parameter(name = AiConstants.Agent.DISCOVERY_TRIGGER_HEADER, in = ParameterIn.HEADER,
+            description = "nacos.admin.ai.agent.client.api.discover.trigger.header.description",
+            example = AiConstants.Agent.DISCOVERY_TRIGGER_WATCH_NOTIFY) @RequestHeader(
+                name = AiConstants.Agent.DISCOVERY_TRIGGER_HEADER,
+                required = false) String discoveryTrigger)
         throws NacosException {
         AgentDiscoveryRequest request = form.toRequest();
         migrationGuard.checkReady();
@@ -292,7 +303,8 @@ public class AgentClientController {
         @Parameter(name = "runtimeVersion", required = true, example = "1.0.0"),
         @Parameter(name = "versionRange", example = "[1.0.0,2.0.0)"),
         @Parameter(name = "protocol", required = true, example = "a2a"),
-        @Parameter(name = "endpoints", required = true, description = "Endpoint JSON array"),
+        @Parameter(name = "endpoints", required = true,
+            description = "nacos.admin.ai.agent.client.api.endpoints.register.endpoints.description"),
         @Parameter(name = "form", hidden = true)})
     public Result<ClientLivenessInfo> registerEndpoints(AgentEndpointRegistrationForm form,
         @Parameter(name = ClientConstants.HTTP_CLIENT_ID_HEADER,

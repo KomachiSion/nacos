@@ -122,8 +122,8 @@ public class ConsoleAiResourceImportController {
         @Parameter(name = "query", example = "nacos"),
         @Parameter(name = "cursor"),
         @Parameter(name = "limit", schema = @Schema(type = "integer"), example = "20"),
-        @Parameter(name = "options", schema = @Schema(type = "string",
-            description = "JSON object string parsed as import options"),
+        @Parameter(description = "nacos.console.ai.import.api.search.options.description",
+            name = "options", schema = @Schema(type = "string"),
             example = "\"{\\\"owner\\\":\\\"alibaba\\\"}\""),
         @Parameter(name = "form", hidden = true)})
     public Result<AiResourceImportSearchResponse> search(AiResourceImportSearchForm form)
@@ -152,13 +152,13 @@ public class ConsoleAiResourceImportController {
     @Parameters(value = {@Parameter(name = "namespaceId", example = "public"),
         @Parameter(name = "resourceType", required = true, example = "mcp"),
         @Parameter(name = "sourceId", required = true, example = "github"),
-        @Parameter(name = "selectedItems", required = true, schema = @Schema(type = "string",
-            description = "JSON array string parsed as selected import items"),
+        @Parameter(description = "nacos.console.ai.import.api.validate.selectedItems.description",
+            name = "selectedItems", required = true, schema = @Schema(type = "string"),
             example = "\"[{\\\"id\\\":\\\"demo\\\"}]\""),
         @Parameter(name = "overwriteExisting", schema = @Schema(type = "boolean"),
             example = "false"),
-        @Parameter(name = "options", schema = @Schema(type = "string",
-            description = "JSON object string parsed as import options"),
+        @Parameter(description = "nacos.console.ai.import.api.validate.options.description",
+            name = "options", schema = @Schema(type = "string"),
             example = "\"{\\\"owner\\\":\\\"alibaba\\\"}\""),
         @Parameter(name = "form", hidden = true)})
     public Result<AiResourceImportValidateResponse> validate(AiResourceImportValidateForm form)
@@ -187,15 +187,15 @@ public class ConsoleAiResourceImportController {
     @Parameters(value = {@Parameter(name = "namespaceId", example = "public"),
         @Parameter(name = "resourceType", required = true, example = "mcp"),
         @Parameter(name = "sourceId", required = true, example = "github"),
-        @Parameter(name = "selectedItems", required = true, schema = @Schema(type = "string",
-            description = "JSON array string parsed as selected import items"),
+        @Parameter(description = "nacos.console.ai.import.api.execute.selectedItems.description",
+            name = "selectedItems", required = true, schema = @Schema(type = "string"),
             example = "\"[{\\\"id\\\":\\\"demo\\\"}]\""),
         @Parameter(name = "overwriteExisting", schema = @Schema(type = "boolean"),
             example = "false"),
         @Parameter(name = "skipInvalid", schema = @Schema(type = "boolean"), example = "false"),
         @Parameter(name = "validationToken", example = "validation-token"),
-        @Parameter(name = "options", schema = @Schema(type = "string",
-            description = "JSON object string parsed as import options"),
+        @Parameter(description = "nacos.console.ai.import.api.execute.options.description",
+            name = "options", schema = @Schema(type = "string"),
             example = "\"{\\\"owner\\\":\\\"alibaba\\\"}\""),
         @Parameter(name = "form", hidden = true)})
     public Result<AiResourceImportExecuteResponse> execute(AiResourceImportExecuteForm form)

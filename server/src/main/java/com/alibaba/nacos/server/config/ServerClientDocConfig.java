@@ -41,29 +41,60 @@ public class ServerClientDocConfig {
     public GroupedOpenApi clientOpenApi(PropertyResolverUtils propertyResolverUtils) {
         String[] paths = {"/v3/client/**"};
         SchemaCache clientSchemaCache = clientSchemaCache();
-        OpenApiCustomizer basicInfoOpenApiCustomizer = nacosClientBasicInfoOpenApiCustomizer(propertyResolverUtils);
-        OpenApiCustomizer genericSchemaOpenApiCustomizer = nacosClientGenericSchemaOpenApiCustomizer(clientSchemaCache);
-        OperationCustomizer genericSchemaOperationCustomizer = nacosClientGenericSchemaOperationCustomize(clientSchemaCache);
-        GroupedOpenApi.Builder builder = GroupedOpenApi.builder().group("client-api").pathsToMatch(paths);
+        OpenApiCustomizer basicInfoOpenApiCustomizer =
+            nacosClientBasicInfoOpenApiCustomizer(propertyResolverUtils);
+        OpenApiCustomizer genericSchemaOpenApiCustomizer =
+            nacosClientGenericSchemaOpenApiCustomizer(clientSchemaCache);
+        OperationCustomizer genericSchemaOperationCustomizer =
+            nacosClientGenericSchemaOperationCustomize(clientSchemaCache);
+        GroupedOpenApi.Builder builder =
+            GroupedOpenApi.builder().group("client-api").pathsToMatch(paths);
         builder.addOpenApiCustomizer(basicInfoOpenApiCustomizer);
         builder.addOpenApiCustomizer(genericSchemaOpenApiCustomizer);
         builder.addOperationCustomizer(genericSchemaOperationCustomizer);
         return builder.build();
     }
     
-    public OpenApiCustomizer nacosClientBasicInfoOpenApiCustomizer(PropertyResolverUtils propertyResolverUtils) {
-        return new NacosBasicInfoOpenApiCustomizer("nacos.client.api.title", "nacos.client.api.description",
-                propertyResolverUtils);
+    /**
+     * Create localized basic information for client API documentation.
+     *
+     * @param propertyResolverUtils localized property resolver
+     * @return basic information customizer
+     */
+    public OpenApiCustomizer nacosClientBasicInfoOpenApiCustomizer(
+        PropertyResolverUtils propertyResolverUtils) {
+        return new NacosBasicInfoOpenApiCustomizer("nacos.client.api.title",
+            "nacos.client.api.description",
+            propertyResolverUtils);
     }
     
-    public OpenApiCustomizer nacosClientGenericSchemaOpenApiCustomizer(SchemaCache consoleSchemaCache) {
+    /**
+     * Create the customizer that installs the collected response schemas.
+     *
+     * @param consoleSchemaCache schema cache for this API group
+     * @return schema customizer
+     */
+    public OpenApiCustomizer nacosClientGenericSchemaOpenApiCustomizer(
+        SchemaCache consoleSchemaCache) {
         return new NacosGenericSchemaOpenApiCustomizer(consoleSchemaCache);
     }
     
-    public OperationCustomizer nacosClientGenericSchemaOperationCustomize(SchemaCache consoleSchemaCache) {
+    /**
+     * Create the operation customizer that resolves generic response types.
+     *
+     * @param consoleSchemaCache schema cache for this API group
+     * @return operation customizer
+     */
+    public OperationCustomizer nacosClientGenericSchemaOperationCustomize(
+        SchemaCache consoleSchemaCache) {
         return new NacosGenericSchemaOperationCustomize(consoleSchemaCache);
     }
     
+    /**
+     * Create an isolated schema cache for the client API group.
+     *
+     * @return schema cache
+     */
     public SchemaCache clientSchemaCache() {
         return new SchemaCache();
     }

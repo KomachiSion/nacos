@@ -135,9 +135,9 @@ public class InstanceControllerV3 {
         @Parameter(name = "healthy", schema = @Schema(type = "boolean"), example = "true"),
         @Parameter(name = "ephemeral", schema = @Schema(type = "boolean"), example = "true"),
         @Parameter(name = "enabled", schema = @Schema(type = "boolean"), example = "true"),
-        @Parameter(name = "metadata",
-            schema = @Schema(type = "string",
-                description = "JSON object string parsed as metadata map"),
+        @Parameter(description = "nacos.admin.naming.instance.api.register.metadata.description",
+            name = "metadata",
+            schema = @Schema(type = "string"),
             example = "\"{\\\"zone\\\":\\\"a\\\"}\""),
         @Parameter(name = "instanceForm", hidden = true)})
     public Result<String> register(InstanceForm instanceForm) throws NacosException {
@@ -227,9 +227,9 @@ public class InstanceControllerV3 {
         @Parameter(name = "healthy", schema = @Schema(type = "boolean"), example = "true"),
         @Parameter(name = "ephemeral", schema = @Schema(type = "boolean"), example = "true"),
         @Parameter(name = "enabled", schema = @Schema(type = "boolean"), example = "true"),
-        @Parameter(name = "metadata",
-            schema = @Schema(type = "string",
-                description = "JSON object string parsed as metadata map"),
+        @Parameter(description = "nacos.admin.naming.instance.api.update.metadata.description",
+            name = "metadata",
+            schema = @Schema(type = "string"),
             example = "\"{\\\"zone\\\":\\\"a\\\"}\""),
         @Parameter(name = "instanceForm", hidden = true)})
     public Result<String> update(InstanceForm instanceForm) throws NacosException {
@@ -272,13 +272,15 @@ public class InstanceControllerV3 {
         @Parameter(name = "groupName", example = "DEFAULT_GROUP"),
         @Parameter(name = "serviceName", required = true, example = "test"),
         @Parameter(name = "consistencyType", example = "ephemeral"),
-        @Parameter(name = "metadata", required = true,
-            schema = @Schema(type = "string",
-                description = "JSON object string parsed as metadata map"),
+        @Parameter(
+            description = "nacos.admin.naming.instance.api.update.batch.metadata.description",
+            name = "metadata", required = true,
+            schema = @Schema(type = "string"),
             example = "\"{\\\"zone\\\":\\\"a\\\"}\""),
-        @Parameter(name = "instances",
-            schema = @Schema(type = "string",
-                description = "JSON array string parsed as instance list"),
+        @Parameter(
+            description = "nacos.admin.naming.instance.api.update.batch.instances.description",
+            name = "instances",
+            schema = @Schema(type = "string"),
             example = "\"[]\""),
         @Parameter(name = "form", hidden = true)})
     public Result<InstanceMetadataBatchResult> batchUpdateInstanceMetadata(
@@ -320,13 +322,15 @@ public class InstanceControllerV3 {
         @Parameter(name = "groupName", example = "DEFAULT_GROUP"),
         @Parameter(name = "serviceName", required = true, example = "test"),
         @Parameter(name = "consistencyType", example = "ephemeral"),
-        @Parameter(name = "metadata", required = true,
-            schema = @Schema(type = "string",
-                description = "JSON object string parsed as metadata map"),
+        @Parameter(
+            description = "nacos.admin.naming.instance.api.delete.batch.metadata.description",
+            name = "metadata", required = true,
+            schema = @Schema(type = "string"),
             example = "\"{\\\"zone\\\":\\\"a\\\"}\""),
-        @Parameter(name = "instances",
-            schema = @Schema(type = "string",
-                description = "JSON array string parsed as instance list"),
+        @Parameter(
+            description = "nacos.admin.naming.instance.api.delete.batch.instances.description",
+            name = "instances",
+            schema = @Schema(type = "string"),
             example = "\"[]\""),
         @Parameter(name = "form", hidden = true)})
     public Result<InstanceMetadataBatchResult> batchDeleteInstanceMetadata(
@@ -391,9 +395,9 @@ public class InstanceControllerV3 {
             example = "8080"),
         @Parameter(name = "weight", schema = @Schema(type = "number"), example = "1.0"),
         @Parameter(name = "enabled", schema = @Schema(type = "boolean"), example = "true"),
-        @Parameter(name = "metadata",
-            schema = @Schema(type = "string",
-                description = "JSON object string parsed as metadata map"),
+        @Parameter(description = "nacos.admin.naming.instance.api.partial.metadata.description",
+            name = "metadata",
+            schema = @Schema(type = "string"),
             example = "\"{\\\"zone\\\":\\\"a\\\"}\""),
         @Parameter(name = "instanceForm", hidden = true)})
     public Result<String> partialUpdateInstance(InstanceForm instanceForm) throws Exception {

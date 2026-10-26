@@ -234,9 +234,10 @@ public class ConfigOpsControllerV3 {
         content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
             schema = @Schema(implementation = Result.class,
                 example = "nacos.admin.config.ops.api.derby.import.example")))
-    @io.swagger.v3.oas.annotations.parameters.RequestBody(
+    @io.swagger.v3.oas.annotations.parameters.RequestBody(required = true,
         description = "nacos.admin.config.ops.api.derby.import.body.description",
         content = @Content(mediaType = MediaType.MULTIPART_FORM_DATA_VALUE,
+            schema = @Schema(type = "object", requiredProperties = {"file"}),
             schemaProperties = {@SchemaProperty(name = "file", schema = @Schema(type = "string",
                 format = "binary", requiredMode = Schema.RequiredMode.REQUIRED))}))
     public DeferredResult<Result<String>> importDerby(

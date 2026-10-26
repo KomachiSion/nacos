@@ -162,7 +162,8 @@ public class ConsoleMcpController {
             schema = @Schema(type = "integer", defaultValue = "100", minimum = "1"),
             example = "100"),
         @Parameter(name = "namespaceId", example = "public"), @Parameter(name = "mcpName"),
-        @Parameter(name = "search", example = "blur", description = "blur or accurate"),
+        @Parameter(name = "search", example = "blur",
+            description = "nacos.console.ai.mcp.api.list.search.description"),
         @Parameter(name = "mcpListForm", hidden = true),
         @Parameter(name = "pageForm", hidden = true)})
     public Result<Page<McpServerBasicInfo>> listMcpServers(McpListForm mcpListForm,
@@ -302,13 +303,16 @@ public class ConsoleMcpController {
             description = "nacos.console.ai.mcp.api.mcpName.fallback.description"),
         @Parameter(name = "mcpId", deprecated = true,
             description = "nacos.console.ai.mcp.api.mcpId.fallback.description"),
-        @Parameter(name = "serverSpecification", required = true, schema = @Schema(type = "string",
-            description = "JSON object string parsed as McpServerBasicInfo"),
+        @Parameter(description = "nacos.console.ai.mcp.api.create.serverSpecification.description",
+            name = "serverSpecification", required = true, schema = @Schema(type = "string"),
             example = MCP_SERVER_SPEC_TEXT_EXAMPLE),
-        @Parameter(name = "toolSpecification", schema = @Schema(type = "string",
-            description = "JSON object string parsed as McpToolSpecification"), example = "\"{}\""),
-        @Parameter(name = "endpointSpecification", schema = @Schema(type = "string",
-            description = "JSON object string parsed as McpEndpointSpec"), example = "\"{}\""),
+        @Parameter(description = "nacos.console.ai.mcp.api.create.toolSpecification.description",
+            name = "toolSpecification", schema = @Schema(type = "string"),
+            example = "\"{}\""),
+        @Parameter(
+            description = "nacos.console.ai.mcp.api.create.endpointSpecification.description",
+            name = "endpointSpecification", schema = @Schema(type = "string"),
+            example = "\"{}\""),
         @Parameter(name = "mcpForm", hidden = true)})
     public Result<String> createMcpServer(McpDetailForm mcpForm) throws NacosException {
         mcpForm.validate();
@@ -348,13 +352,16 @@ public class ConsoleMcpController {
         @Parameter(name = "latest", schema = @Schema(type = "boolean"), example = "true"),
         @Parameter(name = "overrideExisting", schema = @Schema(type = "boolean"),
             example = "false"),
-        @Parameter(name = "serverSpecification", required = true, schema = @Schema(type = "string",
-            description = "JSON object string parsed as McpServerBasicInfo"),
+        @Parameter(description = "nacos.console.ai.mcp.api.update.serverSpecification.description",
+            name = "serverSpecification", required = true, schema = @Schema(type = "string"),
             example = MCP_SERVER_SPEC_WITH_ID_TEXT_EXAMPLE),
-        @Parameter(name = "toolSpecification", schema = @Schema(type = "string",
-            description = "JSON object string parsed as McpToolSpecification"), example = "\"{}\""),
-        @Parameter(name = "endpointSpecification", schema = @Schema(type = "string",
-            description = "JSON object string parsed as McpEndpointSpec"), example = "\"{}\""),
+        @Parameter(description = "nacos.console.ai.mcp.api.update.toolSpecification.description",
+            name = "toolSpecification", schema = @Schema(type = "string"),
+            example = "\"{}\""),
+        @Parameter(
+            description = "nacos.console.ai.mcp.api.update.endpointSpecification.description",
+            name = "endpointSpecification", schema = @Schema(type = "string"),
+            example = "\"{}\""),
         @Parameter(name = "mcpForm", hidden = true)})
     public Result<String> updateMcpServer(McpUpdateForm mcpForm) throws NacosException {
         mcpForm.validate();
@@ -799,7 +806,7 @@ public class ConsoleMcpController {
                 example = "nacos.console.ai.mcp.api.import.validate.example")))
     @Parameters(value = {@Parameter(name = "namespaceId", example = "public"),
         @Parameter(name = "importType", example = "url", required = true,
-            description = "enum of `file`, `json`, `url`"),
+            description = "nacos.console.ai.mcp.api.import.validate.importType.description"),
         @Parameter(name = "data", required = true),
         @Parameter(name = "overrideExisting", schema = @Schema(type = "boolean"),
             example = "false"),
@@ -811,9 +818,9 @@ public class ConsoleMcpController {
             example = "[\"mcp-server\"]"),
         @Parameter(name = "limit", schema = @Schema(type = "integer"), example = "10"),
         @Parameter(name = "cursor",
-            description = "Optional start cursor for URL-based import pagination."),
+            description = "nacos.console.ai.mcp.api.import.validate.cursor.description"),
         @Parameter(name = "search",
-            description = "Optional fuzzy search keyword for registry import listing. Only used when importType is 'url'."),
+            description = "nacos.console.ai.mcp.api.import.validate.search.description"),
         @Parameter(name = "mcpImportForm", hidden = true)})
     public Result<McpServerImportValidationResult> validateImport(McpImportForm mcpImportForm)
         throws NacosException {
@@ -847,7 +854,7 @@ public class ConsoleMcpController {
                 example = "nacos.console.ai.mcp.api.import.execute.example")))
     @Parameters(value = {@Parameter(name = "namespaceId", example = "public"),
         @Parameter(name = "importType", example = "url", required = true,
-            description = "enum of `file`, `json`, `url`"),
+            description = "nacos.console.ai.mcp.api.import.execute.importType.description"),
         @Parameter(name = "data", required = true),
         @Parameter(name = "overrideExisting", schema = @Schema(type = "boolean"),
             example = "false"),
@@ -859,9 +866,9 @@ public class ConsoleMcpController {
             example = "[\"mcp-server\"]"),
         @Parameter(name = "limit", schema = @Schema(type = "integer"), example = "10"),
         @Parameter(name = "cursor",
-            description = "Optional start cursor for URL-based import pagination."),
+            description = "nacos.console.ai.mcp.api.import.execute.cursor.description"),
         @Parameter(name = "search",
-            description = "Optional fuzzy search keyword for registry import listing. Only used when importType is 'url'."),
+            description = "nacos.console.ai.mcp.api.import.execute.search.description"),
         @Parameter(name = "mcpImportForm", hidden = true)})
     public Result<McpServerImportResponse> executeImport(McpImportForm mcpImportForm)
         throws NacosException {

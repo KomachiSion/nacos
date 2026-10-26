@@ -471,7 +471,9 @@ public class ConfigControllerV3 {
         @Parameter(name = "dataId"), @Parameter(name = "type", example = "text"),
         @Parameter(name = "configTags", example = "customTag"),
         @Parameter(name = "appName", example = "testApp"),
-        @Parameter(name = "search", example = "blur", description = "blur or accurate"),
+        @Parameter(name = "search", example = "blur",
+            description = "nacos.admin.config.config.api.list.search.description",
+            schema = @Schema(type = "string", defaultValue = "blur")),
         @Parameter(name = "configDetail"), @Parameter(name = "configForm", hidden = true),
         @Parameter(name = "pageForm", hidden = true)})
     public Result<Page<ConfigBasicInfo>> list(ConfigFormV3 configForm, PageForm pageForm,
@@ -614,10 +616,17 @@ public class ConfigControllerV3 {
         @Parameter(name = "dataId", required = true, example = "test"),
         @Parameter(name = "content", required = true, example = "grayContent"),
         @Parameter(name = "grayName", required = true, example = "tagv2_gray"),
-        @Parameter(name = "grayType", example = "tagv2"),
-        @Parameter(name = "grayMatchRuleExp", required = true, example = "region=hz&&env=prod"),
+        @Parameter(name = "grayType", example = "tagv2",
+            schema = @Schema(type = "string", defaultValue = "tagv2")),
+        @Parameter(name = "grayRuleExp",
+            description = "nacos.admin.config.config.api.publish.gray.grayRuleExp.description",
+            example = "region=hz&&env=prod"),
+        @Parameter(name = "grayMatchRuleExp",
+            description = "nacos.admin.config.config.api.publish.gray.grayMatchRuleExp.description",
+            example = "region=hz&&env=prod"),
         @Parameter(name = "grayVersion", required = true, example = "1.1.0"),
-        @Parameter(name = "grayPriority", schema = @Schema(type = "integer"), example = "1"),
+        @Parameter(name = "grayPriority", schema = @Schema(defaultValue = "0", type = "integer"),
+            example = "1"),
         @Parameter(name = "appName", example = "testApp"),
         @Parameter(name = "configTags", example = "customTag"),
         @Parameter(name = "desc", example = "testDesc"),
@@ -774,16 +783,19 @@ public class ConfigControllerV3 {
         content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
             schema = @Schema(implementation = Result.class,
                 example = "nacos.admin.config.config.api.import.example")))
-    @io.swagger.v3.oas.annotations.parameters.RequestBody(
+    @io.swagger.v3.oas.annotations.parameters.RequestBody(required = true,
         description = "nacos.admin.config.config.api.import.body.description",
-        content = @Content(mediaType = MediaType.MULTIPART_FORM_DATA_VALUE, schemaProperties = {
-            @SchemaProperty(name = "file", schema = @Schema(type = "string", format = "binary")),
-            @SchemaProperty(name = "src_user",
-                schema = @Schema(type = "string", example = "nacos")),
-            @SchemaProperty(name = "namespaceId",
-                schema = @Schema(type = "string", example = "public")),
-            @SchemaProperty(name = "policy",
-                schema = @Schema(implementation = SameConfigPolicy.class))}))
+        content = @Content(mediaType = MediaType.MULTIPART_FORM_DATA_VALUE,
+            schema = @Schema(type = "object", requiredProperties = {"file"}), schemaProperties = {
+                @SchemaProperty(name = "file",
+                    schema = @Schema(type = "string", format = "binary")),
+                @SchemaProperty(name = "src_user",
+                    schema = @Schema(type = "string", example = "nacos")),
+                @SchemaProperty(name = "namespaceId",
+                    schema = @Schema(type = "string", example = "public")),
+                @SchemaProperty(name = "policy",
+                    schema = @Schema(defaultValue = "ABORT",
+                        implementation = SameConfigPolicy.class))}))
     public Result<Map<String, Object>> importAndPublishConfig(HttpServletRequest request,
         @RequestParam(value = "src_user", required = false) String srcUser,
         @RequestParam(value = "namespaceId", required = false) String namespaceId,
@@ -1014,13 +1026,15 @@ public class ConfigControllerV3 {
             schema = @Schema(implementation = Result.class,
                 example = "nacos.admin.config.config.api.clone.example")))
     @io.swagger.v3.oas.annotations.parameters.RequestBody(
+        required = true,
         description = "nacos.admin.config.config.api.clone.body.description",
         content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
             array = @ArraySchema(schema = @Schema(implementation = ConfigCloneInfo.class))))
     @Parameters(value = {@Parameter(name = "src_user", example = "nacos"),
         @Parameter(name = "namespaceId", required = true, example = "public"),
         @Parameter(name = "sourceNamespaceId", example = "public"),
-        @Parameter(name = "policy", schema = @Schema(implementation = SameConfigPolicy.class))})
+        @Parameter(name = "policy",
+            schema = @Schema(defaultValue = "ABORT", implementation = SameConfigPolicy.class))})
     public Result<Map<String, Object>> cloneConfig(HttpServletRequest request,
         @RequestParam(value = "src_user", required = false) String srcUser,
         @RequestParam(value = "namespaceId") String namespaceId,

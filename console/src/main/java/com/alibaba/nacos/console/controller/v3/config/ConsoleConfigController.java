@@ -301,7 +301,8 @@ public class ConsoleConfigController {
         @Parameter(name = "dataId", required = true), @Parameter(name = "type", example = "text"),
         @Parameter(name = "configTags", example = "customTag"),
         @Parameter(name = "appName", example = "testApp"),
-        @Parameter(name = "search", example = "blur", description = "blur or accurate"),
+        @Parameter(name = "search", example = "blur",
+            description = "nacos.console.config.config.api.list.search.description"),
         @Parameter(name = "configForm", hidden = true),
         @Parameter(name = "pageForm", hidden = true)})
     public Result<Page<ConfigBasicInfo>> getConfigList(ConfigFormV3 configForm, PageForm pageForm)
@@ -362,7 +363,9 @@ public class ConsoleConfigController {
         @Parameter(name = "configTags", example = "customTag"),
         @Parameter(name = "appName", example = "testApp"),
         @Parameter(name = "configDetail", example = "*test*"),
-        @Parameter(name = "search", example = "blur", description = "blur or accurate"),
+        @Parameter(name = "search", example = "blur",
+            description = "nacos.console.config.config.api.search.search.description",
+            schema = @Schema(type = "string", defaultValue = "blur")),
         @Parameter(name = "configForm", hidden = true),
         @Parameter(name = "pageForm", hidden = true)})
     public Result<Page<ConfigBasicInfo>> getConfigListByContent(ConfigFormV3 configForm,
@@ -478,7 +481,8 @@ public class ConsoleConfigController {
         description = "nacos.console.config.config.api.export.description",
         security = @SecurityRequirement(name = "nacos"))
     @ApiResponse(responseCode = "200",
-        content = @Content(mediaType = MediaType.APPLICATION_OCTET_STREAM_VALUE))
+        content = @Content(mediaType = MediaType.APPLICATION_OCTET_STREAM_VALUE,
+            schema = @Schema(type = "string", format = "binary")))
     @Parameters(value = {@Parameter(name = "namespaceId"), @Parameter(name = "groupName"),
         @Parameter(name = "dataId"),
         @Parameter(name = "ids", array = @ArraySchema(schema = @Schema(type = "integer")),
@@ -520,16 +524,19 @@ public class ConsoleConfigController {
         content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
             schema = @Schema(implementation = Result.class,
                 example = "nacos.console.config.config.api.import.example")))
-    @io.swagger.v3.oas.annotations.parameters.RequestBody(
+    @io.swagger.v3.oas.annotations.parameters.RequestBody(required = true,
         description = "nacos.console.config.config.api.import.body.description",
-        content = @Content(mediaType = MediaType.MULTIPART_FORM_DATA_VALUE, schemaProperties = {
-            @SchemaProperty(name = "file", schema = @Schema(type = "string", format = "binary")),
-            @SchemaProperty(name = "srcUser",
-                schema = @Schema(type = "string", example = "nacos")),
-            @SchemaProperty(name = "namespaceId",
-                schema = @Schema(type = "string", example = "public")),
-            @SchemaProperty(name = "policy",
-                schema = @Schema(implementation = SameConfigPolicy.class))}))
+        content = @Content(mediaType = MediaType.MULTIPART_FORM_DATA_VALUE,
+            schema = @Schema(type = "object", requiredProperties = {"file"}), schemaProperties = {
+                @SchemaProperty(name = "file",
+                    schema = @Schema(type = "string", format = "binary")),
+                @SchemaProperty(name = "srcUser",
+                    schema = @Schema(type = "string", example = "nacos")),
+                @SchemaProperty(name = "namespaceId",
+                    schema = @Schema(type = "string", example = "public")),
+                @SchemaProperty(name = "policy",
+                    schema = @Schema(defaultValue = "ABORT",
+                        implementation = SameConfigPolicy.class))}))
     public Result<Map<String, Object>> importAndPublishConfig(HttpServletRequest request,
         @RequestParam(required = false) String srcUser,
         @RequestParam(value = "namespaceId", required = false) String namespaceId,
@@ -573,13 +580,15 @@ public class ConsoleConfigController {
             schema = @Schema(implementation = Result.class,
                 example = "nacos.console.config.config.api.clone.example")))
     @io.swagger.v3.oas.annotations.parameters.RequestBody(
+        description = "nacos.console.config.config.api.clone.body.description", required = true,
         content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
             array = @ArraySchema(
                 schema = @Schema(implementation = SameNamespaceCloneConfigBean.class))))
     @Parameters(value = {@Parameter(name = "srcUser", example = "nacos"),
         @Parameter(name = "namespaceId", example = "public"),
         @Parameter(name = "targetNamespaceId", required = true, example = "public"),
-        @Parameter(name = "policy", schema = @Schema(implementation = SameConfigPolicy.class))})
+        @Parameter(name = "policy",
+            schema = @Schema(defaultValue = "ABORT", implementation = SameConfigPolicy.class))})
     public Result<Map<String, Object>> cloneConfig(HttpServletRequest request,
         @RequestParam(required = false) String srcUser,
         @RequestParam(value = "namespaceId", required = false) String namespaceId,

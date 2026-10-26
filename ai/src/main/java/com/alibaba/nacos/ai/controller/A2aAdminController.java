@@ -106,9 +106,9 @@ public class A2aAdminController {
             schema = @Schema(implementation = Result.class,
                 example = "nacos.admin.ai.a2a.api.create.example")))
     @Parameters(value = {@Parameter(name = "namespaceId", example = "public"),
-        @Parameter(name = "agentCard", required = true,
-            schema = @Schema(type = "string",
-                description = "JSON object string parsed as AgentCard"),
+        @Parameter(description = "nacos.admin.ai.a2a.api.create.agentCard.description",
+            name = "agentCard", required = true,
+            schema = @Schema(type = "string"),
             example = AGENT_CARD_TEXT_EXAMPLE),
         @Parameter(name = "registrationType", example = AiConstants.A2a.A2A_ENDPOINT_TYPE_SERVICE),
         @Parameter(name = "form", hidden = true)})
@@ -167,9 +167,9 @@ public class A2aAdminController {
             schema = @Schema(implementation = Result.class,
                 example = "nacos.admin.ai.a2a.api.update.example")))
     @Parameters(value = {@Parameter(name = "namespaceId", example = "public"),
-        @Parameter(name = "agentCard", required = true,
-            schema = @Schema(type = "string",
-                description = "JSON object string parsed as AgentCard"),
+        @Parameter(description = "nacos.admin.ai.a2a.api.update.agentCard.description",
+            name = "agentCard", required = true,
+            schema = @Schema(type = "string"),
             example = AGENT_CARD_TEXT_EXAMPLE),
         @Parameter(name = "registrationType", example = AiConstants.A2a.A2A_ENDPOINT_TYPE_SERVICE),
         @Parameter(name = "setAsLatest", schema = @Schema(type = "boolean"), example = "true"),
@@ -237,7 +237,7 @@ public class A2aAdminController {
             example = "100"),
         @Parameter(name = "namespaceId", example = "public"), @Parameter(name = "agentName"),
         @Parameter(name = "search", required = true, example = "blur",
-            description = "blur or accurate"),
+            description = "nacos.admin.ai.a2a.api.list.search.description"),
         @Parameter(name = "agentListForm", hidden = true),
         @Parameter(name = "pageForm", hidden = true)})
     public Result<Page<AgentCardVersionInfo>> listAgents(AgentListForm agentListForm,

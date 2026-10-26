@@ -138,7 +138,8 @@ public class OperatorControllerV3 {
             schema = @Schema(implementation = Result.class,
                 example = "nacos.admin.naming.ops.api.metrics.example")))
     @Parameters(value = {
-        @Parameter(name = "onlyStatus", schema = @Schema(type = "boolean"), example = "true")})
+        @Parameter(name = "onlyStatus", schema = @Schema(defaultValue = "true", type = "boolean"),
+            example = "true")})
     public Result<MetricsInfo> metrics(
         @RequestParam(value = "onlyStatus", required = false,
             defaultValue = "true") Boolean onlyStatus) {

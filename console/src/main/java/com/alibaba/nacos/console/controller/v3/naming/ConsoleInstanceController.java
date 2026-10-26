@@ -154,8 +154,8 @@ public class ConsoleInstanceController {
         @Parameter(name = "healthy", schema = @Schema(type = "boolean"), example = "true"),
         @Parameter(name = "ephemeral", schema = @Schema(type = "boolean"), example = "true"),
         @Parameter(name = "enabled", schema = @Schema(type = "boolean"), example = "true"),
-        @Parameter(name = "metadata", schema = @Schema(type = "string",
-            description = "JSON object string parsed as instance metadata"),
+        @Parameter(description = "nacos.console.naming.instance.api.update.metadata.description",
+            name = "metadata", schema = @Schema(type = "string"),
             example = "\"{\\\"zone\\\":\\\"a\\\"}\""),
         @Parameter(name = "instanceForm", hidden = true)})
     public Result<String> updateInstance(InstanceForm instanceForm) throws NacosException {
@@ -194,8 +194,8 @@ public class ConsoleInstanceController {
         @Parameter(name = "healthy", schema = @Schema(type = "boolean"), example = "true"),
         @Parameter(name = "ephemeral", schema = @Schema(type = "boolean"), example = "false"),
         @Parameter(name = "enabled", schema = @Schema(type = "boolean"), example = "true"),
-        @Parameter(name = "metadata", schema = @Schema(type = "string",
-            description = "JSON object string parsed as instance metadata"),
+        @Parameter(description = "nacos.console.naming.instance.api.delete.metadata.description",
+            name = "metadata", schema = @Schema(type = "string"),
             example = "\"{\\\"zone\\\":\\\"a\\\"}\""),
         @Parameter(name = "instanceForm", hidden = true)})
     public Result<String> removeInstance(InstanceForm instanceForm) throws NacosException {

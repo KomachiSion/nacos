@@ -199,7 +199,7 @@ public class ConsoleAgentSpecController {
         @Parameter(name = "namespaceId", example = "public"),
         @Parameter(name = "agentSpecName", example = "my-agentspec"),
         @Parameter(name = "search", example = "blur",
-            description = "Search mode: accurate or blur"),
+            description = "nacos.console.ai.agentspec.api.list.search.description"),
         @Parameter(name = "orderBy", example = "download_count"),
         @Parameter(name = "owner", example = "nacos"),
         @Parameter(name = "scope", example = "PUBLIC"),
@@ -235,15 +235,16 @@ public class ConsoleAgentSpecController {
         content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
             schema = @Schema(implementation = Result.class,
                 example = "nacos.console.ai.agentspec.api.upload.example")))
-    @io.swagger.v3.oas.annotations.parameters.RequestBody(
+    @io.swagger.v3.oas.annotations.parameters.RequestBody(required = true,
         description = "nacos.console.ai.agentspec.api.upload.body.description",
-        content = @Content(mediaType = MediaType.MULTIPART_FORM_DATA_VALUE, schemaProperties = {
-            @SchemaProperty(name = "namespaceId",
-                schema = @Schema(type = "string", example = "public")),
-            @SchemaProperty(name = "overwrite",
-                schema = @Schema(type = "boolean", example = "false")),
-            @SchemaProperty(name = "file", schema = @Schema(type = "string", format = "binary",
-                description = "ZIP file containing agentspec package"))}))
+        content = @Content(mediaType = MediaType.MULTIPART_FORM_DATA_VALUE,
+            schema = @Schema(type = "object", requiredProperties = {"file"}), schemaProperties = {
+                @SchemaProperty(name = "namespaceId",
+                    schema = @Schema(type = "string", example = "public")),
+                @SchemaProperty(name = "overwrite",
+                    schema = @Schema(type = "boolean", defaultValue = "false", example = "false")),
+                @SchemaProperty(name = "file",
+                    schema = @Schema(type = "string", format = "binary"))}))
     public Result<String> uploadAgentSpec(HttpServletRequest request,
         @RequestParam(value = "namespaceId", required = false) String namespaceId,
         @RequestParam(value = "overwrite", required = false,
@@ -303,8 +304,10 @@ public class ConsoleAgentSpecController {
                 example = "nacos.console.ai.agentspec.api.draft.update.example")))
     @Parameters(value = {@Parameter(name = "namespaceId", example = "public"),
         @Parameter(name = "agentSpecCard", required = true,
-            description = "AgentSpec card JSON string containing complete AgentSpec information"),
-        @Parameter(name = "setAsLatest", schema = @Schema(type = "boolean"), example = "true"),
+            description = "nacos.console.ai.agentspec.api.draft.update.agentSpecCard.description"),
+        @Parameter(name = "setAsLatest", deprecated = true,
+            description = "nacos.console.ai.agentspec.api.draft.update.setAsLatest.description",
+            schema = @Schema(type = "boolean"), example = "true"),
         @Parameter(name = "form", hidden = true)})
     public Result<String> updateDraft(AgentSpecUpdateForm form) throws NacosException {
         form.validate();
@@ -463,8 +466,8 @@ public class ConsoleAgentSpecController {
                 example = "nacos.console.ai.agentspec.api.labels.update.example")))
     @Parameters(value = {@Parameter(name = "namespaceId", example = "public"),
         @Parameter(name = "agentSpecName", required = true, example = "my-agentspec"),
-        @Parameter(name = "labels", required = true, schema = @Schema(type = "string",
-            description = "JSON object string parsed as runtime labels"),
+        @Parameter(description = "nacos.console.ai.agentspec.api.labels.update.labels.description",
+            name = "labels", required = true, schema = @Schema(type = "string"),
             example = "\"{\\\"latest\\\":\\\"v1.0.0\\\"}\""),
         @Parameter(name = "form", hidden = true)})
     public Result<String> updateLabels(AgentSpecLabelsUpdateForm form) throws NacosException {
@@ -488,8 +491,9 @@ public class ConsoleAgentSpecController {
                 example = "nacos.console.ai.agentspec.api.biz.tags.update.example")))
     @Parameters(value = {@Parameter(name = "namespaceId", example = "public"),
         @Parameter(name = "agentSpecName", required = true, example = "my-agentspec"),
-        @Parameter(name = "bizTags", required = true, schema = @Schema(type = "string",
-            description = "JSON array string parsed as biz tags"),
+        @Parameter(
+            description = "nacos.console.ai.agentspec.api.biz.tags.update.bizTags.description",
+            name = "bizTags", required = true, schema = @Schema(type = "string"),
             example = "\"[\\\"tag1\\\",\\\"tag2\\\"]\""),
         @Parameter(name = "form", hidden = true)})
     public Result<String> updateBizTags(AgentSpecBizTagsUpdateForm form) throws NacosException {
@@ -518,7 +522,7 @@ public class ConsoleAgentSpecController {
     @Parameters(value = {@Parameter(name = "namespaceId", example = "public"),
         @Parameter(name = "agentSpecName", required = true, example = "my-agentspec"),
         @Parameter(name = "scope", example = "agentspec",
-            description = "Use 'agentspec' for agentspec-level online; otherwise version-level"),
+            description = "nacos.console.ai.agentspec.api.online.scope.description"),
         @Parameter(name = "version", example = "1.0.0"),
         @Parameter(name = "form", hidden = true)})
     public Result<String> online(AgentSpecOnlineForm form) throws NacosException {
@@ -547,7 +551,7 @@ public class ConsoleAgentSpecController {
     @Parameters(value = {@Parameter(name = "namespaceId", example = "public"),
         @Parameter(name = "agentSpecName", required = true, example = "my-agentspec"),
         @Parameter(name = "scope", required = true, example = "PUBLIC",
-            description = "PUBLIC or PRIVATE"),
+            description = "nacos.console.ai.agentspec.api.scope.update.scope.description"),
         @Parameter(name = "form", hidden = true)})
     public Result<String> updateScope(AgentSpecScopeForm form) throws NacosException {
         form.validate();
@@ -575,7 +579,7 @@ public class ConsoleAgentSpecController {
     @Parameters(value = {@Parameter(name = "namespaceId", example = "public"),
         @Parameter(name = "agentSpecName", required = true, example = "my-agentspec"),
         @Parameter(name = "scope", example = "agentspec",
-            description = "Use 'agentspec' for agentspec-level offline; otherwise version-level"),
+            description = "nacos.console.ai.agentspec.api.offline.scope.description"),
         @Parameter(name = "version", example = "1.0.0"),
         @Parameter(name = "form", hidden = true)})
     public Result<String> offline(AgentSpecOnlineForm form) throws NacosException {

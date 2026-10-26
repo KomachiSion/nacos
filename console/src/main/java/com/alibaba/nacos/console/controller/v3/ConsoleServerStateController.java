@@ -77,7 +77,7 @@ public class ConsoleServerStateController {
         description = "nacos.console.state.api.state.description")
     @ApiResponse(responseCode = "200",
         content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
-            schema = @Schema(implementation = Map.class,
+            schema = @Schema(type = "object", additionalPropertiesSchema = String.class,
                 example = "nacos.console.state.api.state.example")))
     public ResponseEntity<Map<String, String>> serverState() throws NacosException {
         Map<String, String> serverState = serverStateProxy.getServerState();
@@ -98,7 +98,8 @@ public class ConsoleServerStateController {
         content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
             schema = @Schema(implementation = Result.class,
                 example = "nacos.console.state.api.announcement.example")))
-    @Parameters(value = {@Parameter(name = "language", example = "zh-CN")})
+    @Parameters(value = {@Parameter(name = "language", example = "zh-CN",
+        schema = @Schema(type = "string", defaultValue = "zh-CN"))})
     public Result<String> getAnnouncement(
         @RequestParam(required = false, name = "language",
             defaultValue = "zh-CN") String language) {

@@ -131,9 +131,12 @@ public class ConsoleAgentController {
         @Parameter(name = "displayName", example = "My Agent"),
         @Parameter(name = "description", example = "An agent for customer support"),
         @Parameter(name = "iconUrl", example = "https://example.com/icon.png"),
-        @Parameter(name = "provider", description = "Provider JSON string"),
-        @Parameter(name = "tags", description = "Tags JSON array string"),
-        @Parameter(name = "extensions", description = "Extensions JSON object string"),
+        @Parameter(name = "provider",
+            description = "nacos.console.ai.agent.api.update.provider.description"),
+        @Parameter(name = "tags",
+            description = "nacos.console.ai.agent.api.update.tags.description"),
+        @Parameter(name = "extensions",
+            description = "nacos.console.ai.agent.api.update.extensions.description"),
         @Parameter(name = "status", required = true, example = "enable"),
         @Parameter(name = "form", hidden = true)})
     public Result<AgentSummary> updateAgent(AgentUpdateForm form) throws NacosException {
@@ -329,10 +332,14 @@ public class ConsoleAgentController {
         @Parameter(name = "displayName", example = "My Agent"),
         @Parameter(name = "description", example = "An agent for customer support"),
         @Parameter(name = "iconUrl", example = "https://example.com/icon.png"),
-        @Parameter(name = "provider", description = "Provider JSON string"),
-        @Parameter(name = "tags", description = "Tags JSON array string"),
-        @Parameter(name = "extensions", description = "Extensions JSON object string"),
-        @Parameter(name = "callInterfaces", description = "Call interfaces JSON array string"),
+        @Parameter(name = "provider",
+            description = "nacos.console.ai.agent.api.draft.create.provider.description"),
+        @Parameter(name = "tags",
+            description = "nacos.console.ai.agent.api.draft.create.tags.description"),
+        @Parameter(name = "extensions",
+            description = "nacos.console.ai.agent.api.draft.create.extensions.description"),
+        @Parameter(name = "callInterfaces",
+            description = "nacos.console.ai.agent.api.draft.create.callInterfaces.description"),
         @Parameter(name = "author", example = "nacos"),
         @Parameter(name = "changeDescription", example = "Initial version"),
         @Parameter(name = "basedOnVersion", example = "0.9.0"),
@@ -360,7 +367,7 @@ public class ConsoleAgentController {
         @Parameter(name = "agentName", required = true, example = "my-agent"),
         @Parameter(name = "version", required = true, example = "1.0.0"),
         @Parameter(name = "callInterfaces", required = true,
-            description = "Call interfaces JSON array string"),
+            description = "nacos.console.ai.agent.api.draft.update.callInterfaces.description"),
         @Parameter(name = "changeDescription", example = "Update endpoint configuration"),
         @Parameter(name = "form", hidden = true)})
     public Result<AgentVersionDetail> updateDraft(AgentDraftUpdateForm form)
@@ -547,7 +554,8 @@ public class ConsoleAgentController {
                 example = "nacos.console.ai.agent.api.labels.update.example")))
     @Parameters(value = {@Parameter(name = "namespaceId", example = "public"),
         @Parameter(name = "agentName", required = true, example = "my-agent"),
-        @Parameter(name = "labels", required = true, description = "Labels JSON object string"),
+        @Parameter(name = "labels", required = true,
+            description = "nacos.console.ai.agent.api.labels.update.labels.description"),
         @Parameter(name = "form", hidden = true)})
     public Result<AgentSummary> updateLabels(AgentLabelsUpdateForm form) throws NacosException {
         AgentLabelsUpdateRequest request = form.toRequest();

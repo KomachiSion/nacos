@@ -19,6 +19,8 @@ package com.alibaba.nacos.springdoc.operation;
 import com.alibaba.nacos.api.model.Page;
 import com.alibaba.nacos.api.model.v2.Result;
 import com.alibaba.nacos.springdoc.cache.SchemaCache;
+import com.alibaba.nacos.springdoc.converter.NacosJsonFormatModelConverter;
+import com.alibaba.nacos.springdoc.converter.NacosMapModelConverter;
 import io.swagger.v3.core.converter.AnnotatedType;
 import io.swagger.v3.core.converter.ModelConverters;
 import io.swagger.v3.core.converter.ResolvedSchema;
@@ -52,6 +54,16 @@ public class NacosGenericSchemaOperationCustomize implements GlobalOperationCust
     
     public NacosGenericSchemaOperationCustomize(SchemaCache schemaCache) {
         this.schemaCache = schemaCache;
+        // Generic responses use the default converters independently of SpringDoc's version.
+        ModelConverters converters = ModelConverters.getInstance();
+        if (converters.getConverters().stream()
+            .noneMatch(NacosJsonFormatModelConverter.class::isInstance)) {
+            converters.addConverter(new NacosJsonFormatModelConverter());
+        }
+        if (converters.getConverters().stream()
+            .noneMatch(NacosMapModelConverter.class::isInstance)) {
+            converters.addConverter(new NacosMapModelConverter());
+        }
     }
     
     @Override
@@ -184,7 +196,8 @@ public class NacosGenericSchemaOperationCustomize implements GlobalOperationCust
             dataSchema.setName(rawType.getSimpleName() + "<" + keyActualClass.getSimpleName() + ", "
                 + valueActualClass.getSimpleName() + ">");
             if (null != valueResolvedSchema.schema) {
-                dataSchema.setAdditionalProperties(valueResolvedSchema.schema);
+                dataSchema.setAdditionalProperties(Object.class.equals(valueActualClass)
+                    ? Boolean.TRUE : valueResolvedSchema.schema);
                 if (!valueResolvedSchema.referencedSchemas.isEmpty()) {
                     schemaCache.putAll(valueResolvedSchema.referencedSchemas);
                 }

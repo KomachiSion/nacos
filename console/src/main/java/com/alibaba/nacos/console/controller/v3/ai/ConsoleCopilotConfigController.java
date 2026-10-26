@@ -148,7 +148,8 @@ public class ConsoleCopilotConfigController {
         content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
             schema = @Schema(implementation = Result.class,
                 example = "nacos.console.ai.copilot.config.api.save.example")))
-    @RequestBody(description = "nacos.console.ai.copilot.config.api.save.body.description",
+    @RequestBody(required = true,
+        description = "nacos.console.ai.copilot.config.api.save.body.description",
         content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
             schema = @Schema(implementation = CopilotProperties.class)))
     public Result<Boolean> saveConfig(HttpServletRequest request,

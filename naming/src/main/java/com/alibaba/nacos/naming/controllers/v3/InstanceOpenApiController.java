@@ -129,10 +129,11 @@ public class InstanceOpenApiController {
         @Parameter(name = "healthy", schema = @Schema(type = "boolean"), example = "true"),
         @Parameter(name = "ephemeral", schema = @Schema(type = "boolean"), example = "true"),
         @Parameter(name = "enabled", schema = @Schema(type = "boolean"), example = "true"),
-        @Parameter(name = "metadata", schema = @Schema(type = "string",
-            description = "JSON object string parsed as metadata map"),
+        @Parameter(description = "nacos.client.naming.instance.api.register.metadata.description",
+            name = "metadata", schema = @Schema(type = "string"),
             example = "\"{\\\"zone\\\":\\\"a\\\"}\""),
-        @Parameter(name = "heartBeat", schema = @Schema(type = "boolean"), example = "false"),
+        @Parameter(name = "heartBeat", schema = @Schema(defaultValue = "false", type = "boolean"),
+            example = "false"),
         @Parameter(name = "instanceForm", hidden = true)})
     public Result<String> register(InstanceForm instanceForm,
         @RequestParam(defaultValue = "false") boolean heartBeat)

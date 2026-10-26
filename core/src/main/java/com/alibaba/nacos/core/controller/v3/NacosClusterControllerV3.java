@@ -116,7 +116,8 @@ public class NacosClusterControllerV3 {
             schema = @Schema(implementation = Result.class,
                 example = "nacos.admin.core.cluster.api.node.list.example")))
     @Parameters(value = {@Parameter(name = "address", example = "127.0.0.1:8848"),
-        @Parameter(name = "state", example = "UP", description = "Node state: UP/DOWN/SUSPICIOUS")})
+        @Parameter(name = "state", example = "UP",
+            description = "nacos.admin.core.cluster.api.node.list.state.description")})
     public Result<Collection<Member>> listNodes(
         @RequestParam(value = "address", required = false) String address,
         @RequestParam(value = "state", required = false) String state) throws NacosException {
@@ -150,7 +151,7 @@ public class NacosClusterControllerV3 {
         content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
             schema = @Schema(implementation = Result.class,
                 example = "nacos.admin.core.cluster.api.node.update.example")))
-    @io.swagger.v3.oas.annotations.parameters.RequestBody(
+    @io.swagger.v3.oas.annotations.parameters.RequestBody(required = true,
         description = "nacos.admin.core.cluster.api.node.update.body.description",
         content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
             array = @ArraySchema(schema = @Schema(implementation = Member.class))))
@@ -181,7 +182,7 @@ public class NacosClusterControllerV3 {
                 example = "nacos.admin.core.cluster.api.lookup.update.example")))
     @Parameters(value = {
         @Parameter(name = "type", required = true, example = "address-server",
-            description = "address-server/file/standalone"),
+            description = "nacos.admin.core.cluster.api.lookup.update.type.description"),
         @Parameter(name = "request", hidden = true)})
     public Result<Boolean> updateLookup(LookupUpdateRequest request) throws NacosException {
         if (request == null || request.getType() == null) {

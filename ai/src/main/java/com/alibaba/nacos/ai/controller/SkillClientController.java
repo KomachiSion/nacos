@@ -129,16 +129,17 @@ public class SkillClientController {
         description = "nacos.admin.ai.skill.client.api.get.description",
         security = @SecurityRequirement(name = "nacos"))
     @ApiResponses(value = {
-        @ApiResponse(responseCode = "200",
+        @ApiResponse(description = "nacos.admin.ai.skill.client.api.get.response.description",
+            responseCode = "200",
             headers = {
                 @Header(name = "ETag", schema = @Schema(type = "string")),
                 @Header(name = "X-Nacos-Skill-Md5", schema = @Schema(type = "string")),
                 @Header(name = "X-Nacos-Skill-Resolved-Version",
                     schema = @Schema(type = "string"))},
             content = @Content(mediaType = MediaType.APPLICATION_OCTET_STREAM_VALUE,
-                schema = @Schema(type = "string", format = "binary",
-                    description = "ZIP file containing the skill package"))),
-        @ApiResponse(responseCode = "304", description = "Not Modified",
+                schema = @Schema(type = "string", format = "binary"))),
+        @ApiResponse(responseCode = "304",
+            description = "nacos.admin.ai.skill.client.api.get.notModified.description",
             headers = {@Header(name = "ETag", schema = @Schema(type = "string")),
                 @Header(name = "X-Nacos-Skill-Md5", schema = @Schema(type = "string")),
                 @Header(name = "X-Nacos-Skill-Resolved-Version",

@@ -164,10 +164,10 @@ public class ConsoleSkillController {
     @Operation(summary = "nacos.console.ai.skill.api.download.version.summary",
         description = "nacos.console.ai.skill.api.download.version.description",
         security = @SecurityRequirement(name = "nacos"))
-    @ApiResponse(responseCode = "200",
+    @ApiResponse(description = "nacos.console.ai.skill.api.download.version.response.description",
+        responseCode = "200",
         content = @Content(mediaType = MediaType.APPLICATION_OCTET_STREAM_VALUE,
-            schema = @Schema(type = "string", format = "binary",
-                description = "ZIP file containing the skill package")))
+            schema = @Schema(type = "string", format = "binary")))
     @Parameters(value = {@Parameter(name = "namespaceId", example = "public"),
         @Parameter(name = "skillName", required = true, example = "my-skill"),
         @Parameter(name = "version", example = "1.0.0"),
@@ -231,7 +231,8 @@ public class ConsoleSkillController {
             schema = @Schema(type = "integer", defaultValue = "100", minimum = "1"),
             example = "100"),
         @Parameter(name = "namespaceId", example = "public"), @Parameter(name = "skillName"),
-        @Parameter(name = "search", example = "blur", description = "blur or accurate"),
+        @Parameter(name = "search", example = "blur",
+            description = "nacos.console.ai.skill.api.list.search.description"),
         @Parameter(name = "orderBy", example = "download_count"),
         @Parameter(name = "owner", example = "nacos"),
         @Parameter(name = "scope", example = "PUBLIC"),
@@ -269,21 +270,22 @@ public class ConsoleSkillController {
         content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
             schema = @Schema(implementation = Result.class,
                 example = "nacos.console.ai.skill.api.upload.example")))
-    @RequestBody(description = "nacos.console.ai.skill.api.upload.body.description",
-        content = @Content(mediaType = MediaType.MULTIPART_FORM_DATA_VALUE, schemaProperties = {
-            @SchemaProperty(name = "file",
-                schema = @Schema(type = "string", format = "binary",
-                    description = "ZIP file containing skill")),
-            @SchemaProperty(name = "overwrite",
-                schema = @Schema(type = "boolean", example = "false")),
-            @SchemaProperty(name = "namespaceId",
-                schema = @Schema(type = "string", example = "public")),
-            @SchemaProperty(name = "targetVersion",
-                schema = @Schema(type = "string", example = "1.0.0")),
-            @SchemaProperty(name = "commitMsg",
-                schema = @Schema(type = "string", example = "Initial version")),
-            @SchemaProperty(name = "uploadAction",
-                schema = @Schema(type = "string", example = "CREATE_DRAFT"))}))
+    @RequestBody(required = true,
+        description = "nacos.console.ai.skill.api.upload.body.description",
+        content = @Content(mediaType = MediaType.MULTIPART_FORM_DATA_VALUE,
+            schema = @Schema(type = "object", requiredProperties = {"file"}), schemaProperties = {
+                @SchemaProperty(name = "file",
+                    schema = @Schema(type = "string", format = "binary")),
+                @SchemaProperty(name = "overwrite",
+                    schema = @Schema(type = "boolean", defaultValue = "false", example = "false")),
+                @SchemaProperty(name = "namespaceId",
+                    schema = @Schema(type = "string", example = "public")),
+                @SchemaProperty(name = "targetVersion",
+                    schema = @Schema(type = "string", example = "1.0.0")),
+                @SchemaProperty(name = "commitMsg",
+                    schema = @Schema(type = "string", example = "Initial version")),
+                @SchemaProperty(name = "uploadAction",
+                    schema = @Schema(type = "string", example = "CREATE_DRAFT"))}))
     public Result<String> uploadSkill(HttpServletRequest request,
         @RequestParam(value = "namespaceId", required = false) String namespaceId,
         @RequestParam(value = "overwrite", required = false,
@@ -326,12 +328,14 @@ public class ConsoleSkillController {
         content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
             schema = @Schema(implementation = Result.class,
                 example = "nacos.console.ai.skill.api.upload.precheck.example")))
-    @RequestBody(description = "nacos.console.ai.skill.api.upload.precheck.body.description",
-        content = @Content(mediaType = MediaType.MULTIPART_FORM_DATA_VALUE, schemaProperties = {
-            @SchemaProperty(name = "namespaceId",
-                schema = @Schema(type = "string", example = "public")),
-            @SchemaProperty(name = "file", schema = @Schema(type = "string", format = "binary",
-                description = "ZIP file containing one or more skill packages"))}))
+    @RequestBody(required = true,
+        description = "nacos.console.ai.skill.api.upload.precheck.body.description",
+        content = @Content(mediaType = MediaType.MULTIPART_FORM_DATA_VALUE,
+            schema = @Schema(type = "object", requiredProperties = {"file"}), schemaProperties = {
+                @SchemaProperty(name = "namespaceId",
+                    schema = @Schema(type = "string", example = "public")),
+                @SchemaProperty(name = "file",
+                    schema = @Schema(type = "string", format = "binary"))}))
     public Result<List<SkillUploadPrecheckResult>> precheckUploadSkill(
         HttpServletRequest request,
         @RequestParam(value = "namespaceId", required = false) String namespaceId,
@@ -363,14 +367,16 @@ public class ConsoleSkillController {
         content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
             schema = @Schema(implementation = Result.class,
                 example = "nacos.console.ai.skill.api.upload.batch.example")))
-    @RequestBody(description = "nacos.console.ai.skill.api.upload.batch.body.description",
-        content = @Content(mediaType = MediaType.MULTIPART_FORM_DATA_VALUE, schemaProperties = {
-            @SchemaProperty(name = "namespaceId",
-                schema = @Schema(type = "string", example = "public")),
-            @SchemaProperty(name = "overwrite",
-                schema = @Schema(type = "boolean", example = "false")),
-            @SchemaProperty(name = "file", schema = @Schema(type = "string", format = "binary",
-                description = "ZIP file containing skill directories"))}))
+    @RequestBody(required = true,
+        description = "nacos.console.ai.skill.api.upload.batch.body.description",
+        content = @Content(mediaType = MediaType.MULTIPART_FORM_DATA_VALUE,
+            schema = @Schema(type = "object", requiredProperties = {"file"}), schemaProperties = {
+                @SchemaProperty(name = "namespaceId",
+                    schema = @Schema(type = "string", example = "public")),
+                @SchemaProperty(name = "overwrite",
+                    schema = @Schema(type = "boolean", defaultValue = "false", example = "false")),
+                @SchemaProperty(name = "file",
+                    schema = @Schema(type = "string", format = "binary"))}))
     public Result<BatchUploadResult> batchUploadSkills(HttpServletRequest request,
         @RequestParam(value = "namespaceId", required = false) String namespaceId,
         @RequestParam(value = "overwrite", required = false,
@@ -401,7 +407,7 @@ public class ConsoleSkillController {
         @Parameter(name = "basedOnVersion", example = "1.0.0"),
         @Parameter(name = "targetVersion", example = "1.1.0"),
         @Parameter(name = "skillCard",
-            description = "Skill card JSON; required if basedOnVersion is not set"),
+            description = "nacos.console.ai.skill.api.draft.create.skillCard.description"),
         @Parameter(name = "commitMsg", example = "Create draft version"),
         @Parameter(name = "form", hidden = true)})
     public Result<String> createDraft(SkillDraftCreateForm form) throws NacosException {
@@ -424,8 +430,10 @@ public class ConsoleSkillController {
                 example = "nacos.console.ai.skill.api.draft.update.example")))
     @Parameters(value = {@Parameter(name = "namespaceId", example = "public"),
         @Parameter(name = "skillCard", required = true,
-            description = "Skill card JSON string containing complete Skill information"),
-        @Parameter(name = "setAsLatest", schema = @Schema(type = "boolean"), example = "true"),
+            description = "nacos.console.ai.skill.api.draft.update.skillCard.description"),
+        @Parameter(name = "setAsLatest", deprecated = true,
+            description = "nacos.console.ai.skill.api.draft.update.setAsLatest.description",
+            schema = @Schema(type = "boolean"), example = "true"),
         @Parameter(name = "commitMsg", example = "Update draft content"),
         @Parameter(name = "form", hidden = true)})
     public Result<String> updateDraft(SkillUpdateForm form) throws NacosException {
@@ -565,8 +573,8 @@ public class ConsoleSkillController {
                 example = "nacos.console.ai.skill.api.labels.update.example")))
     @Parameters(value = {@Parameter(name = "namespaceId", example = "public"),
         @Parameter(name = "skillName", required = true, example = "my-skill"),
-        @Parameter(name = "labels", required = true, schema = @Schema(type = "string",
-            description = "JSON object string parsed as runtime labels"),
+        @Parameter(description = "nacos.console.ai.skill.api.labels.update.labels.description",
+            name = "labels", required = true, schema = @Schema(type = "string"),
             example = "\"{\\\"latest\\\":\\\"v1.0.0\\\"}\""),
         @Parameter(name = "form", hidden = true)})
     public Result<String> updateLabels(SkillLabelsUpdateForm form) throws NacosException {
@@ -590,8 +598,8 @@ public class ConsoleSkillController {
                 example = "nacos.console.ai.skill.api.biz.tags.update.example")))
     @Parameters(value = {@Parameter(name = "namespaceId", example = "public"),
         @Parameter(name = "skillName", required = true, example = "my-skill"),
-        @Parameter(name = "bizTags", required = true, schema = @Schema(type = "string",
-            description = "JSON array string parsed as biz tags"),
+        @Parameter(description = "nacos.console.ai.skill.api.biz.tags.update.bizTags.description",
+            name = "bizTags", required = true, schema = @Schema(type = "string"),
             example = "\"[\\\"tag1\\\",\\\"tag2\\\"]\""),
         @Parameter(name = "form", hidden = true)})
     public Result<String> updateBizTags(SkillBizTagsUpdateForm form) throws NacosException {
@@ -616,7 +624,7 @@ public class ConsoleSkillController {
     @Parameters(value = {@Parameter(name = "namespaceId", example = "public"),
         @Parameter(name = "skillName", required = true, example = "my-skill"),
         @Parameter(name = "scope", example = "skill",
-            description = "Use 'skill' for skill-level online; otherwise version-level"),
+            description = "nacos.console.ai.skill.api.online.scope.description"),
         @Parameter(name = "version", example = "1.0.0"),
         @Parameter(name = "form", hidden = true)})
     public Result<String> online(SkillOnlineForm form) throws NacosException {
@@ -641,7 +649,7 @@ public class ConsoleSkillController {
     @Parameters(value = {@Parameter(name = "namespaceId", example = "public"),
         @Parameter(name = "skillName", required = true, example = "my-skill"),
         @Parameter(name = "scope", example = "skill",
-            description = "Use 'skill' for skill-level offline; otherwise version-level"),
+            description = "nacos.console.ai.skill.api.offline.scope.description"),
         @Parameter(name = "version", example = "1.0.0"),
         @Parameter(name = "form", hidden = true)})
     public Result<String> offline(SkillOnlineForm form) throws NacosException {
@@ -666,7 +674,7 @@ public class ConsoleSkillController {
     @Parameters(value = {@Parameter(name = "namespaceId", example = "public"),
         @Parameter(name = "skillName", required = true, example = "my-skill"),
         @Parameter(name = "scope", required = true, example = "PUBLIC",
-            description = "PUBLIC or PRIVATE"),
+            description = "nacos.console.ai.skill.api.scope.update.scope.description"),
         @Parameter(name = "form", hidden = true)})
     public Result<String> updateScope(SkillScopeForm form) throws NacosException {
         form.validate();

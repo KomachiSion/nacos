@@ -119,11 +119,11 @@ public class ConsoleServiceController {
         @Parameter(name = "serviceName", required = true, example = "test"),
         @Parameter(name = "protectThreshold", schema = @Schema(type = "number"), example = "0.5"),
         @Parameter(name = "ephemeral", schema = @Schema(type = "boolean"), example = "false"),
-        @Parameter(name = "selector", schema = @Schema(type = "string",
-            description = "JSON object string parsed as service selector"),
+        @Parameter(description = "nacos.console.naming.service.api.create.selector.description",
+            name = "selector", schema = @Schema(type = "string"),
             example = "\"{\\\"type\\\":\\\"none\\\"}\""),
-        @Parameter(name = "metadata", schema = @Schema(type = "string",
-            description = "JSON object string parsed as service metadata"),
+        @Parameter(description = "nacos.console.naming.service.api.create.metadata.description",
+            name = "metadata", schema = @Schema(type = "string"),
             example = "\"{\\\"version\\\":\\\"1.0\\\"}\""),
         @Parameter(name = "serviceForm", hidden = true)})
     public Result<String> createService(ServiceForm serviceForm) throws Exception {
@@ -182,11 +182,11 @@ public class ConsoleServiceController {
         @Parameter(name = "serviceName", required = true, example = "test"),
         @Parameter(name = "protectThreshold", schema = @Schema(type = "number"), example = "0.5"),
         @Parameter(name = "ephemeral", schema = @Schema(type = "boolean"), example = "false"),
-        @Parameter(name = "selector", schema = @Schema(type = "string",
-            description = "JSON object string parsed as service selector"),
+        @Parameter(description = "nacos.console.naming.service.api.update.selector.description",
+            name = "selector", schema = @Schema(type = "string"),
             example = "\"{\\\"type\\\":\\\"none\\\"}\""),
-        @Parameter(name = "metadata", schema = @Schema(type = "string",
-            description = "JSON object string parsed as service metadata"),
+        @Parameter(description = "nacos.console.naming.service.api.update.metadata.description",
+            name = "metadata", schema = @Schema(type = "string"),
             example = "\"{\\\"version\\\":\\\"1.0\\\"}\""),
         @Parameter(name = "serviceForm", hidden = true)})
     public Result<String> updateService(ServiceForm serviceForm) throws Exception {
@@ -371,11 +371,13 @@ public class ConsoleServiceController {
             example = "8080"),
         @Parameter(name = "useInstancePort4Check", required = true,
             schema = @Schema(type = "boolean"), example = "false"),
-        @Parameter(name = "healthChecker", required = true, schema = @Schema(type = "string",
-            description = "JSON object string parsed as cluster health checker"),
+        @Parameter(
+            description = "nacos.console.naming.service.api.update.cluster.healthChecker.description",
+            name = "healthChecker", required = true, schema = @Schema(type = "string"),
             example = "\"{\\\"type\\\":\\\"none\\\"}\""),
-        @Parameter(name = "metadata", schema = @Schema(type = "string",
-            description = "JSON object string parsed as cluster metadata"),
+        @Parameter(
+            description = "nacos.console.naming.service.api.update.cluster.metadata.description",
+            name = "metadata", schema = @Schema(type = "string"),
             example = "\"{\\\"version\\\":\\\"1.0\\\"}\""),
         @Parameter(name = "updateClusterForm", hidden = true)})
     public Result<String> updateCluster(UpdateClusterForm updateClusterForm) throws Exception {

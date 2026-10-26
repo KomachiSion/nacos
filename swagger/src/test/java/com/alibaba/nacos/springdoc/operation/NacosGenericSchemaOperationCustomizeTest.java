@@ -17,6 +17,8 @@
 package com.alibaba.nacos.springdoc.operation;
 
 import com.alibaba.nacos.api.model.v2.Result;
+import com.alibaba.nacos.api.config.model.ConfigBasicInfo;
+import com.alibaba.nacos.api.model.response.NacosMember;
 import com.alibaba.nacos.springdoc.cache.SchemaCache;
 import com.alibaba.nacos.springdoc.openapi.NacosGenericSchemaOpenApiCustomizer;
 import io.swagger.v3.oas.models.Components;
@@ -24,8 +26,10 @@ import io.swagger.v3.oas.models.OpenAPI;
 import io.swagger.v3.oas.models.Operation;
 import io.swagger.v3.oas.models.media.Content;
 import io.swagger.v3.oas.models.media.MediaType;
+import io.swagger.v3.oas.models.media.MapSchema;
 import io.swagger.v3.oas.models.media.ObjectSchema;
 import io.swagger.v3.oas.models.media.Schema;
+import io.swagger.v3.oas.models.media.StringSchema;
 import io.swagger.v3.oas.models.responses.ApiResponse;
 import io.swagger.v3.oas.models.responses.ApiResponses;
 import org.junit.jupiter.api.BeforeEach;
@@ -36,6 +40,7 @@ import org.springframework.web.context.request.async.DeferredResult;
 import org.springframework.web.method.HandlerMethod;
 
 import java.lang.reflect.Method;
+import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -55,6 +60,90 @@ class NacosGenericSchemaOperationCustomizeTest {
     void setUp() {
         schemaCache = new SchemaCache();
         customizer = new NacosGenericSchemaOperationCustomize(schemaCache);
+    }
+    
+    @Test
+    void shouldMatchStringFormattedIdInGenericResponse() throws NoSuchMethodException {
+        Operation operation = operationWithResponse("#/components/schemas/ResultConfigBasicInfo");
+        
+        customizer.customize(operation, handlerMethod("configResult"));
+        
+        Schema<?> config = schemaCache.getAllSchemas().get("ConfigBasicInfo");
+        Schema<?> id = (Schema<?>) config.getProperties().get("id");
+        assertEquals("string", id.getType());
+        assertNull(id.getFormat());
+        assertEquals("integer", ((Schema<?>) config.getProperties().get("createTime")).getType());
+        assertEquals("#/components/schemas/Result<ConfigBasicInfo>",
+            getResponseSchemaRef(operation));
+    }
+    
+    @Test
+    void shouldAllowDynamicMapResult() throws NoSuchMethodException {
+        Operation operation = operationWithResponse("#/components/schemas/ResultMap");
+        
+        customizer.customize(operation, handlerMethod("dynamicMapResult"));
+        
+        Schema<?> result = schemaCache.getAllSchemas().get("Result<Map<String, Object>>");
+        Schema<?> data = (Schema<?>) result.getProperties().get("data");
+        assertEquals("object", data.getType());
+        assertEquals(Boolean.TRUE, data.getAdditionalProperties());
+        assertEquals("#/components/schemas/Result<Map<String, Object>>",
+            getResponseSchemaRef(operation));
+    }
+    
+    @Test
+    void shouldKeepTypedMapResults() throws NoSuchMethodException {
+        customizer.customize(operationWithResponse("#/components/schemas/ResultMap"),
+            handlerMethod("stringMapResult"));
+        customizer.customize(operationWithResponse("#/components/schemas/ResultMap"),
+            handlerMethod("modelMapResult"));
+        
+        Schema<?> strings =
+            (Schema<?>) schemaCache.getAllSchemas().get("Result<Map<String, String>>")
+                .getProperties().get("data");
+        assertEquals("string", ((Schema<?>) strings.getAdditionalProperties()).getType());
+        Schema<?> models =
+            (Schema<?>) schemaCache.getAllSchemas().get("Result<Map<String, TestModel>>")
+                .getProperties().get("data");
+        Schema<?> values = (Schema<?>) models.getAdditionalProperties();
+        assertEquals("object", values.getType());
+        assertEquals("string", ((Schema<?>) values.getProperties().get("name")).getType());
+    }
+    
+    @Test
+    void shouldPreserveExplicitInlineMapResponse() throws NoSuchMethodException {
+        MapSchema map = new MapSchema();
+        map.setAdditionalProperties(new StringSchema());
+        Schema<?> explicit = new ObjectSchema().addProperty("data", map);
+        Operation operation = operationWithResponse("#/components/schemas/ResultMap");
+        operation.getResponses().get("200").getContent().get("application/json")
+            .setSchema(explicit);
+        
+        customizer.customize(operation, handlerMethod("dynamicMapResult"));
+        
+        assertSame(explicit,
+            operation.getResponses().get("200").getContent().get("application/json").getSchema());
+        assertEquals("string", ((Schema<?>) map.getAdditionalProperties()).getType());
+    }
+    
+    @Test
+    void shouldPreserveExplicitMapResponseReference() throws NoSuchMethodException {
+        Operation operation = operationWithResponse("#/components/schemas/ExplicitMapResponse");
+        
+        customizer.customize(operation, handlerMethod("dynamicMapResult"));
+        
+        assertEquals("#/components/schemas/ExplicitMapResponse", getResponseSchemaRef(operation));
+    }
+    
+    @Test
+    void shouldAllowDynamicMapInResponseModel() throws NoSuchMethodException {
+        customizer.customize(operationWithResponse("#/components/schemas/ResultNacosMember"),
+            handlerMethod("memberResult"));
+        
+        Schema<?> member = schemaCache.getAllSchemas().get("NacosMember");
+        Schema<?> extendInfo = (Schema<?>) member.getProperties().get("extendInfo");
+        assertEquals(Boolean.TRUE, extendInfo.getAdditionalProperties());
+        assertEquals("integer", ((Schema<?>) member.getProperties().get("port")).getType());
     }
     
     @Test
@@ -181,6 +270,26 @@ class NacosGenericSchemaOperationCustomizeTest {
     }
     
     private static class TestController {
+        
+        public Result<Map<String, Object>> dynamicMapResult() {
+            return null;
+        }
+        
+        public Result<Map<String, String>> stringMapResult() {
+            return null;
+        }
+        
+        public Result<Map<String, TestModel>> modelMapResult() {
+            return null;
+        }
+        
+        public Result<NacosMember> memberResult() {
+            return null;
+        }
+        
+        public Result<ConfigBasicInfo> configResult() {
+            return null;
+        }
         
         public Result<TestModel> directResult() {
             return null;

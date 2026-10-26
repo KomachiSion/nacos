@@ -41,29 +41,60 @@ public class ServerAdminDocConfig {
     public GroupedOpenApi adminOpenApi(PropertyResolverUtils propertyResolverUtils) {
         String[] paths = {"/v3/admin/**"};
         SchemaCache clientSchemaCache = adminSchemaCache();
-        OpenApiCustomizer basicInfoOpenApiCustomizer = nacosAdminBasicInfoOpenApiCustomizer(propertyResolverUtils);
-        OpenApiCustomizer genericSchemaOpenApiCustomizer = nacosAdminGenericSchemaOpenApiCustomizer(clientSchemaCache);
-        OperationCustomizer genericSchemaOperationCustomizer = nacosAdminGenericSchemaOperationCustomize(clientSchemaCache);
-        GroupedOpenApi.Builder builder = GroupedOpenApi.builder().group("admin-api").pathsToMatch(paths);
+        OpenApiCustomizer basicInfoOpenApiCustomizer =
+            nacosAdminBasicInfoOpenApiCustomizer(propertyResolverUtils);
+        OpenApiCustomizer genericSchemaOpenApiCustomizer =
+            nacosAdminGenericSchemaOpenApiCustomizer(clientSchemaCache);
+        OperationCustomizer genericSchemaOperationCustomizer =
+            nacosAdminGenericSchemaOperationCustomize(clientSchemaCache);
+        GroupedOpenApi.Builder builder =
+            GroupedOpenApi.builder().group("admin-api").pathsToMatch(paths);
         builder.addOpenApiCustomizer(basicInfoOpenApiCustomizer);
         builder.addOpenApiCustomizer(genericSchemaOpenApiCustomizer);
         builder.addOperationCustomizer(genericSchemaOperationCustomizer);
         return builder.build();
     }
     
-    public OpenApiCustomizer nacosAdminBasicInfoOpenApiCustomizer(PropertyResolverUtils propertyResolverUtils) {
-        return new NacosBasicInfoOpenApiCustomizer("nacos.admin.api.title", "nacos.admin.api.description",
-                propertyResolverUtils);
+    /**
+     * Create localized basic information for admin API documentation.
+     *
+     * @param propertyResolverUtils localized property resolver
+     * @return basic information customizer
+     */
+    public OpenApiCustomizer nacosAdminBasicInfoOpenApiCustomizer(
+        PropertyResolverUtils propertyResolverUtils) {
+        return new NacosBasicInfoOpenApiCustomizer("nacos.admin.api.title",
+            "nacos.admin.api.description",
+            propertyResolverUtils);
     }
     
-    public OpenApiCustomizer nacosAdminGenericSchemaOpenApiCustomizer(SchemaCache consoleSchemaCache) {
+    /**
+     * Create the customizer that installs the collected response schemas.
+     *
+     * @param consoleSchemaCache schema cache for this API group
+     * @return schema customizer
+     */
+    public OpenApiCustomizer nacosAdminGenericSchemaOpenApiCustomizer(
+        SchemaCache consoleSchemaCache) {
         return new NacosGenericSchemaOpenApiCustomizer(consoleSchemaCache);
     }
     
-    public OperationCustomizer nacosAdminGenericSchemaOperationCustomize(SchemaCache consoleSchemaCache) {
+    /**
+     * Create the operation customizer that resolves generic response types.
+     *
+     * @param consoleSchemaCache schema cache for this API group
+     * @return operation customizer
+     */
+    public OperationCustomizer nacosAdminGenericSchemaOperationCustomize(
+        SchemaCache consoleSchemaCache) {
         return new NacosGenericSchemaOperationCustomize(consoleSchemaCache);
     }
     
+    /**
+     * Create an isolated schema cache for the admin API group.
+     *
+     * @return schema cache
+     */
     public SchemaCache adminSchemaCache() {
         return new SchemaCache();
     }

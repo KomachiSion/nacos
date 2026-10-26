@@ -1,5 +1,19 @@
 # V3 Swagger API Changelog
 
+## 2026-10-26
+
+- Rescanned 54 v3 controllers and 380 HTTP mappings, excluding default plugin implementations and the AI registry adaptor.
+- Corrected annotations on 123 operations: gray-rule aliases, the Agent Discover diagnostic header, Agent Search pagination, required upload files and request bodies, binary config export responses, object-shaped console state responses, and parameter defaults.
+- Localized parameter, ZIP and conditional-response descriptions in the default, English and Chinese message bundles.
+- Clarified the ignored legacy `setAsLatest` parameter on console draft updates and the distinct console/admin config-clone request fields.
+- Verified the generated documents in both languages. Kept descriptions on Parameter/ApiResponse/RequestBody annotations because inline schema descriptions are not localized by the current SpringDoc pipeline.
+- Corrected numeric response property schemas with explicit Jackson `@JsonFormat(shape = STRING)` through a Swagger model converter registered in Nacos's generic response conversion chain. Kept the runtime serialization, Web configuration and unrelated property schemas unchanged.
+- Verified the serialization-schema correction with 19 Swagger tests, reactor compilation and formatting checks. All six regenerated documents differ only in string-formatted ID types and removal of numeric formats, including list/page items; the client documents are unchanged.
+- Corrected dynamic Map response schemas to allow arbitrary JSON values in both model properties and generic Result maps. Preserved typed values, explicit schemas and existing value constraints; added 13 regressions, with all 32 Swagger tests passing.
+- Compared all six regenerated documents after the Map correction: only `additionalProperties` changed, with 120 object-only definitions relaxed and 6 empty schemas equivalently normalized to `true`. All other document fields, including string IDs, are unchanged; reactor compilation, formatting and structural checks pass.
+- Deferred colliding model names as requested.
+- Kept all endpoint method bodies, mappings, binding annotations and existing `@Since` values unchanged. See `v3-api-swagger-coverage-scan.md` for verification and scope.
+
 ## 2026-09-21
 
 ### Current Branch Annotation Audit

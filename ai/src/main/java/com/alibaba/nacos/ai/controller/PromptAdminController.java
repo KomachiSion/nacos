@@ -146,7 +146,8 @@ public class PromptAdminController {
         @Parameter(name = "pageSize", required = true, schema = @Schema(type = "integer"),
             example = "10"),
         @Parameter(name = "namespaceId", example = "public"), @Parameter(name = "promptKey"),
-        @Parameter(name = "search", example = "blur", description = "blur or accurate"),
+        @Parameter(name = "search", example = "blur",
+            description = "nacos.admin.ai.prompt.api.list.search.description"),
         @Parameter(name = "bizTags"), @Parameter(name = "form", hidden = true)})
     public Result<Page<PromptMetaSummary>> listPrompts(PromptListForm form) throws NacosException {
         form.validate();
@@ -281,8 +282,8 @@ public class PromptAdminController {
         @Parameter(name = "basedOnVersion", example = "1.0.0"),
         @Parameter(name = "targetVersion", example = "1.0.1"),
         @Parameter(name = "template", example = "Hello {{name}}"),
-        @Parameter(name = "variables", schema = @Schema(type = "string",
-            description = "JSON array string parsed as prompt variables"),
+        @Parameter(description = "nacos.admin.ai.prompt.api.draft.create.variables.description",
+            name = "variables", schema = @Schema(type = "string"),
             example = "\"[{\\\"name\\\":\\\"name\\\"}]\""),
         @Parameter(name = "commitMsg", example = "Create draft"),
         @Parameter(name = "description"), @Parameter(name = "bizTags"),
@@ -313,8 +314,8 @@ public class PromptAdminController {
     @Parameters(value = {@Parameter(name = "namespaceId", example = "public"),
         @Parameter(name = "promptKey", required = true, example = "my-prompt"),
         @Parameter(name = "template", required = true, example = "Hello {{name}}"),
-        @Parameter(name = "variables", schema = @Schema(type = "string",
-            description = "JSON array string parsed as prompt variables"),
+        @Parameter(description = "nacos.admin.ai.prompt.api.draft.update.variables.description",
+            name = "variables", schema = @Schema(type = "string"),
             example = "\"[{\\\"name\\\":\\\"name\\\"}]\""),
         @Parameter(name = "commitMsg", example = "Update draft"),
         @Parameter(name = "form", hidden = true)})
@@ -510,8 +511,8 @@ public class PromptAdminController {
                 example = "nacos.admin.ai.prompt.api.labels.update.example")))
     @Parameters(value = {@Parameter(name = "namespaceId", example = "public"),
         @Parameter(name = "promptKey", required = true, example = "my-prompt"),
-        @Parameter(name = "labels", required = true, schema = @Schema(type = "string",
-            description = "JSON object string parsed as label map"),
+        @Parameter(description = "nacos.admin.ai.prompt.api.labels.update.labels.description",
+            name = "labels", required = true, schema = @Schema(type = "string"),
             example = "\"{\\\"latest\\\":\\\"1.0.0\\\"}\""),
         @Parameter(name = "form", hidden = true)})
     public Result<String> updateLabels(PromptLabelsUpdateForm form) throws NacosException {
@@ -561,8 +562,8 @@ public class PromptAdminController {
                 example = "nacos.admin.ai.prompt.api.biz.tags.update.example")))
     @Parameters(value = {@Parameter(name = "namespaceId", example = "public"),
         @Parameter(name = "promptKey", required = true, example = "my-prompt"),
-        @Parameter(name = "bizTags", schema = @Schema(type = "string",
-            description = "JSON array string parsed as biz tag list"),
+        @Parameter(description = "nacos.admin.ai.prompt.api.biz.tags.update.bizTags.description",
+            name = "bizTags", schema = @Schema(type = "string"),
             example = "\"[\\\"tag1\\\",\\\"tag2\\\"]\""),
         @Parameter(name = "form", hidden = true)})
     public Result<String> updateBizTags(PromptBizTagsUpdateForm form) throws NacosException {
@@ -604,8 +605,8 @@ public class PromptAdminController {
         @Parameter(name = "promptKey", required = true, example = "my-prompt"),
         @Parameter(name = "version", required = true, example = "1.0.0"),
         @Parameter(name = "template", example = "Hello {{name}}"),
-        @Parameter(name = "variables", schema = @Schema(type = "string",
-            description = "JSON array string parsed as prompt variables"),
+        @Parameter(description = "nacos.admin.ai.prompt.api.publish.variables.description",
+            name = "variables", schema = @Schema(type = "string"),
             example = "\"[{\\\"name\\\":\\\"name\\\"}]\""),
         @Parameter(name = "commitMsg", example = "Publish prompt"),
         @Parameter(name = "description"), @Parameter(name = "bizTags"),

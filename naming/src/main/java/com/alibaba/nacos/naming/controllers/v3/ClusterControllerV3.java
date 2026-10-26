@@ -90,13 +90,15 @@ public class ClusterControllerV3 {
         @Parameter(name = "useInstancePort4Check", required = true,
             schema = @Schema(type = "boolean"),
             example = "false"),
-        @Parameter(name = "healthChecker", required = true,
-            schema = @Schema(type = "string",
-                description = "JSON object string parsed as health checker"),
+        @Parameter(
+            description = "nacos.admin.naming.service.api.update.cluster.healthChecker.description",
+            name = "healthChecker", required = true,
+            schema = @Schema(type = "string"),
             example = "\"{\\\"type\\\":\\\"none\\\"}\""),
-        @Parameter(name = "metadata",
-            schema = @Schema(type = "string",
-                description = "JSON object string parsed as metadata map"),
+        @Parameter(
+            description = "nacos.admin.naming.service.api.update.cluster.metadata.description",
+            name = "metadata",
+            schema = @Schema(type = "string"),
             example = "\"{\\\"version\\\":\\\"1.0\\\"}\""),
         @Parameter(name = "updateClusterForm", hidden = true)})
     public Result<String> update(UpdateClusterForm updateClusterForm) throws Exception {

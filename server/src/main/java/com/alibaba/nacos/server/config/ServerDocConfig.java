@@ -57,6 +57,9 @@ public class ServerDocConfig {
         this.springDocConfigProperties = springDocConfigProperties;
     }
     
+    /**
+     * Initialize SpringDoc default media types for server APIs.
+     */
     @PostConstruct
     public void initSpringDocProperties() {
         springDocConfigProperties.setDefaultProducesMediaType(MediaType.APPLICATION_JSON_VALUE);

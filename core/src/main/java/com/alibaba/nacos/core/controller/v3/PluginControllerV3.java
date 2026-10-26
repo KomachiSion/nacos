@@ -170,7 +170,8 @@ public class PluginControllerV3 {
         @Parameter(name = "pluginName", required = true, example = "nacos-default-auth-plugin"),
         @Parameter(name = "enabled", required = true, schema = @Schema(type = "boolean"),
             example = "true"),
-        @Parameter(name = "localOnly", schema = @Schema(type = "boolean"), example = "false")})
+        @Parameter(name = "localOnly", schema = @Schema(defaultValue = "false", type = "boolean"),
+            example = "false")})
     public Result<String> updatePluginStatus(@RequestParam("pluginType") String pluginType,
         @RequestParam("pluginName") String pluginName, @RequestParam("enabled") boolean enabled,
         @RequestParam(value = "localOnly", defaultValue = "false") boolean localOnly)
@@ -204,11 +205,12 @@ public class PluginControllerV3 {
                 example = "nacos.admin.core.plugin.api.config.example")))
     @Parameters(value = {@Parameter(name = "pluginType", required = true, example = "auth"),
         @Parameter(name = "pluginName", required = true, example = "nacos-default-auth-plugin"),
-        @Parameter(name = "config", required = true,
-            schema = @Schema(type = "string",
-                description = "JSON object string parsed as plugin config map"),
+        @Parameter(description = "nacos.admin.core.plugin.api.config.config.description",
+            name = "config", required = true,
+            schema = @Schema(type = "string"),
             example = "\"{\\\"key\\\":\\\"value\\\"}\""),
-        @Parameter(name = "localOnly", schema = @Schema(type = "boolean"), example = "false")})
+        @Parameter(name = "localOnly", schema = @Schema(defaultValue = "false", type = "boolean"),
+            example = "false")})
     public Result<String> updatePluginConfig(@RequestParam("pluginType") String pluginType,
         @RequestParam("pluginName") String pluginName, @RequestParam("config") String configJson,
         @RequestParam(value = "localOnly", defaultValue = "false") boolean localOnly)
