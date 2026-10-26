@@ -25,6 +25,21 @@ for `/v3/client/**`. The branch-level coverage target is API scenario coverage:
 expected capability, boundary/validation behavior, and controlled
 exception/error handling.
 
+## HTTP Request Context Metadata
+
+`Nacos-Request-Id` is optional request metadata consumed by the shared
+`HttpRequestContextFilter` before endpoint handling. It does not change route,
+authorization, response body, or response header contracts. Standalone OpenAPI
+responses do not expose the process-local context, so these assertions belong to
+`core` module tests rather than an added diagnostic endpoint or an IT coverage count.
+
+| Scenario | Verification |
+| --- | --- |
+| Non-blank client request ID | `HttpRequestContextFilterTest` checks the downstream context uses the supplied ID. |
+| Missing, empty, or whitespace-only ID | The same test retains the server-generated UUID. |
+| Normal completion, downstream failure, and reused worker thread | The same test verifies context cleanup and no request ID leakage. |
+| Existing gRPC request ID | `GrpcRequestAcceptorTest` verifies the request ID remains available in the gRPC context. |
+
 ## Status Legend
 
 | Status | Meaning |
@@ -291,3 +306,13 @@ Capability declares GET only. MVC supplies secured HEAD without a response body 
 contentDigest、nativeDescriptor 与 Endpoint sourceRevision 不变，未透出展示及管理字段。
 HTTP/gRPC/auto Watch 元数据变更及无变化通知边界由对应 Java SDK IT 验证。
 公共响应与指纹契约见 [RAD 协议规范](../../specs/zh-cn/ai/rad-protocol-spec.md)。
+
+### Agent Discover notification Header compatibility
+
+| API surface / IT class | Covered API operations | Current status | Current/missing coverage |
+| --- | --- | --- | --- |
+| Agent Discover / `AgentDiscoveryClientOpenApiITCase` | GET `/v3/client/ai/agents` | Covered | `testDiscoveryTriggerHeaderDoesNotChangeSnapshotOrErrors` checks `watch-notify`, missing, empty, unknown and case-mismatched `X-Nacos-Agent-Discovery-Trigger` values against full snapshot, not-found and invalid version/label responses. SDK emission and retry attribution use client wire UT. Discover now emits best-effort `AiResourceTraceEvent` (`DISCOVER`) at HTTP/gRPC business-query boundaries; server UT verifies source, resolved/requested version, protocol, subscription attribution and diagnostic failure isolation. Event payload/log delivery is internal and has no public query API, so standalone HTTP IT verifies response compatibility rather than claiming event or SDK emission coverage. |
+
+This extends the existing Agent Discover row; API surface totals and strict/effective
+coverage denominators remain unchanged. The optional diagnostic header never changes
+authorization or discovery semantics.

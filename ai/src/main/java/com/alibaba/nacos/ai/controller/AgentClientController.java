@@ -29,6 +29,8 @@ import com.alibaba.nacos.ai.service.agent.AgentDiscoveryApplicationService;
 import com.alibaba.nacos.ai.service.agent.AgentPublishApplicationService;
 import com.alibaba.nacos.ai.service.agent.runtime.AgentHttpClientLifecycleService;
 import com.alibaba.nacos.ai.service.agent.watch.AgentHttpWatchService;
+import com.alibaba.nacos.ai.service.trace.AgentDiscoveryTraceService;
+import com.alibaba.nacos.api.ai.constant.AiConstants;
 import com.alibaba.nacos.api.ai.model.ClientLivenessInfo;
 import com.alibaba.nacos.api.ai.model.agent.client.AgentPublishRequest;
 import com.alibaba.nacos.api.ai.model.agent.AgentVersionDetail;
@@ -49,6 +51,7 @@ import com.alibaba.nacos.api.remote.RemoteConstants;
 import com.alibaba.nacos.auth.annotation.Secured;
 import com.alibaba.nacos.common.constant.HttpHeaderConsts;
 import com.alibaba.nacos.core.paramcheck.ExtractorManager;
+import com.alibaba.nacos.core.context.addition.BasicContext;
 import com.alibaba.nacos.naming.constants.ClientConstants;
 import com.alibaba.nacos.plugin.auth.constant.ActionTypes;
 import com.alibaba.nacos.plugin.auth.constant.SignType;
@@ -213,12 +216,21 @@ public class AgentClientController {
         @Parameter(name = ClientConstants.HTTP_CLIENT_ID_HEADER,
             description = "nacos.admin.ai.agent.client.api.http.client.id.query.header.description",
             in = ParameterIn.HEADER) @RequestHeader(name = ClientConstants.HTTP_CLIENT_ID_HEADER,
-                required = false) String clientId)
+                required = false) String clientId,
+        @RequestHeader(name = AiConstants.Agent.DISCOVERY_TRIGGER_HEADER,
+            required = false) String discoveryTrigger)
         throws NacosException {
         AgentDiscoveryRequest request = form.toRequest();
         migrationGuard.checkReady();
         clientLifecycleService.renewForQuery(clientId, request.getNamespaceId());
-        return Result.success(discoveryService.discover(request));
+        AgentDiscoveryResult result = null;
+        try {
+            result = discoveryService.discover(request);
+            return Result.success(result);
+        } finally {
+            AgentDiscoveryTraceService.record(request, result, BasicContext.HTTP_PROTOCOL,
+                clientId, discoveryTrigger);
+        }
     }
     
     /**

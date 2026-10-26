@@ -55,6 +55,19 @@ These cross-cutting rows do not change the public SDK-surface counts.
 | Capacity, reconnect, and cluster fault injection | Capacity limits and real transport recovery remain authenticated and are not silently omitted from CI. | Partial | Final C11 standalone Config, Naming, Lock, Agent/MCP, Maintainer, and Config Jackson 3 restarts pass with the original clients. Pinned-node change and rolling-restart cases pass; final peer-restart and migration cluster results are tracked separately in C11_PROGRESS.md. None of these Agent scenarios remains disabled as DAUTH-F05. |
 | Lock authorization denial | The experimental Lock server applies the documented `SignType.LOCK` guard and rejects insufficient identities. | Documented gap | The complete Lock lifecycle runs with the authenticated read-write identity, including a stable 5-second expiry/reacquire window. The current server handler lacks the authorization guard, so the suite does not assert a false denial contract. |
 
+## JSON Runtime Dependency Isolation
+
+| Public SDK surface | Required scenarios | Current status | Current / missing coverage |
+| --- | --- | --- | --- |
+| Neutral JSON facade | Jackson 2 only, Jackson 3 only, coexistence, auto/explicit selection, missing implementation, generic values and malformed JSON. | Covered | `api`/`common` tests exercise isolated provider discovery and missing-library classloaders. `JsonAdapterJavaSdkITCase` checks the packaged SDK in a Failsafe JVM without Jackson 2 core/databind; run both auto and explicit Jackson 3. |
+| Config/Naming with Jackson 3 only | Authenticated factory creation, remote writes/reads, validation/error mapping, listeners and shutdown without Jackson 2. | Covered | `jackson3-only-sdk-test` reuses the existing Config and Naming classes and preserves their environment-gated restart limitations. |
+| Client auth JSON paths | Default login, OIDC discovery/token and RAM STS parsing without Jackson 2; malformed/missing responses remain controlled. | Partial | `client-basic` profile `jackson3-only-test` reuses local HTTP/mocked auth tests. Default-auth Config/Naming run against standalone Nacos; external OIDC/RAM providers are not part of standalone IT. |
+| Other SDK domains with Jackson 3 only | AI, Lock and Maintainer runtime flows without Jackson 2. | Pending | Existing coexistence suites remain; this focused profile does not claim full Jackson 3-only domain coverage. |
+
+This separate runtime matrix has 4 rows: strict coverage is 2/4 (50%), and
+effective coverage is (2 + 0.5)/4 (62.5%). It does not add SDK interfaces to the
+main interface coverage denominators.
+
 ## ConfigService
 
 | Public SDK surface | Required scenarios | Current status | Current / missing coverage |
@@ -68,6 +81,7 @@ These cross-cutting rows do not change the public SDK-surface counts.
 | `addListener`, `getConfigAndSignListener`, `removeListener` | Initial value, later update callback, standalone `addListener`, removal stops callbacks, invalid listener input. | Covered | `getConfigAndSignListener`, standalone `addListener`, update callback, remove-listener stop behavior, and null listener rejection for add/sign/remove paths are covered. |
 | `addConfigFilter` | Filter registration effect or explicit standalone limitation. | Covered | Public SDK filter registration is covered by a transforming filter that mutates publish request content and query response content. |
 | Fuzzy watch APIs | Fixed group pattern, dataId+group pattern, matched key return, event callback, cancel behavior, invalid pattern/listener. | Covered | DataId+group pattern matching, matched group-key return, add/delete event callbacks, and cancel-stop behavior are covered. Null-listener behavior is not asserted because the Config SDK path does not currently expose a stable controlled exception contract for it. |
+| Config snapshot switch (`configSnapshotEnabled`) | Disabled snapshots remain disabled after a recoverable startup cleanup failure; fatal VM errors propagate. | Documented gap | Covered by client unit test `SnapShotSwitchTest` using controlled fault injection. Standalone SDK IT does not currently isolate this JVM-global, read-once state or inject filesystem cleanup failures. |
 
 ## NamingService
 
@@ -397,3 +411,25 @@ passing migration coverage. See C11_PROGRESS.md for all 66 report groups and ski
 ### A2A metadata reserved-key regression
 
 A2A conversion and RAD metadata use the same `__nacos.agent.endpoint.protocolVersion__` / `__nacos.agent.endpoint.tenant__` keys as legacy Naming Instances. AgentDiscoveryService and A2aRadRouting SDK ITs verify HTTP/gRPC/AUTO Discover/Watch and legacy projection under default/Jackson 3 profiles; migration comparator UTs verify identical old/new meaning and changed tenant/protocol detection. Invalid control metadata remains rejected.
+
+
+## Agent SDK functional regressions
+
+Execution ownership and method-level assertions are maintained in the
+[Agent functional matrix](AGENT_DISCOVERY_SDK_IT_SCENARIOS.md#agent-sdk-functional-regression).
+The ordinary functional job is [`it-new.yml`](../../.github/workflows/it-new.yml);
+directed restart/cluster cases use the existing
+[reliability workflow](../../.github/workflows/default-auth-reliability-it.yml).
+
+| Public SDK surface | Required scenarios | Current status | Current/missing coverage |
+| --- | --- | --- | --- |
+| Agent discovery capability | Selected transport, query before/after business use, shutdown and unchanged A2A routing | Covered | `AiServiceJavaSdkITCase`, `A2aRadRoutingJavaSdkITCase`; default-method compatibility, unsupported/unknown evidence and resolver failure branches additionally have UT coverage. |
+| Explicit A2A snapshot conversion | Descriptor preservation, visible endpoint sources, disabled filtering, input isolation, application-owned conversion failures and subsequent updates | Covered | Three Converter workflows in `AgentDiscoveryServiceJavaSdkITCase`; malformed input and identity mismatch additionally have deterministic UT coverage. |
+| Native initial and changed state | Void subscription, initial state, duplicate/new Listener behavior, missing selectors, deletion/recreation and old A2A empty-Card suppression | Covered | Named initial/missing/deletion methods in the Agent matrix; exact initialization races remain UT assertions. |
+| Accepted Watch recovery | Permission revoke/restore, HTTP quota growth rollback and retained additions, cancellation freeing a slot | Covered | Auth/capacity fixtures in `it-new.yml`; internal binding failures and 50105 recovery are UT evidence, not real migration fault injection. |
+| Latest-state Listener delivery | Slow Listener coalescing, rejected Executor recovery without a new change, later notification after callback throws | Covered | Public gRPC/HTTP functional cases use application Executor hooks; bounded internal memory and getExecutor failure races are additionally tested in UT. |
+| Restart and multi-node lifecycle | Original subscriptions and endpoint redo recover across restart, pinned-node changes and rolling peer restart | Covered | Four methods selected by the fixed reliability workflow; its environment is separate from the normal functional job. |
+
+Coverage is scoped to these behavior groups and does not promote unrelated SDK
+registry rows. Local upgrade experiments and one-off coverage/run summaries are
+kept outside the committed scenario matrix.

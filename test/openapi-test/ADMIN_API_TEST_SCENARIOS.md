@@ -56,7 +56,7 @@ API layer and resource/version descriptors remain available for retry.
 
 | API surface / IT class | Covered API operations | Current status | Current / missing coverage |
 | --- | --- | --- | --- |
-| `ConfigAdminApiOpenApiITCase` | `GET,POST,PUT,DELETE /v3/admin/cs/config` | Covered | Publishes, republishes, queries, updates metadata, and deletes config; covers blank/omitted namespace defaulting to current `public` storage, embedded dots in names, rejection of exact `.`/`..` identity segments, type normalization, required identity/content fields, absent config 404, duplicate/update semantics, and malformed metadata errors. Removed empty-tenant migration and dual-write behavior is outside the 3.3 API contract. |
+| `ConfigAdminApiOpenApiITCase` | `GET,POST,PUT,DELETE /v3/admin/cs/config` | Covered | Publishes, republishes, queries, updates metadata, and deletes config; covers blank/omitted namespace defaulting to current `public` storage, embedded dots in names, rejection of exact `.`/`..` identity segments, type normalization, required identity/content fields, absent config 404, duplicate/update semantics, and malformed metadata errors. Removed empty-tenant migration and dual-write behavior is outside the 3.3 API contract.  Inherited optional `srcUser`/`appName` binding and persisted detail fields are covered, including the Native remote-Console regression. |
 | `ConfigListAdminApiOpenApiITCase` | `GET /v3/admin/cs/config/list` | Covered | Lists published configs through admin page model with fuzzy and accurate filters; covers type and tag filters, blank dataId group-scoped listing, public namespace defaulting, pagination validation, empty pages, and wrapped error bodies. |
 | `ConfigBatchDeleteAdminApiOpenApiITCase` | `DELETE /v3/admin/cs/config/batch` | Covered | Deletes multiple configs by comma-separated ids and verifies absence; covers non-existing ids being ignored, namespace-scoped deletion when ids belong to another namespace, required `ids`, and HTTP 400 v3 Result validation errors. |
 | `ConfigBetaAdminApiOpenApiITCase` | `GET,DELETE /v3/admin/cs/config/beta` | Covered | Queries and deletes beta config created via the current publish API and gray model; covers public namespace defaulting, beta rule generated from `betaIps`, required fields, absent beta 404, and v3 error envelope. Removed `config_info_beta` old-table migration is not an expected scenario. |
@@ -74,7 +74,7 @@ API layer and resource/version descriptors remain available for retry.
 
 | API surface / IT class | Covered API operations | Current status | Current / missing coverage |
 | --- | --- | --- | --- |
-| `ServiceAdminApiOpenApiITCase` | `GET,PUT,POST,DELETE /v3/admin/ns/service`<br>`GET /v3/admin/ns/service/list`<br>`GET /v3/admin/ns/service/selector/types`<br>`GET /v3/admin/ns/service/subscribers` | Covered | Creates, queries, updates, lists, and deletes persistent services; verifies selector types, subscriber empty page shape, public/default group defaults, required serviceName, pagination validation, and v3 errors. |
+| `ServiceAdminApiOpenApiITCase` | `GET,PUT,POST,DELETE /v3/admin/ns/service`<br>`GET /v3/admin/ns/service/list`<br>`GET /v3/admin/ns/service/selector/types`<br>`GET /v3/admin/ns/service/subscribers` | Covered | Creates, queries, updates, lists, and deletes persistent services; verifies selector types, subscriber empty page shape, public/default group defaults, required serviceName, pagination validation, and v3 errors. Native regression reuses these cases to assert actual service names/groups and metadata values, not only HTTP success. |
 | `InstanceAdminApiOpenApiITCase` | `GET,PUT,POST,DELETE /v3/admin/ns/instance`<br>`GET /v3/admin/ns/instance/list`<br>`PUT /v3/admin/ns/instance/partial` | Covered | Registers, queries, lists, updates, partially updates, and deletes instances; covers defaults, healthy/enabled/ephemeral/weight behavior, required fields, invalid values, missing instance, and persistent-service conflicts. |
 | `InstanceMetadataAdminApiOpenApiITCase` | `PUT,DELETE /v3/admin/ns/instance/metadata/batch` | Covered | Batch-updates and batch-deletes instance metadata and verifies applied/removed metadata; covers omitted instance selector meaning all instances, explicit selector isolation, required fields, malformed selector, and empty target behavior. |
 | `ClusterAdminApiOpenApiITCase` | `PUT /v3/admin/ns/cluster` | Covered | Updates cluster health check config and verifies service cluster metadata; covers defaults, required fields, missing service, HTTP relative path/query acceptance, rejection of scheme/authority/fragment targets and unsafe headers, and verifies rejected metadata is not written. |
@@ -173,6 +173,18 @@ JSON-03/06：声明版本状态不进入存储摘要，运行时返回真实 ena
 
 [本轮测试矩阵](../../Codex/design/nacos-3.3-client-ai-api/MODEL_JSON_TEST_MATRIX.md)区分待执行项与实际结果。
 
+### Skill frontmatter response scenarios (#15345)
+
+| Scenario | Expected result | Coverage |
+| --- | --- | --- |
+| Create/update draft | List and detail generate name, description and version from summary state, return cached custom fields, and report `frontMatterTruncated=false` for a complete projection. | `testSkillFrontMatterLifecycle` |
+| Bounded custom projection | Resource snapshot excludes reserved fields, prioritizes standard fields, and enforces entry/key/value/serialized-size limits with an explicit truncation flag; complete version metadata remains unchanged. | Service unit tests; standalone IT does not inspect internal metadata rows. |
+| Malformed historical metadata | List and detail remain available and return null frontmatter when `ai_resource.ext` is malformed. | Service unit test; standalone IT cannot seed malformed internal metadata through the public API. |
+| Online v1 plus editing v2 | List continues returning v1; deleting v2 preserves v1. | `testSkillFrontMatterLifecycle` |
+| Publish v2; offline/online v2 | List switches to v2, falls back to v1, then returns v2 again. | `testSkillFrontMatterLifecycle` |
+| No display version | List returns null frontmatter. | `testSkillFrontMatterLifecycle` |
+| Legacy or mismatched snapshot | Null without per-item reads; no historical repair. | Service unit tests; standalone IT does not inject internal historical database rows. |
+| CAS conflict / retry exhaustion | Recompute against the current version; lifecycle operations remain successful and an unmatched snapshot reads as null when best-effort refresh is exhausted. | Service unit tests; deterministic concurrency is not injected through standalone HTTP. |
 C11 migration regression uses an isolated released 3.2.4 SDK for historical-wire
 mutations and the current SDK for RAD admission/terminal assertions. ARD reads in
 `A2aMigrationAdminApiOpenApiITCase` use the explicit Client identity. Normal Admin,

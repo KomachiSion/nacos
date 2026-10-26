@@ -27,9 +27,11 @@ Its rows strengthen the existing A2A, Agent, Search, Console, and RAD surface
 coverage rather than creating new HTTP operations, so their status does not
 change the API-surface totals below.
 
-The Copilot console config surface retains its existing `Partial` status. Its JSON
-request binding regression coverage now includes persisted editable fields and
-malformed/missing request bodies; the API-surface totals are unchanged.
+Shared HTTP `Nacos-Request-Id` propagation into the server's process-local request
+context is verified by focused `core` module tests. The
+[request metadata matrix](CLIENT_API_TEST_SCENARIOS.md#http-request-context-metadata)
+records the boundary and cleanup scenarios and why standalone API responses cannot
+assert this internal state. Endpoint coverage counts remain unchanged.
 
 ## Maintenance Rules
 
@@ -139,6 +141,11 @@ metadata, API-side secret masking, plugin-type execution/criticality metadata,
 critical disable rejection, exclusive restart-only selection, and OIDC restart-only update
 rejection. It also verifies local-only runtime mutation and empty-map source
 clear through refreshed detail metadata.
+The plugin Console row remains `Partial`: availability checks verify true node values and
+list-count consistency for an enabled plugin, both required parameters, and unknown-plugin
+errors. Standalone IT cannot exercise remote-member fan-out. Core regression tests verify
+the payload SPI and real request/response serialization for single-plugin and query-all
+cluster probes (issue #15836); automated multi-node aggregation remains a cluster-test gap.
 Persisted runtime mutation remains partial to avoid carrying plugin state into
 later SDK suites in the shared standalone process; persisted full-map
 replacement, source fallback, effect mode checks, same-source sensitive value
@@ -393,7 +400,26 @@ Console 各执行一遍，保留原400/404及23000/20004/50100断言、错误详
 全部通过，三项原错误码问题已消除。旧构件对照复现三项原失败及相同 Naming 失败，后者登记为
 CONSOLE-NAMING-01；不放宽断言，不将其计为通过。详见上述验证记录。
 
+## Console identity-only remote delegation (#15883)
+
+`IdentityOnlyAuthorizationITCase` covers the three Console `ONLY_IDENTITY` operations with
+missing, invalid, blank, and valid identities. The valid no-permission identity scenario must
+run in both merged and independent Console deployments; independent mode additionally verifies
+that the Console-to-Server Maintainer call uses the configured server identity for the internal
+delegation instead of applying the target Admin API's unrelated resource permission.
+
 Agent/MCP visibility coverage: the existing Agent Admin, Agent Console and MCP rows include independent scope updates and default PUBLIC creation. `AiResourceVisibilityOpenApiITCase` strengthens those rows with auth-enabled non-owner READ/WRITE and explicit grant/revoke tests; it does not add a new counted API surface. Default creation tests do not grant explicit visibility to their readers. Auth-disabled runs cannot validate isolation. Existing unrelated coverage gaps remain unchanged.
+
+Skill frontmatter (#15345) is covered on Admin and Console lists through draft
+creation/update, draft deletion, publish and version online/offline transitions.
+Both Skill API scenario matrices record null/legacy behavior and deterministic
+CAS coverage in service unit tests. Lists must not load per-item versions or
+package storage. HTTP IT verifies generated reserved fields and an untruncated
+projection; service unit tests cover custom-field priority and all snapshot
+limits while preserving complete version metadata. They also verify that malformed
+historical `ai_resource.ext` metadata cannot fail list or detail requests.
+Historical backfill and frontmatter search are out of scope. Existing `pageSize`
+behavior is unchanged.
 
 ## Config detail schema (#15853)
 
@@ -616,3 +642,39 @@ Client 发布契约仍为首版普通提交、已有 DRAFT 完整覆盖、非 DR
 contentDigest、nativeDescriptor 与 Endpoint sourceRevision 不变，未透出展示及管理字段。
 HTTP/gRPC/auto Watch 元数据变更及无变化通知边界由对应 Java SDK IT 验证。
 公共响应与指纹契约见 [RAD 协议规范](../../specs/zh-cn/ai/rad-protocol-spec.md)。
+
+## ARD online relevance filtering
+
+| Scenario | Coverage |
+| --- | --- |
+| Default-off Search header, unchanged JSON, invalid cursor | `ArdAdaptorOpenApiITCase.testSearchEnhancementStatusAndCursorBoundary` against standalone ARD |
+| Enabled empty result bypass | Same IT with server enhancement enabled and `-Dnacos.test.ard.relevance.empty-status=bypassed` |
+| Jev protocol, invalid scores/IDs, 429, no retry | `JevRelevanceProviderTest`, deterministic local HTTP stub |
+| Concurrent batches, timeout/cancel, node saturation, all-or-nothing fallback | `AiResourceRelevanceFilterTest` |
+| Threshold, stable order/score, empty continuation, fallback boundary, currentness, cursor binding | `AiResourceSearchRelevanceTest` |
+| Header propagation and no JSON field leakage | `ArdSearchControllerTest` |
+
+The paid-provider success path is not a prerequisite for standalone IT. Deterministic provider
+and Search Core tests exercise nonempty success and failure paths without external credentials.
+Live empty-result IT covers the HTTP boundary in both configurations; it does not claim live
+nonempty Jev filtering coverage. No public Java SDK contract changes.
+
+## Native binding and serialization regression
+
+The existing Config Admin and Console CRUD rows also verify non-empty inherited `srcUser` and
+`appName` parameters and persisted `createUser` / `appName` detail fields. This catches missing
+Native form-binding metadata without changing the API contract. Native and JVM execution are
+separate validation targets; these additional scenarios do not change surface-row coverage totals.
+
+Existing Service Admin and Console IT cases are also reused to check persisted service metadata
+and populated service-list names/groups. HTTP 200 with empty serialized objects is a failure.
+
+### Agent Discover notification Header compatibility
+
+| API surface / IT class | Covered API operations | Current status | Current/missing coverage |
+| --- | --- | --- | --- |
+| Agent Discover / `AgentDiscoveryClientOpenApiITCase` | GET `/v3/client/ai/agents` | Covered | `testDiscoveryTriggerHeaderDoesNotChangeSnapshotOrErrors` checks `watch-notify`, missing, empty, unknown and case-mismatched `X-Nacos-Agent-Discovery-Trigger` values against full snapshot, not-found and invalid version/label responses. SDK emission and retry attribution use client wire UT. Discover now emits best-effort `AiResourceTraceEvent` (`DISCOVER`) at HTTP/gRPC business-query boundaries; server UT verifies source, resolved/requested version, protocol, subscription attribution and diagnostic failure isolation. Event payload/log delivery is internal and has no public query API, so standalone HTTP IT verifies response compatibility rather than claiming event or SDK emission coverage. |
+
+This extends the existing Agent Discover row; API surface totals and strict/effective
+coverage denominators remain unchanged. The optional diagnostic header never changes
+authorization or discovery semantics.
